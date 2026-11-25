@@ -651,12 +651,12 @@ async function adminDeleteInvoice(id) {
   return true;
 }
 
-// ---- commission: 15% of the technician's job amount on every completed booking ----
+// ---- commission: 6% of the technician's job amount on every completed booking ----
 // An invoice exists only once a booking is completed, so every invoice is one
 // completed booking. Commission is collected when FIX-IT receives the money
 // itself (Paymob online payment) or when the admin marks the cash commission
 // as received from the technician. Everything else is outstanding.
-const COMMISSION_RATE = 0.15;
+const COMMISSION_RATE = 0.06;
 const round2 = (n) => Math.round(n * 100) / 100;
 const commissionBase = (inv) => Number(((inv.items || [])[0] || {}).amount) || 0;
 const commissionOf = (inv) => round2(commissionBase(inv) * COMMISSION_RATE);

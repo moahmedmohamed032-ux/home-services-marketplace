@@ -31,7 +31,7 @@ router.get('/invoices', async (req, res, next) => {
 
 const wrap = (fn) => async (req, res, next) => { try { await fn(req, res); } catch (err) { next(err); } };
 
-// GET /api/admin/commissions — 15% platform commission per completed booking.
+// GET /api/admin/commissions — 6% platform commission per completed booking.
 router.get('/commissions', wrap(async (req, res) => res.json({ commissions: await store.adminCommissions() })));
 
 // ---- technicians ----

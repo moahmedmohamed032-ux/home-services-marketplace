@@ -222,7 +222,7 @@ test('paymob hmac + callback', async () => {
   delete process.env.PAYMOB_SECRET_KEY;
 });
 
-test('phone-only technician signup, photo upload, verified badge and 15% commission', async () => {
+test('phone-only technician signup, photo upload, verified badge and 6% commission', async () => {
   const phone = '0101' + String(Math.floor(Math.random() * 1e7)).padStart(7, '0');
   const reg = await post('/auth/register', { name: 'Fni Luxor', password: 'secret123', role: 'technician', phone, profession: 'plumber', city: 'Luxor' });
   assert.equal(reg.status, 201);
@@ -250,6 +250,6 @@ test('phone-only technician signup, photo upload, verified badge and 15% commiss
     const v = await patch(`/admin/technicians/${me.id}`, { verified: true }, adm.token);
     assert.equal(v.status, 200);
     const c = await (await fetch(`${base}/admin/commissions`, { headers: { authorization: `Bearer ${adm.token}` } })).json();
-    assert.equal(c.commissions.rate, 0.15);
+    assert.equal(c.commissions.rate, 0.06);
   }
 });
