@@ -21,6 +21,7 @@ export default function TechnicianCard({ technician: t, professionIcon, professi
         <span>{t.yearsExperience} {tr('years')}</span>
         {t.distanceKm !== undefined && <span className="distance">📍 {t.distanceKm} {tr('away')}</span>}
         <strong>{t.hourlyRate} {tr('perHour')}</strong>
+        {t.priceStatus === 'within' && <span className="price-ok" title={`${t.priceMin}-${t.priceMax}`}>✓ {tr('priceWithin')}</span>}
       </div>
     </Link>
   );

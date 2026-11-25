@@ -18,6 +18,7 @@ export default function RegisterTechnician() {
     name: '', email: '', password: '', phone: '', profession: '', city: '', address: '',
     yearsExperience: 1, hourlyRate: 100, bio: '', phonePublic: false, addressActive: true,
   });
+  const band = professions.find((p) => p.id === form.profession);
   const [pos, setPos] = useState(null);
   const [locate, locating, geoError, retryLocate] = useGeolocation();
   useEffect(() => { dispatch(fetchProfessions()); dispatch(fetchCities()); }, [dispatch]);
@@ -63,7 +64,7 @@ export default function RegisterTechnician() {
         {geoError && <LocationError retry={retryLocate} loading={locating} className="error" />}
         <div className="row">
           <label>{t('experience')}<input type="number" min="0" value={form.yearsExperience} onChange={set('yearsExperience')} /></label>
-          <label>{t('rate')}<input type="number" min="0" value={form.hourlyRate} onChange={set('hourlyRate')} /></label>
+          <label>{t('rate')}<input type="number" min="0" value={form.hourlyRate} onChange={set('hourlyRate')} />{band && <small className="muted">{t('rateHint')} {band.priceMin}-{band.priceMax} {t('perHour')}</small>}</label>
         </div>
         <label>{t('bio')}<textarea rows="3" value={form.bio} onChange={set('bio')} /></label>
         <label className="check"><input type="checkbox" checked={form.addressActive} onChange={check('addressActive')} /> {t('activateAddress')}</label>

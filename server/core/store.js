@@ -159,10 +159,25 @@ async function allReviews(t) {
   return [...real, ...(t.reviews || [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+// Market price band per profession (EGP/hour, Luxor = Cairo market -15%). Hard cap, soft floor.
+const priceBand = (profession) => seed.PROFESSIONS.find((p) => p.id === profession) || null;
+function assertRateWithinCap(profession, rate) {
+  const b = priceBand(profession);
+  if (!b || !Number.isFinite(Number(rate))) return;
+  if (Number(rate) > b.priceMax) {
+    throw ApiError.badRequest(`Hourly rate is above the market limit for this service (max ${b.priceMax} EGP). Please lower it.`);
+  }
+}
+
 async function publicTechnician(t, { owner = false, withReviews = false } = {}) {
   if (!t) return null;
   const { phone, reviews, workPhotos, ...rest } = t;
   const out = { ...rest, verified: t.verified === true, phone: owner || t.phonePublic ? phone : null };
+  const band = priceBand(t.profession);
+  if (band) {
+    out.priceMin = band.priceMin; out.priceMax = band.priceMax;
+    out.priceStatus = t.hourlyRate > band.priceMax ? 'above' : t.hourlyRate < band.priceMin ? 'below' : 'within';
+  }
   // Work photos are heavy: only on the profile page and the owner's dashboard.
   if (withReviews || owner) out.workPhotos = workPhotos || [];
   else out.workPhotoCount = (workPhotos || []).length;
@@ -183,6 +198,7 @@ async function findTechnicianByUserId(userId) {
 }
 async function createTechnicianProfile(user, { profession, city, district, yearsExperience = 0, hourlyRate = 0, bio = '', bioAr = '', lat, lng, phone = '', phonePublic = false, address = '', addressActive = true }) {
   await init();
+  assertRateWithinCap(profession, hourlyRate);
   const fallback = seed.CITY_COORDS[city || user.city] || {};
   const t = {
     id: await db.nextId('tec'), userId: user.id, name: user.name, profession,
@@ -211,6 +227,14 @@ async function updateTechnicianProfile(id, patch) {
   const allowed = ['city', 'district', 'yearsExperience', 'hourlyRate', 'bio', 'bioAr', 'profession', 'lat', 'lng', 'phone', 'phonePublic', 'address', 'addressActive'];
   const clean = {};
   for (const k of allowed) if (patch[k] !== undefined) clean[k] = patch[k];
+  // Hard cap on the hourly rate. Only checked when the rate or profession changes,
+  // so an unrelated profile edit is never blocked by an older out-of-range rate.
+  if (clean.hourlyRate !== undefined || clean.profession !== undefined) {
+    const cur = await db.technicians.getById(id);
+    const prof = clean.profession !== undefined ? clean.profession : cur.profession;
+    const rate = clean.hourlyRate !== undefined ? clean.hourlyRate : cur.hourlyRate;
+    assertRateWithinCap(prof, rate);
+  }
   // Photos (resized to JPEG data URLs by the browser). 'verified' is admin-only and never accepted here.
   if (patch.photo !== undefined) clean.photo = cleanImage(patch.photo, PHOTO_MAX);
   if (patch.workPhotos !== undefined) {

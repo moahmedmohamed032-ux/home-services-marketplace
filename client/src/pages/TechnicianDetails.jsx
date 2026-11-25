@@ -62,7 +62,7 @@ export default function TechnicianDetails() {
           <p>{lang === 'ar' && tech.bioAr ? tech.bioAr : tech.bio}</p>
           <div className="stats-row">
             <div><strong>{tech.jobsDone}</strong><span>{t('jobs')}</span></div>
-            <div><strong>{tech.hourlyRate}</strong><span>{t('perHour')}</span></div>
+            <div><strong>{tech.hourlyRate}</strong><span>{t('perHour')}</span>{tech.priceStatus === 'within' && <span className="price-ok">✓ {t('priceWithin')} ({tech.priceMin}-{tech.priceMax})</span>}</div>
             <div><strong>{tech.rating ? tech.rating.toFixed(1) : '-'}</strong><span>{t('rating')}</span></div>
           </div>
           <p className="phone-line">

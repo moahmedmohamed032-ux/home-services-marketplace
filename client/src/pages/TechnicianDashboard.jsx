@@ -16,6 +16,7 @@ export default function TechnicianDashboard() {
   const user = useSelector((s) => s.auth.user);
   const incoming = useSelector((s) => s.bookings.incoming);
   const [tech, setTech] = useState(null);
+  const [saveErr, setSaveErr] = useState('');
   const [payments, setPayments] = useState([]);
   const loadPayments = () => api.get('/invoices/technician').then((r) => setPayments(r.data.invoices)).catch(() => {});
   const [saved, setSaved] = useState(false);
@@ -38,7 +39,8 @@ export default function TechnicianDashboard() {
       phone: tech.phone, phonePublic: tech.phonePublic, addressActive: tech.addressActive, address: tech.address,
       bio: tech.bio, hourlyRate: Number(tech.hourlyRate), yearsExperience: Number(tech.yearsExperience), lat: tech.lat, lng: tech.lng,
     }));
-    if (updateMyProfile.fulfilled.match(res)) { setTech(res.payload); setSaved(true); }
+    if (updateMyProfile.fulfilled.match(res)) { setTech(res.payload); setSaved(true); setSaveErr(''); }
+    else setSaveErr(String(res.payload || ''));
   };
   const count = (f) => incoming.filter(f).length;
 
@@ -136,9 +138,10 @@ export default function TechnicianDashboard() {
               <span>{t('phonePublicLabel')}<br /><small className="muted">{t('phonePublicHelp')}</small></span></label>
             <label>{t('bio')}<textarea rows="3" value={tech.bio || ''} onChange={(e) => set('bio', e.target.value)} /></label>
             <div className="row">
-              <label>{t('rate')}<input type="number" value={tech.hourlyRate} onChange={(e) => set('hourlyRate', e.target.value)} /></label>
+              <label>{t('rate')}<input type="number" value={tech.hourlyRate} onChange={(e) => set('hourlyRate', e.target.value)} />{tech.priceMax && <small className="muted">{t('rateHint')} {tech.priceMin}-{tech.priceMax} {t('perHour')}</small>}</label>
               <label>{t('experience')}<input type="number" value={tech.yearsExperience} onChange={(e) => set('yearsExperience', e.target.value)} /></label>
             </div>
+            {saveErr && <p className="error">{saveErr}</p>}
             <button className="btn btn-primary" onClick={save}>{t('save')}</button>
             {saved && <p className="notice ok">{t('saved')}</p>}
           </div>

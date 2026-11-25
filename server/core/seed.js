@@ -4,14 +4,14 @@
 // README only), plus a few demo bookings and invoices so the dashboards and
 // the admin view open with real-looking activity.
 const PROFESSIONS = [
-  { id: 'plumber', name: 'Plumber', nameAr: 'سباك', icon: '🔧' },
-  { id: 'electrician', name: 'Electrician', nameAr: 'كهربائي', icon: '⚡' },
-  { id: 'painter', name: 'Painter', nameAr: 'نقاش', icon: '🎨' },
-  { id: 'carpenter', name: 'Carpenter', nameAr: 'نجار', icon: '🪚' },
-  { id: 'ac-technician', name: 'AC Technician', nameAr: 'فني تكييف', icon: '❄️' },
-  { id: 'cleaner', name: 'Cleaner', nameAr: 'عامل نظافة', icon: '🧹' },
-  { id: 'appliance-repair', name: 'Appliance Repair', nameAr: 'صيانة أجهزة', icon: '🛠️' },
-  { id: 'tiler', name: 'Tiler', nameAr: 'بلاط', icon: '🧱' },
+  { id: 'plumber', priceMin: 80, priceMax: 200, name: 'Plumber', nameAr: 'سباك', icon: '🔧' },
+  { id: 'electrician', priceMin: 80, priceMax: 220, name: 'Electrician', nameAr: 'كهربائي', icon: '⚡' },
+  { id: 'painter', priceMin: 70, priceMax: 180, name: 'Painter', nameAr: 'نقاش', icon: '🎨' },
+  { id: 'carpenter', priceMin: 80, priceMax: 200, name: 'Carpenter', nameAr: 'نجار', icon: '🪚' },
+  { id: 'ac-technician', priceMin: 100, priceMax: 250, name: 'AC Technician', nameAr: 'فني تكييف', icon: '❄️' },
+  { id: 'cleaner', priceMin: 50, priceMax: 130, name: 'Cleaner', nameAr: 'عامل نظافة', icon: '🧹' },
+  { id: 'appliance-repair', priceMin: 80, priceMax: 200, name: 'Appliance Repair', nameAr: 'صيانة أجهزة', icon: '🛠️' },
+  { id: 'tiler', priceMin: 70, priceMax: 180, name: 'Tiler', nameAr: 'بلاط', icon: '🧱' },
 ];
 
 // Reference coordinates per city (center); technicians are jittered around it.
