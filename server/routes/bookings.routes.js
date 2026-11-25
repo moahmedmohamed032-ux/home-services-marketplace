@@ -1,0 +1,89 @@
+const express = require('express');
+const store = require('../core/store');
+const ApiError = require('../core/ApiError');
+const { authenticate, requireRole } = require('../middleware/auth');
+const { requireFields, assertRating } = require('../utils/validators');
+
+const router = express.Router();
+
+// POST /api/bookings — client books a technician.
+router.post('/', authenticate, requireRole('client'), (req, res, next) => {
+  try {
+    requireFields(req.body, ['technicianId', 'date', 'description', 'address']);
+    const { technicianId, date, description, address } = req.body;
+    const tech = store.findTechnicianById(technicianId);
+    if (!tech) throw ApiError.notFound('Technician not found');
+    if (Number.isNaN(Date.parse(date))) throw ApiError.badRequest('Invalid booking date');
+    const booking = store.createBooking({
+      clientId: req.user.id, technicianId, date, description, address,
+    });
+    res.status(201).json({ booking });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/bookings/mine — the client's own bookings.
+router.get('/mine', authenticate, requireRole('client'), (req, res) => {
+  res.json({ bookings: store.bookingsForClient(req.user.id) });
+});
+
+// GET /api/bookings/incoming — requests addressed to the logged-in technician.
+router.get('/incoming', authenticate, requireRole('technician'), (req, res) => {
+  res.json({ bookings: store.bookingsForTechnician(req.user.id) });
+});
+
+// PATCH /api/bookings/:id/status — state machine:
+//   client: pending|accepted -> cancelled
+//   technician: pending -> accepted|declined, accepted -> completed
+router.patch('/:id/status', authenticate, (req, res, next) => {
+  try {
+    const { status } = req.body;
+    if (!store.BOOKING_STATUS.includes(status)) throw ApiError.badRequest('Unknown status');
+    const booking = store.findBookingById(req.params.id);
+    if (!booking) throw ApiError.notFound('Booking not found');
+
+    if (req.user.role === 'client') {
+      if (booking.clientId !== req.user.id) throw ApiError.forbidden('Not your booking');
+      if (status !== 'cancelled') throw ApiError.forbidden('Clients can only cancel bookings');
+      if (!['pending', 'accepted'].includes(booking.status)) {
+        throw ApiError.badRequest(`Cannot cancel a ${booking.status} booking`);
+      }
+    } else {
+      const tech = store.findTechnicianByUserId(req.user.id);
+      if (!tech || booking.technicianId !== tech.id) throw ApiError.forbidden('Not your booking');
+      const allowed =
+        (booking.status === 'pending' && ['accepted', 'declined'].includes(status)) ||
+        (booking.status === 'accepted' && status === 'completed');
+      if (!allowed) throw ApiError.badRequest(`Cannot move booking from ${booking.status} to ${status}`);
+    }
+
+    booking.status = status;
+    if (status === 'completed') {
+      const tech = store.findTechnicianById(booking.technicianId);
+      if (tech) tech.jobsDone += 1;
+    }
+    res.json({ booking });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/bookings/:id/review — client reviews a completed booking.
+router.post('/:id/review', authenticate, requireRole('client'), (req, res, next) => {
+  try {
+    requireFields(req.body, ['rating']);
+    assertRating(req.body.rating);
+    const booking = store.findBookingById(req.params.id);
+    if (!booking) throw ApiError.notFound('Booking not found');
+    if (booking.clientId !== req.user.id) throw ApiError.forbidden('Not your booking');
+    if (booking.status !== 'completed') throw ApiError.badRequest('Only completed bookings can be reviewed');
+    if (booking.review) throw ApiError.conflict('Booking already reviewed');
+    store.addReview(booking, req.body);
+    res.status(201).json({ booking });
+  } catch (err) {
+    next(err);
+  }
+});
+
+module.exports = router;
