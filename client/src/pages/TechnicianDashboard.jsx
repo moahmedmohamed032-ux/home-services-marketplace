@@ -101,8 +101,9 @@ export default function TechnicianDashboard() {
                     <button className="btn btn-primary btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'accepted' }))}>{t('accept')}</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'declined' }))}>{t('decline')}</button>
                   </>}
-                  {b.status === 'accepted' && <button className="btn btn-ghost btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'in_progress' }))}>{t('startJob')}</button>}
-                  {['accepted', 'in_progress'].includes(b.status) && (
+                  {b.status === 'accepted' && b.dispatchId && !b.chosen && <p className="muted">{t('waitChoose')}</p>}
+                  {b.status === 'accepted' && (!b.dispatchId || b.chosen) && <button className="btn btn-ghost btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'in_progress' }))}>{t('startJob')}</button>}
+                  {['accepted', 'in_progress'].includes(b.status) && (!b.dispatchId || b.chosen) && (
                     <form className="done-form" onSubmit={(e) => { e.preventDefault(); const v = Number(amounts[b.id]); if (v > 0) dispatch(updateBookingStatus({ id: b.id, status: 'awaiting_confirmation', finalAmount: v })); }}>
                       <input type="number" min="1" placeholder={t('finalAmount')} value={amounts[b.id] || ''} onChange={(e) => setAmounts({ ...amounts, [b.id]: e.target.value })} />
                       <button className="btn btn-primary btn-sm" type="submit">{t('workDone')}</button>

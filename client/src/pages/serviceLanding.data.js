@@ -1,4 +1,4 @@
-export const LANDINGS = {
+const BASE = {
   plumber: {
     h1: 'سباك في الأقصر', title: 'سباك في الأقصر | تسليك وتصليح مواسير وتركيب | FIX-IT',
     desc: 'محتاج سباك في الأقصر؟ احجز سباك بتقييمات حقيقية للتسريبات، تسليك المجاري، تركيب السخانات والأحواض، في الأقصر والكرنك والبر الغربي.',
@@ -43,3 +43,33 @@ export const LANDINGS = {
   },
 };
 export const SITE = 'https://fanni-marketplace.vercel.app';
+
+export const CITY_PAGES = {
+  luxor: { en: 'Luxor', ar: 'الأقصر' },
+  esna: { en: 'Esna', ar: 'إسنا' },
+  qena: { en: 'Qena', ar: 'قنا' },
+  aswan: { en: 'Aswan', ar: 'أسوان' },
+};
+// Same page text for every city: only the city name changes; Luxor-only place names are dropped elsewhere.
+export function landingsFor(city) {
+  const c = CITY_PAGES[city];
+  if (!c) return null;
+  const fix = (v) => {
+    if (typeof v === 'string') {
+      let o = v;
+      if (city !== 'luxor') o = o.replace(/ والكرنك والبر الغربي/g, '').replace(/ والكرنك/g, '').replace(/ في الأقصر والكرنك/g, ' في الأقصر');
+      return o.replace(/الأقصر/g, c.ar);
+    }
+    if (Array.isArray(v)) return v.map(fix);
+    if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fix(x)]));
+    return v;
+  };
+  const out = {};
+  for (const [slug, d] of Object.entries(BASE)) {
+    const copy = fix(d);
+    if (city !== 'luxor') copy.faq = copy.faq.filter(([q, a]) => !/البر الغربي|الكرنك/.test(q + a));
+    out[slug] = copy;
+  }
+  return out;
+}
+export const LANDINGS = landingsFor('luxor');

@@ -92,7 +92,9 @@ async function createUser({ name, email, phone, passwordHash, role, city, lat, l
 
 // Public marketplace is Luxor-only. Records for other cities (demo data) are kept, just hidden.
 // Override with PUBLIC_CITIES="Luxor,Cairo" (comma separated) to show more.
-const PUBLIC_CITIES = (process.env.PUBLIC_CITIES || 'Luxor').split(',').map((c) => c.trim().toLowerCase()).filter(Boolean);
+const SUPPORTED_CITIES = ['Luxor', 'Esna', 'Qena', 'Aswan'];
+const canonicalCity = (c) => SUPPORTED_CITIES.find((x) => x.toLowerCase() === String(c || '').trim().toLowerCase()) || null;
+const PUBLIC_CITIES = (process.env.PUBLIC_CITIES || SUPPORTED_CITIES.join(',')).split(',').map((c) => c.trim().toLowerCase()).filter(Boolean);
 const isPublicCity = (t) => PUBLIC_CITIES.includes(String(t.city || '').toLowerCase());
 
 // ---- professions ----
@@ -106,8 +108,8 @@ async function listProfessions() {
 }
 async function listCities() {
   await init();
-  const techs = (await db.technicians.getAll()).filter(isPublicCity);
-  return [...new Set(techs.map((t) => t.city))].sort();
+  // Fixed list of served cities (empty ones included: customers see an honest empty state).
+  return PUBLIC_CITIES.map((c) => canonicalCity(c)).filter(Boolean);
 }
 
 // ---- geo ----
@@ -199,6 +201,9 @@ async function findTechnicianByUserId(userId) {
 }
 async function createTechnicianProfile(user, { profession, city, district, yearsExperience = 0, hourlyRate = 0, bio = '', bioAr = '', lat, lng, phone = '', phonePublic = false, address = '', addressActive = true }) {
   await init();
+  const cityKey = canonicalCity(city || user.city);
+  if (!cityKey) throw ApiError.badRequest('Please choose your city: Luxor, Esna, Qena or Aswan');
+  city = cityKey;
   assertRateWithinCap(profession, hourlyRate);
   const fallback = seed.CITY_COORDS[city || user.city] || {};
   const t = {
@@ -247,6 +252,81 @@ async function updateTechnicianProfile(id, patch) {
 
 // ---- bookings ----
 
+// "Nearest available technician": one request goes to the 3 closest technicians of the category.
+// Those who accept become price offers; the customer picks one (see chooseNearestOffer).
+const NEAREST_MAX_KM = 80;
+async function createNearestRequest({ clientId, profession, city, date, description, address, clientLat, clientLng }) {
+  await init();
+  let cands = (await db.technicians.getAll()).filter((t) => t.profession === profession && t.addressActive !== false && isPublicCity(t));
+  const hasGeo = clientLat !== undefined && clientLng !== undefined && clientLat !== '' && Number.isFinite(Number(clientLat)) && Number.isFinite(Number(clientLng));
+  if (hasGeo) {
+    cands = cands
+      .map((t) => ({ t, d: haversineKm(Number(clientLat), Number(clientLng), t.lat, t.lng) }))
+      .filter((x) => Number.isFinite(x.d) && x.d <= NEAREST_MAX_KM)
+      .sort((a, b) => a.d - b.d || (b.t.rating || 0) - (a.t.rating || 0)).map((x) => x.t);
+  } else {
+    const c = canonicalCity(city);
+    if (!c) throw ApiError.badRequest('Share your location or choose your city');
+    cands = cands.filter((t) => t.city === c).sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  }
+  cands = cands.slice(0, 3);
+  if (!cands.length) throw ApiError.notFound('No technician available near you for this service yet');
+  const dispatchId = await db.nextId('dsp');
+  const made = [];
+  for (const t of cands) {
+    made.push(await createBooking({ clientId, technicianId: t.id, date, description, address, clientLat: hasGeo ? clientLat : undefined, clientLng: hasGeo ? clientLng : undefined, dispatchId, nearest: true }));
+  }
+  return { booking: await hydrateBooking(made[0]), notified: made.length };
+}
+async function withdrawDispatchSiblings(booking, reasonAr, reasonEn, statuses = ['pending']) {
+  if (!booking.dispatchId) return;
+  const all = await db.bookings.getAll();
+  for (const b of all.filter((x) => x.dispatchId === booking.dispatchId && x.id !== booking.id && statuses.includes(x.status))) {
+    await db.bookings.update(b.id, { status: 'cancelled', superseded: true });
+    await notify(await techUserId(b.technicianId), { type: 'booking_taken', bookingId: b.id, link: '/pro', titleAr: reasonAr, titleEn: reasonEn, bodyAr: '', bodyEn: '' });
+  }
+}
+// One entry per nearest-request for the client. Before the customer chooses, the entry carries the
+// price offers (technicians who accepted); after the choice only the chosen booking remains.
+async function collapseDispatch(rows) {
+  const groups = new Map();
+  for (const r of rows) if (r.dispatchId) { if (!groups.has(r.dispatchId)) groups.set(r.dispatchId, []); groups.get(r.dispatchId).push(r); }
+  const hide = new Set();
+  const extra = new Map();
+  for (const g of groups.values()) {
+    const live = g.filter((r) => !r.superseded);
+    const chosen = live.find((r) => r.chosen);
+    if (chosen) { for (const r of g) if (r !== chosen) hide.add(r); continue; }
+    const pick = live.find((r) => r.status === 'accepted') || live.find((r) => r.status === 'pending') || live[0] || g[0];
+    for (const r of g) if (r !== pick) hide.add(r);
+    const offers = [];
+    for (const r of live.filter((x) => x.status === 'accepted')) {
+      const t = await findTechnicianById(r.technicianId);
+      if (!t) continue;
+      const hasGeo = r.clientLat !== undefined && r.clientLng !== undefined && Number.isFinite(Number(t.lat));
+      offers.push({ bookingId: r.id, technicianId: t.id, name: t.name, hourlyRate: t.hourlyRate, rating: t.rating || 0, jobsDone: t.jobsDone || 0,
+        distanceKm: hasGeo ? Math.round(haversineKm(Number(r.clientLat), Number(r.clientLng), t.lat, t.lng) * 10) / 10 : undefined });
+    }
+    offers.sort((a, b) => a.hourlyRate - b.hourlyRate);
+    const waiting = live.filter((x) => x.status === 'pending').length;
+    if (['pending', 'accepted'].includes(pick.status)) extra.set(pick, { technicianName: 'أقرب فني متاح', nearestPending: true, offers, waiting });
+  }
+  return rows.filter((r) => !hide.has(r)).map((r) => (extra.has(r) ? { ...r, ...extra.get(r) } : r));
+}
+// Customer picks one offer: it becomes the job, every other request of the group is withdrawn.
+async function chooseNearestOffer(booking) {
+  await init();
+  if (!booking.dispatchId) throw ApiError.badRequest('Not a nearest-technician request');
+  if (booking.status !== 'accepted') throw ApiError.badRequest('This technician has not accepted yet');
+  if (booking.superseded) throw ApiError.badRequest('This offer is no longer available');
+  const all = await db.bookings.getAll();
+  if (all.some((x) => x.dispatchId === booking.dispatchId && x.chosen)) throw ApiError.conflict('A technician was already chosen');
+  const updated = await db.bookings.update(booking.id, { chosen: true });
+  await withdrawDispatchSiblings(booking, 'العميل اختار فني تاني', 'The client chose another technician', ['pending', 'accepted']);
+  await notify(await techUserId(booking.technicianId), { type: 'booking_chosen', bookingId: booking.id, link: '/pro', titleAr: 'العميل اختارك ✅', titleEn: 'The client chose you ✅', bodyAr: 'تقدر تبدأ الشغل.', bodyEn: 'You can start the job.' });
+  return updated;
+}
+
 // ---- in-app notifications (stored per user; the app polls and shows toasts) ----
 async function notify(userId, n) {
   try {
@@ -286,7 +366,7 @@ async function notifyPaid(invoice) {
     bodyAr: `فاتورة ${inv.number} اتدفعت.`, bodyEn: `Invoice ${inv.number} was paid.` });
 }
 
-async function createBooking({ clientId, technicianId, date, description, descriptionAr = '', address, clientLat, clientLng }) {
+async function createBooking({ clientId, technicianId, date, description, descriptionAr = '', address, clientLat, clientLng, dispatchId, nearest }) {
   await init();
   const b = {
     id: await db.nextId('bkg'), clientId, technicianId, date, description, descriptionAr, address,
@@ -294,6 +374,7 @@ async function createBooking({ clientId, technicianId, date, description, descri
       ? { clientLat: Number(clientLat), clientLng: Number(clientLng) }
       : {}),
     status: 'pending', createdAt: new Date().toISOString(), review: null,
+    ...(dispatchId ? { dispatchId, nearest: nearest === true } : {}),
   };
   const saved = await db.bookings.insert(b);
   const client = await findUserById(clientId);
@@ -325,7 +406,7 @@ async function bookingsForClient(clientId) {
   const all = await db.bookings.getAll();
   const rows = [];
   for (const b of all.filter((x) => x.clientId === clientId)) rows.push(await hydrateBooking(b));
-  return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return (await collapseDispatch(rows)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 async function bookingsForTechnician(userId) {
   await sweepAutoConfirm();
@@ -333,7 +414,7 @@ async function bookingsForTechnician(userId) {
   if (!tech) return [];
   const all = await db.bookings.getAll();
   const rows = [];
-  for (const b of all.filter((x) => x.technicianId === tech.id)) rows.push(await hydrateBooking(b));
+  for (const b of all.filter((x) => x.technicianId === tech.id && !x.superseded)) rows.push(await hydrateBooking(b));
   return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -434,6 +515,7 @@ async function setBookingStatus(booking, status, extra = {}) {
   if (status === 'awaiting_confirmation') patch.awaitingSince = new Date().toISOString();
   if (status === 'completed') patch.completedAt = new Date().toISOString();
   const updated = await db.bookings.update(booking.id, patch);
+  if (status === 'cancelled') await withdrawDispatchSiblings(booking, 'العميل لغى الطلب', 'Client cancelled the request', ['pending', 'accepted']);
   if (status === 'completed') {
     const tech = await findTechnicianById(booking.technicianId);
     if (tech) await db.technicians.update(tech.id, { jobsDone: (tech.jobsDone || 0) + 1 });
@@ -901,7 +983,7 @@ async function adminOverview() {
 }
 
 module.exports = {
-  BOOKING_STATUS, submitFinalAmount, sweepAutoConfirm, init,
+  BOOKING_STATUS, createNearestRequest, chooseNearestOffer, SUPPORTED_CITIES, submitFinalAmount, sweepAutoConfirm, init,
   findUserByEmail, findUserByPhone, findUserByLogin, setUserPassword, normalizePhone, isEgPhone, findUserById, publicUser, createUser,
   listProfessions, listCities,
   searchTechnicians, publicTechnician, findTechnicianById, findTechnicianByUserId,

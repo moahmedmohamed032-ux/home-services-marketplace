@@ -17,6 +17,9 @@ const PROFESSIONS = [
 // Reference coordinates per city (center); technicians are jittered around it.
 const CITY_COORDS = {
   Luxor: { lat: 25.6872, lng: 32.6396 },
+  Esna: { lat: 25.2930, lng: 32.5560 },
+  Qena: { lat: 26.1551, lng: 32.7160 },
+  Aswan: { lat: 24.0889, lng: 32.8998 },
   Cairo: { lat: 30.0444, lng: 31.2357 },
 };
 

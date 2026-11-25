@@ -23,6 +23,27 @@ router.post('/', authenticate, requireRole('client'), async (req, res, next) => 
   }
 });
 
+// POST /api/bookings/nearest — "nearest available technician": notifies the 3 closest, first to accept wins.
+router.post('/nearest', authenticate, requireRole('client'), async (req, res, next) => {
+  try {
+    requireFields(req.body, ['profession', 'date', 'description', 'address']);
+    if (Number.isNaN(Date.parse(req.body.date))) throw ApiError.badRequest('Invalid booking date');
+    const { profession, city, date, description, address, clientLat, clientLng } = req.body;
+    const out = await store.createNearestRequest({ clientId: req.user.id, profession, city, date, description, address, clientLat, clientLng });
+    res.status(201).json(out);
+  } catch (err) { next(err); }
+});
+
+// POST /api/bookings/:id/choose — customer picks one accepted offer of a nearest request.
+router.post('/:id/choose', authenticate, requireRole('client'), async (req, res, next) => {
+  try {
+    const booking = await store.findBookingById(req.params.id);
+    if (!booking) throw ApiError.notFound('Booking not found');
+    if (booking.clientId !== req.user.id) throw ApiError.forbidden('Not your booking');
+    res.json({ booking: await store.chooseNearestOffer(booking) });
+  } catch (err) { next(err); }
+});
+
 // GET /api/bookings/mine — the client's own bookings.
 router.get('/mine', authenticate, requireRole('client'), async (req, res, next) => {
   try {
@@ -63,6 +84,9 @@ router.patch('/:id/status', authenticate, async (req, res, next) => {
     } else {
       const tech = await store.findTechnicianByUserId(req.user.id);
       if (!tech || booking.technicianId !== tech.id) throw ApiError.forbidden('Not your booking');
+      if (booking.dispatchId && !booking.chosen && !['accepted', 'declined'].includes(status)) {
+        throw ApiError.badRequest('Waiting for the customer to choose a technician');
+      }
       const allowed =
         (booking.status === 'pending' && ['accepted', 'declined'].includes(status)) ||
         (booking.status === 'accepted' && status === 'in_progress') ||

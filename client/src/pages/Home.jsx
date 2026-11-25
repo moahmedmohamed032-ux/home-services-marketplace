@@ -63,6 +63,15 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="card seo-luxor">
+        <h2>{lang === 'ar' ? 'بنخدمك في أربع مدن' : 'We serve four cities'}</h2>
+        <div className="chip-row">
+          {[['Luxor', 'الأقصر'], ['Esna', 'إسنا'], ['Qena', 'قنا'], ['Aswan', 'أسوان']].map(([k, ar]) => (
+            <Link key={k} to={`/technicians?city=${k}`} className="chip">{lang === 'ar' ? ar : k}</Link>
+          ))}
+        </div>
+      </section>
+
       {!user && (
         <section className="cta card">
           <div><h2>{t('areTech')}</h2><p className="muted">{t('areTechSub')}</p></div>

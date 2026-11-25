@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams } from 'react-router-dom';
 import { fetchCities, fetchProfessions, fetchTechnicians, setFilters } from '../features/technicians/techniciansSlice';
@@ -19,11 +20,21 @@ export default function Technicians() {
   useEffect(() => {
     const profession = searchParams.get('profession');
     if (profession !== null) dispatch(setFilters({ profession }));
+    const cityParam = searchParams.get('city');
+    if (cityParam) dispatch(setFilters({ city: cityParam }));
     dispatch(fetchProfessions());
     dispatch(fetchCities());
   }, [dispatch, searchParams]);
 
   useEffect(() => { dispatch(fetchTechnicians(filters)); }, [dispatch, filters]);
+  // If the customer already allowed location in this browser, rank by distance by default.
+  useEffect(() => {
+    if (!navigator.permissions || !navigator.geolocation) return;
+    navigator.permissions.query({ name: 'geolocation' }).then((st) => {
+      if (st.state === 'granted') locate((pos) => dispatch(setFilters(pos)));
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const update = (key) => (e) => dispatch(setFilters({ [key]: e.target.value }));
   const sorted = Boolean(filters.lat && filters.lng);
@@ -46,6 +57,7 @@ export default function Technicians() {
           📍 {locating ? t('locating') : sorted ? `${t('nearMe')} ✓` : t('nearMe')}
         </button>
       </div>
+      <p><Link to={`/request-nearest${filters.profession ? `?profession=${filters.profession}` : ''}`} className="btn btn-accent">⚡ {t('nearestBtn')}</Link></p>
       {geoError && <LocationError retry={retryLocate} loading={locating} className="notice err" />}
       {status === 'loading' && <p className="muted">{t('loading')}</p>}
       {status !== 'loading' && list.length === 0 && <p className="muted">{t('noResults')}</p>}

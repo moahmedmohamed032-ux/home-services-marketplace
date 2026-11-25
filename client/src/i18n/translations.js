@@ -29,6 +29,8 @@ export const translations = {
     save: 'Save changes', saved: 'Saved', accept: 'Accept', decline: 'Decline', complete: 'Mark completed', cancel: 'Cancel',
     leaveReview: 'Leave a review', submit: 'Submit', comment: 'Comment (optional)',
     cardSoon: 'Card and wallet payment: coming soon. Pay the technician in cash for now.',
+    waitChoose: 'Waiting for the customer to choose between offers',
+    nearestBtn: 'Nearest available technician', chooseCity: 'Choose city', nearestTitle: 'Nearest available technician', nearestHelp: 'We send your request to the 3 nearest technicians. Those who accept show their price and you pick.', nearestSend: 'Send to nearest technicians', nearestSent: 'Sent to the nearest technicians. Offers will show in your dashboard.', offersTitle: 'Offers (pick one)', offersWaiting: 'Waiting for technicians to reply...', pickOffer: 'Choose', perHourShort: 'EGP/hour', offers_ready: 'Offers ready',
     receiptWord: 'Receipt', totalWord: 'Total',
     in_progress: 'In progress', awaiting_confirmation: 'Awaiting your confirmation', startJob: 'Start job', finalAmount: 'Final amount (EGP)', workDone: 'Work done', awaitingClient: 'Waiting for the client to confirm', finalAmountLabel: 'Final amount', autoConfirmNote: 'If you do not reply within 48 hours the job is confirmed automatically.', confirmDone: 'Confirm job done', notDone: 'Not finished yet',
     pending: 'Pending', accepted: 'Accepted', declined: 'Declined', completed: 'Completed', cancelled: 'Cancelled',
@@ -85,6 +87,8 @@ export const translations = {
     save: 'حفظ التغييرات', saved: 'تم الحفظ', accept: 'قبول', decline: 'رفض', complete: 'تم الإنجاز', cancel: 'إلغاء',
     leaveReview: 'اترك تقييماً', submit: 'إرسال', comment: 'تعليق (اختياري)',
     cardSoon: 'الدفع بالبطاقة والمحفظة: قريباً. ادفع للفني كاش حالياً.',
+    waitChoose: 'في انتظار اختيار العميل بين العروض',
+    nearestBtn: 'أقرب فني متاح', chooseCity: 'اختار المدينة', nearestTitle: 'أقرب فني متاح', nearestHelp: 'هنبعت طلبك لأقرب 3 فنيين. اللي يوافق بيظهر سعره وإنت تختار.', nearestSend: 'ابعت لأقرب الفنيين', nearestSent: 'اتبعت لأقرب الفنيين. العروض هتظهر في لوحتك.', offersTitle: 'العروض (اختار واحد)', offersWaiting: 'في انتظار رد الفنيين...', pickOffer: 'اختار', perHourShort: 'جنيه/ساعة', offers_ready: 'العروض جاهزة',
     receiptWord: 'إيصال', totalWord: 'الإجمالي',
     in_progress: 'جاري التنفيذ', awaiting_confirmation: 'في انتظار تأكيدك', startJob: 'ابدأ الشغل', finalAmount: 'المبلغ النهائي (جنيه)', workDone: 'تم الانتهاء', awaitingClient: 'في انتظار تأكيد العميل', finalAmountLabel: 'المبلغ النهائي', autoConfirmNote: 'لو مردّتش خلال 48 ساعة هيتأكد الطلب تلقائياً.', confirmDone: 'تأكيد انتهاء الشغل', notDone: 'لسه ما خلصش',
     pending: 'قيد الانتظار', accepted: 'مقبول', declined: 'مرفوض', completed: 'مكتمل', cancelled: 'ملغي',
@@ -115,5 +119,5 @@ export const translations = {
 
 export const cityLabel = (city, lang) => {
   if (lang !== 'ar') return city;
-  return { Luxor: 'الأقصر', Cairo: 'القاهرة', Aswan: 'أسوان' }[city] || city;
+  return { Luxor: 'الأقصر', Esna: 'إسنا', Qena: 'قنا', Cairo: 'القاهرة', Aswan: 'أسوان' }[city] || city;
 };

@@ -6,6 +6,7 @@ import { register } from '../features/auth/authSlice';
 import { fetchCities, fetchProfessions } from '../features/technicians/techniciansSlice';
 import useGeolocation from '../components/useGeolocation';
 import LocationError from '../components/LocationError';
+import { cityLabel } from '../i18n/translations';
 import { useT } from '../i18n/useT';
 
 export default function RegisterTechnician() {
@@ -52,8 +53,10 @@ export default function RegisterTechnician() {
             </select>
           </label>
           <label>{t('city')}
-            <input list="cities2" required value={form.city} onChange={set('city')} />
-            <datalist id="cities2">{cities.map((c) => <option key={c} value={c} />)}</datalist>
+            <select required value={form.city} onChange={set('city')}>
+              <option value="">{t('chooseCity')}</option>
+              {cities.map((c) => <option key={c} value={c}>{cityLabel(c, lang)}</option>)}
+            </select>
           </label>
         </div>
         <p className="muted comm-note">{t('phoneLoginHint')}</p>

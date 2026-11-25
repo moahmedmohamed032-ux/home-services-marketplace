@@ -10,6 +10,7 @@ import RegisterClient from './pages/RegisterClient';
 import RegisterTechnician from './pages/RegisterTechnician';
 import ClientDashboard from './pages/ClientDashboard';
 import TechnicianDashboard from './pages/TechnicianDashboard';
+import NearestRequest from './pages/NearestRequest';
 import ServiceLanding from './pages/ServiceLanding';
 import AdminDashboard from './pages/AdminDashboard';
 import { useEffect } from 'react';
@@ -20,15 +21,15 @@ export default function App() {
   const { t, lang } = useT();
   const { pathname } = useLocation();
   useEffect(() => {
-    if (pathname.startsWith('/luxor/')) return;
+    if (/^\/(luxor|esna|qena|aswan)\//.test(pathname)) return;
     const key = pathname === '/' ? 'home' : pathname.startsWith('/technicians') ? 'find'
       : pathname.startsWith('/login') ? 'login' : pathname.startsWith('/register') ? 'signup'
       : pathname.startsWith('/admin') ? 'admin' : 'dashboard';
     document.title = pathname === '/'
-      ? (lang === 'ar' ? 'فني في الأقصر: سباك وكهربائي وفني تكييف | FIX-IT' : 'Technicians in Luxor: plumber, electrician, AC | FIX-IT')
+      ? (lang === 'ar' ? 'فني في الأقصر وإسنا وقنا وأسوان: سباك وكهربائي وفني تكييف | FIX-IT' : 'Technicians in Luxor, Esna, Qena and Aswan | FIX-IT')
       : `${t(key)} | FIX-IT`;
     const desc = lang === 'ar'
-      ? 'محتاج فني في الأقصر؟ اطلب سباك الأقصر أو كهربائي الأقصر أو فني تكييف الأقصر أو نجار ونقاش بتقييمات حقيقية. احجز في دقايق وادفع كاش أو أونلاين.'
+      ? 'محتاج فني في الأقصر أو إسنا أو قنا أو أسوان؟ اطلب سباك الأقصر أو كهربائي الأقصر أو فني تكييف الأقصر أو نجار ونقاش بتقييمات حقيقية. احجز في دقايق وادفع كاش أو أونلاين.'
       : 'Need a technician in Luxor? Book rated plumbers, electricians, AC technicians, carpenters and painters in minutes. Pay cash or online.';
     const m = document.querySelector('meta[name="description"]');
     if (m) m.setAttribute('content', desc);
@@ -40,7 +41,11 @@ export default function App() {
       <main className="container">
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/luxor/:slug" element={<ServiceLanding />} />
+          <Route path="/luxor/:slug" element={<ServiceLanding city="luxor" />} />
+          <Route path="/esna/:slug" element={<ServiceLanding city="esna" />} />
+          <Route path="/qena/:slug" element={<ServiceLanding city="qena" />} />
+          <Route path="/aswan/:slug" element={<ServiceLanding city="aswan" />} />
+          <Route path="/request-nearest" element={<NearestRequest />} />
           <Route path="/technicians" element={<Technicians />} />
           <Route path="/technicians/:id" element={<TechnicianDetails />} />
           <Route path="/login" element={<Login />} />

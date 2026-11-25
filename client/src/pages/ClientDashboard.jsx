@@ -61,6 +61,19 @@ export default function ClientDashboard() {
             </div>
             <p>{b.description}</p>
             <p className="muted">📍 {b.address}</p>
+            {b.nearestPending && (
+              <div className="confirm-box">
+                <p><strong>{t('offersTitle')}</strong></p>
+                {(b.offers || []).length === 0 && <p className="muted">{t('offersWaiting')}</p>}
+                {(b.offers || []).map((o) => (
+                  <div key={o.bookingId} className="offer-row">
+                    <span><strong>{o.name}</strong> · ★ {o.rating ? o.rating.toFixed(1) : '-'}{o.distanceKm !== undefined && ` · 📍 ${o.distanceKm} km`}</span>
+                    <strong>{o.hourlyRate} {t('perHourShort')}</strong>
+                    <button className="btn btn-primary btn-sm" onClick={() => api.post(`/bookings/${o.bookingId}/choose`).then(() => dispatch(fetchMyBookings()))}>{t('pickOffer')}</button>
+                  </div>
+                ))}
+              </div>
+            )}
             {b.status === 'awaiting_confirmation' && (
               <div className="confirm-box">
                 <p><strong>{t('finalAmountLabel')}: {b.finalAmount} EGP</strong></p>
