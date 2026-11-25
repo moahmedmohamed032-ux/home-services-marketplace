@@ -37,6 +37,16 @@ test('health check', async () => {
   assert.equal((await res.json()).status, 'ok');
 });
 
+test('geo matching ranks nearest first and reports distance', async () => {
+  // Luxor center: the seeded Luxor technicians should come before Cairo ones.
+  const res = await fetch(`${base}/technicians?lat=25.6872&lng=32.6396`);
+  assert.equal(res.status, 200);
+  const { technicians } = await res.json();
+  assert.ok(technicians.length > 0);
+  assert.ok(technicians[0].distanceKm <= technicians[technicians.length - 1].distanceKm);
+  assert.equal(technicians[0].city, 'Luxor');
+});
+
 test('full client + technician flow', async () => {
   // register a fresh client
   const email = `client_${Date.now()}@test.dev`;

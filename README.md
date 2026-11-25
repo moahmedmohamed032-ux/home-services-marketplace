@@ -16,6 +16,8 @@ review; technicians register, receive requests and manage jobs from their own da
 
 - Role-based registration (client / technician) and login
 - Browse professions, search and filter technicians by trade, city and rating
+- Location-based matching: clients can sort by nearest (browser geolocation),
+  with rating as the tie-breaker; distances shown per technician
 - Booking flow with a status lifecycle: `pending → accepted → completed`, plus `declined` / `cancelled`
 - Client dashboard: track bookings, cancel, review completed jobs
 - Technician dashboard: accept/decline requests, complete jobs, edit profile
@@ -71,7 +73,7 @@ book → accept → complete → review, including role-guard and auth failures.
 | POST | `/api/auth/login` | – | log in, returns JWT |
 | GET | `/api/auth/me` | bearer | current session user |
 | GET | `/api/professions` | – | professions with technician counts |
-| GET | `/api/technicians` | – | search/filter technicians |
+| GET | `/api/technicians` | – | search/filter technicians (`lat`+`lng` → distance-ranked) |
 | GET | `/api/technicians/:id` | – | public technician profile |
 | PATCH | `/api/technicians/me` | technician | update own profile |
 | POST | `/api/bookings` | client | create a booking |

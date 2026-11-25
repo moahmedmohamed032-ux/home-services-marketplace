@@ -16,7 +16,7 @@ function authPayload(user) {
 router.post('/register', rateLimiter, async (req, res, next) => {
   try {
     requireFields(req.body, ['name', 'email', 'password', 'role']);
-    const { name, email, password, role, city, profession, yearsExperience, hourlyRate, bio } = req.body;
+    const { name, email, password, role, city, profession, yearsExperience, hourlyRate, bio, lat, lng } = req.body;
     assertEmail(email);
     assertPassword(password);
     assertRole(role);
@@ -30,10 +30,10 @@ router.post('/register', rateLimiter, async (req, res, next) => {
 
     const user = store.createUser({
       name: String(name).trim(), email: String(email).trim(),
-      passwordHash: await hashPassword(password), role, city,
+      passwordHash: await hashPassword(password), role, city, lat, lng,
     });
     if (role === 'technician') {
-      store.createTechnicianProfile(user, { profession, city, yearsExperience, hourlyRate, bio });
+      store.createTechnicianProfile(user, { profession, city, yearsExperience, hourlyRate, bio, lat, lng });
     }
     res.status(201).json(authPayload(user));
   } catch (err) {

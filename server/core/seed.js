@@ -11,6 +11,14 @@ const PROFESSIONS = [
   { id: 'tiler', name: 'Tiler', nameAr: 'بلاط', icon: '🧱' },
 ];
 
+// Reference coordinates per city (center); technicians are jittered around it.
+const CITY_COORDS = {
+  Luxor: { lat: 25.6872, lng: 32.6396 },
+  Cairo: { lat: 30.0444, lng: 31.2357 },
+  Alexandria: { lat: 31.2001, lng: 29.9187 },
+  Giza: { lat: 30.0131, lng: 31.2089 },
+};
+
 const TECHNICIANS = [
   { name: 'Mahmoud Abdelaziz', profession: 'plumber', city: 'Luxor', yearsExperience: 12, hourlyRate: 120, rating: 4.8, jobsDone: 340, bio: 'Specialist in bathroom and kitchen plumbing, leak detection and full repiping.' },
   { name: 'Ahmed Samy', profession: 'electrician', city: 'Luxor', yearsExperience: 9, hourlyRate: 150, rating: 4.9, jobsDone: 412, bio: 'Certified electrician: wiring, breaker panels, lighting design and smart-home setups.' },
@@ -33,4 +41,4 @@ const DEMO_TECH = {
   bio: 'Demo technician account — log in to see the technician dashboard.',
 };
 
-module.exports = { PROFESSIONS, TECHNICIANS, DEMO_CLIENT, DEMO_TECH };
+module.exports = { PROFESSIONS, TECHNICIANS, DEMO_CLIENT, DEMO_TECH, CITY_COORDS };

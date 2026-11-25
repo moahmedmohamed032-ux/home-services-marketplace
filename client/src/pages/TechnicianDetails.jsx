@@ -29,7 +29,20 @@ export default function TechnicianDetails() {
     if (!user) return navigate('/login', { state: { from: { pathname: `/technicians/${id}` } } });
     setSubmitting(true);
     setMessage(null);
-    const result = await dispatch(createBooking({ technicianId: id, ...form }));
+    // Attach the client's location when the browser allows it, so the
+    // technician can see where the job is.
+    let coords = {};
+    if (navigator.geolocation) {
+      try {
+        const pos = await new Promise((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 })
+        );
+        coords = { clientLat: pos.coords.latitude, clientLng: pos.coords.longitude };
+      } catch {
+        coords = {}; // location is optional
+      }
+    }
+    const result = await dispatch(createBooking({ technicianId: id, ...form, ...coords }));
     setSubmitting(false);
     if (result.meta.requestStatus === 'fulfilled') {
       setMessage({ ok: true, text: 'Booking sent! Track it from your dashboard.' });

@@ -16,6 +16,7 @@ export default function TechnicianCard({ technician: t, professionIcon, professi
       <div className="tech-card-foot">
         <span>{t.yearsExperience} yrs experience</span>
         <span>{t.jobsDone} jobs</span>
+        {t.distanceKm !== undefined && <span className="distance">📍 {t.distanceKm} km away</span>}
         <strong>{t.hourlyRate} EGP/hr</strong>
       </div>
     </Link>

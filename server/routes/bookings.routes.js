@@ -10,12 +10,12 @@ const router = express.Router();
 router.post('/', authenticate, requireRole('client'), (req, res, next) => {
   try {
     requireFields(req.body, ['technicianId', 'date', 'description', 'address']);
-    const { technicianId, date, description, address } = req.body;
+    const { technicianId, date, description, address, clientLat, clientLng } = req.body;
     const tech = store.findTechnicianById(technicianId);
     if (!tech) throw ApiError.notFound('Technician not found');
     if (Number.isNaN(Date.parse(date))) throw ApiError.badRequest('Invalid booking date');
     const booking = store.createBooking({
-      clientId: req.user.id, technicianId, date, description, address,
+      clientId: req.user.id, technicianId, date, description, address, clientLat, clientLng,
     });
     res.status(201).json({ booking });
   } catch (err) {

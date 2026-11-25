@@ -5,10 +5,12 @@ const { authenticate, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-// GET /api/technicians?profession=&city=&search=&minRating=
+// GET /api/technicians?profession=&city=&search=&minRating=&lat=&lng=
+// With lat+lng the results carry distanceKm and are ranked nearest-first
+// (rating breaks ties) so a client sees the closest suitable pros on top.
 router.get('/', (req, res) => {
-  const { profession, city, search, minRating } = req.query;
-  res.json({ technicians: store.searchTechnicians({ profession, city, search, minRating }) });
+  const { profession, city, search, minRating, lat, lng } = req.query;
+  res.json({ technicians: store.searchTechnicians({ profession, city, search, minRating, lat, lng }) });
 });
 
 // GET /api/technicians/me — the logged-in technician's own profile.
