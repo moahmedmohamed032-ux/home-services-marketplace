@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { register } from '../features/auth/authSlice';
 import { fetchCities, fetchProfessions } from '../features/technicians/techniciansSlice';
 import useGeolocation from '../components/useGeolocation';
+import LocationError from '../components/LocationError';
 import { useT } from '../i18n/useT';
 
 export default function RegisterTechnician() {
@@ -17,7 +18,7 @@ export default function RegisterTechnician() {
     yearsExperience: 1, hourlyRate: 100, bio: '', phonePublic: false, addressActive: true,
   });
   const [pos, setPos] = useState(null);
-  const [locate, locating, geoError] = useGeolocation();
+  const [locate, locating, geoError, retryLocate] = useGeolocation();
   useEffect(() => { dispatch(fetchProfessions()); dispatch(fetchCities()); }, [dispatch]);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const check = (k) => (e) => setForm({ ...form, [k]: e.target.checked });
@@ -58,7 +59,7 @@ export default function RegisterTechnician() {
         <button type="button" className="btn btn-outline" onClick={() => locate(setPos)} disabled={locating}>
           📍 {pos ? t('locationSaved') : locating ? t('locating') : t('detectLocation')}
         </button>
-        {geoError && <p className="error">{t('locationDenied')}</p>}
+        {geoError && <LocationError retry={retryLocate} loading={locating} className="error" />}
         <div className="row">
           <label>{t('experience')}<input type="number" min="0" value={form.yearsExperience} onChange={set('yearsExperience')} /></label>
           <label>{t('rate')}<input type="number" min="0" value={form.hourlyRate} onChange={set('hourlyRate')} /></label>

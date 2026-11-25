@@ -4,6 +4,7 @@ import { fetchIncomingBookings, updateBookingStatus } from '../features/bookings
 import { updateMyProfile } from '../features/technicians/techniciansSlice';
 import { api } from '../api/axios';
 import useGeolocation from '../components/useGeolocation';
+import LocationError from '../components/LocationError';
 import Stars from '../components/Stars';
 import TechAvatar, { VerifiedBadge } from '../components/TechAvatar';
 import { resizeImage } from '../utils/image';
@@ -19,7 +20,7 @@ export default function TechnicianDashboard() {
   const loadPayments = () => api.get('/invoices/technician').then((r) => setPayments(r.data.invoices)).catch(() => {});
   const [saved, setSaved] = useState(false);
   const [photoErr, setPhotoErr] = useState('');
-  const [locate, locating, geoError] = useGeolocation();
+  const [locate, locating, geoError, retryLocate] = useGeolocation();
 
   useEffect(() => {
     dispatch(fetchIncomingBookings());
@@ -129,7 +130,7 @@ export default function TechnicianDashboard() {
             <button type="button" className="btn btn-outline" onClick={() => locate((p) => { setTech({ ...tech, ...p }); setSaved(false); })} disabled={locating}>
               📍 {locating ? t('locating') : t('detectLocation')}
             </button>
-            {geoError && <p className="error">{t('locationDenied')}</p>}
+            {geoError && <LocationError retry={retryLocate} loading={locating} className="error" />}
             <label>{t('phone')}<input type="tel" value={tech.phone || ''} onChange={(e) => set('phone', e.target.value)} /></label>
             <label className="check switch"><input type="checkbox" checked={tech.phonePublic} onChange={(e) => set('phonePublic', e.target.checked)} />
               <span>{t('phonePublicLabel')}<br /><small className="muted">{t('phonePublicHelp')}</small></span></label>

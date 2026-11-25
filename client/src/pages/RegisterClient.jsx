@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { register } from '../features/auth/authSlice';
 import { fetchCities } from '../features/technicians/techniciansSlice';
 import useGeolocation from '../components/useGeolocation';
+import LocationError from '../components/LocationError';
 import { useT } from '../i18n/useT';
 
 export default function RegisterClient() {
@@ -14,7 +15,7 @@ export default function RegisterClient() {
   const cities = useSelector((s) => s.technicians.cities);
   const [form, setForm] = useState({ name: '', email: '', password: '', city: '' });
   const [pos, setPos] = useState(null);
-  const [locate, locating, geoError] = useGeolocation();
+  const [locate, locating, geoError, retryLocate] = useGeolocation();
   useEffect(() => { dispatch(fetchCities()); }, [dispatch]);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
@@ -39,7 +40,7 @@ export default function RegisterClient() {
         <button type="button" className="btn btn-outline" onClick={() => locate(setPos)} disabled={locating}>
           📍 {pos ? t('locationSaved') : locating ? t('locating') : t('detectLocation')}
         </button>
-        {geoError && <p className="error">{t('locationDenied')}</p>}
+        {geoError && <LocationError retry={retryLocate} loading={locating} className="error" />}
         {error && <p className="error">{error}</p>}
         <button className="btn btn-primary" disabled={status === 'loading'}>{t('createClient')}</button>
       </form>

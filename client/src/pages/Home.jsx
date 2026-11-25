@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProfessions, setFilters } from '../features/technicians/techniciansSlice';
 import useGeolocation from '../components/useGeolocation';
+import LocationError from '../components/LocationError';
 import { useT } from '../i18n/useT';
 
 export default function Home() {
@@ -11,7 +12,7 @@ export default function Home() {
   const { t, lang } = useT();
   const professions = useSelector((s) => s.technicians.professions);
   const user = useSelector((s) => s.auth.user);
-  const [locate, locating, geoError] = useGeolocation();
+  const [locate, locating, geoError, retryLocate] = useGeolocation();
 
   useEffect(() => { dispatch(fetchProfessions()); }, [dispatch]);
 
@@ -31,7 +32,7 @@ export default function Home() {
           </button>
           {!user && <Link to="/register/client" className="btn btn-outline btn-lg">{t('joinClient')}</Link>}
         </div>
-        {geoError && <p className="error">{t('locationDenied')}</p>}
+        {geoError && <LocationError retry={retryLocate} loading={locating} className="error" />}
       </section>
 
       <h2 className="section-title">{t('browseCategories')}</h2>

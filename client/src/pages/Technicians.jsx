@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { fetchCities, fetchProfessions, fetchTechnicians, setFilters } from '../features/technicians/techniciansSlice';
 import TechnicianCard from '../components/TechnicianCard';
 import useGeolocation from '../components/useGeolocation';
+import LocationError from '../components/LocationError';
 import { useT } from '../i18n/useT';
 import { cityLabel } from '../i18n/translations';
 
@@ -12,7 +13,7 @@ export default function Technicians() {
   const [searchParams] = useSearchParams();
   const { t, lang } = useT();
   const { professions, cities, list, filters, status } = useSelector((s) => s.technicians);
-  const [locate, locating, geoError] = useGeolocation();
+  const [locate, locating, geoError, retryLocate] = useGeolocation();
   const pName = (p) => (lang === 'ar' ? p.nameAr : p.name);
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export default function Technicians() {
           📍 {locating ? t('locating') : sorted ? `${t('nearMe')} ✓` : t('nearMe')}
         </button>
       </div>
-      {geoError && <p className="notice err">{t('locationDenied')}</p>}
+      {geoError && <LocationError retry={retryLocate} loading={locating} className="notice err" />}
       {status === 'loading' && <p className="muted">{t('loading')}</p>}
       {status !== 'loading' && list.length === 0 && <p className="muted">{t('noResults')}</p>}
       <div className="grid tech-grid">
