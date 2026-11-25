@@ -77,4 +77,22 @@ router.get('/me', authenticate, async (req, res, next) => {
   }
 });
 
+// POST /api/auth/change-password — signed-in user changes their own password.
+router.post('/change-password', rateLimiter, authenticate, async (req, res, next) => {
+  try {
+    requireFields(req.body, ['currentPassword', 'newPassword']);
+    const { currentPassword, newPassword } = req.body;
+    assertPassword(newPassword);
+    if (String(newPassword).length > 128) throw ApiError.badRequest('Password is too long');
+    const user = await store.findUserById(req.user.id);
+    if (!user || !(await comparePassword(currentPassword, user.passwordHash))) {
+      throw ApiError.badRequest('Current password is wrong');
+    }
+    await store.setUserPassword(user.id, await hashPassword(newPassword));
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

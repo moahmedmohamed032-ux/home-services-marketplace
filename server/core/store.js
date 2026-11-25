@@ -66,6 +66,10 @@ async function findUserByLogin(identifier) {
   if (id.includes('@')) return findUserByEmail(id);
   return (await findUserByPhone(id)) || findUserByEmail(id);
 }
+async function setUserPassword(id, passwordHash) {
+  await init();
+  return db.users.update(id, { passwordHash });
+}
 async function findUserById(id) {
   await init();
   return db.users.getById(id);
@@ -723,7 +727,7 @@ async function adminOverview() {
 
 module.exports = {
   BOOKING_STATUS, init,
-  findUserByEmail, findUserByPhone, findUserByLogin, normalizePhone, isEgPhone, findUserById, publicUser, createUser,
+  findUserByEmail, findUserByPhone, findUserByLogin, setUserPassword, normalizePhone, isEgPhone, findUserById, publicUser, createUser,
   listProfessions, listCities,
   searchTechnicians, publicTechnician, findTechnicianById, findTechnicianByUserId,
   createTechnicianProfile, updateTechnicianProfile,
