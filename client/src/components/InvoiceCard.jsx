@@ -42,6 +42,15 @@ export default function InvoiceCard({ invoice, onChange }) {
     onChange && onChange();
   });
 
+  const printReceipt = () => {
+    const w = window.open('', '_blank');
+    if (!w) return;
+    const esc = (v) => String(v == null ? '' : v).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+    const rows = (invoice.items || []).map((i) => `<tr><td>${esc(lang === 'ar' && i.labelAr ? i.labelAr : i.label)}</td><td>${esc(i.amount)} EGP</td></tr>`).join('');
+    w.document.write(`<html dir="${lang === 'ar' ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"><title>${esc(invoice.number)}</title><style>body{font-family:sans-serif;max-width:480px;margin:2rem auto}td{padding:.4rem;border-bottom:1px solid #ddd}table{width:100%}</style></head><body><h2>FIX-IT</h2><h3>${esc(t('receiptWord'))} ${esc(invoice.number)}</h3><table>${rows}<tr><td><b>${esc(t('totalWord'))}</b></td><td><b>${esc(invoice.total)} EGP</b></td></tr></table><p>${esc(t('confirmationCode'))}: ${esc(invoice.confirmationCode || '')}</p><p>${esc(invoice.paidAt ? new Date(invoice.paidAt).toLocaleString() : '')}</p><script>window.print()<\/script></body></html>`);
+    w.document.close();
+  };
+
   const statusKey = { paid: 'paidLabel', unpaid: 'unpaidLabel', pending_verification: 'pendingVerification', pending_cash: 'pendingCash', pending_online: 'pendingOnline' }[invoice.status];
 
   return (
@@ -58,7 +67,7 @@ export default function InvoiceCard({ invoice, onChange }) {
       </div>
 
       {done && (
-        <p className="notice ok">✓ {t('paymentDone')} · {t('confirmationCode')}: <strong dir="ltr">{done}</strong></p>
+        <p className="notice ok">✓ {t('paymentDone')} · {t('confirmationCode')}: <strong dir="ltr">{done}</strong> <button className="btn btn-ghost btn-sm" onClick={printReceipt}>🧾 {t('receiptWord')}</button></p>
       )}
 
       {!done && online && ['unpaid', 'pending_online'].includes(invoice.status) && !method && (

@@ -367,7 +367,7 @@ async function submitFinalAmount(booking, amount) {
   const a = Number(amount);
   if (!Number.isFinite(a) || a <= 0) throw ApiError.badRequest('Enter the final amount in EGP');
   const band = priceBand(tech && tech.profession);
-  if (band && a > band.priceMax) throw ApiError.badRequest(`Final amount is above the market limit for this service (max ${band.priceMax} EGP)`);
+  if (band && a > band.priceMax * 5) throw ApiError.badRequest(`Final amount is above the market limit for this service (max ${band.priceMax * 5} EGP per job)`);
   return setBookingStatus(booking, 'awaiting_confirmation', { finalAmount: Math.round(a) });
 }
 // Confirm automatically when the client has not answered within 48h. Safe to call often.
