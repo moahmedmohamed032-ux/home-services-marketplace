@@ -16,7 +16,7 @@ const paymobRoutes = require('./routes/paymob.routes');
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '3mb' }));
 app.use(logger);
 
 // Make sure the store (MongoDB connection or in-memory seed) is ready before

@@ -221,3 +221,35 @@ test('paymob hmac + callback', async () => {
   assert.equal((await post(`/paymob/callback?hmac=${good}`, { obj })).status, 200);
   delete process.env.PAYMOB_SECRET_KEY;
 });
+
+test('phone-only technician signup, photo upload, verified badge and 15% commission', async () => {
+  const phone = '0101' + String(Math.floor(Math.random() * 1e7)).padStart(7, '0');
+  const reg = await post('/auth/register', { name: 'Fni Luxor', password: 'secret123', role: 'technician', phone, profession: 'plumber', city: 'Luxor' });
+  assert.equal(reg.status, 201);
+  const { token, user } = await reg.json();
+  assert.equal(user.email, '');
+  // log in by phone, with spaces / +20 formatting
+  const li = await post('/auth/login', { identifier: '+20 ' + phone.slice(1), password: 'secret123' });
+  assert.equal(li.status, 200);
+  // phone is required for technicians
+  const bad = await post('/auth/register', { name: 'No Phone', email: 'np@example.com', password: 'secret123', role: 'technician', profession: 'plumber', city: 'Luxor' });
+  assert.equal(bad.status, 400);
+  const dup = await post('/auth/register', { name: 'Dup', password: 'secret123', role: 'technician', phone, profession: 'plumber', city: 'Luxor' });
+  assert.equal(dup.status, 409);
+  // photo upload accepts images only; technician cannot self-verify
+  const img = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBD';
+  const up = await patch('/technicians/me', { photo: img, workPhotos: [img], verified: true }, token);
+  assert.equal(up.status, 200);
+  const me = (await up.json()).technician;
+  assert.equal(me.photo, img); assert.equal(me.workPhotos.length, 1); assert.equal(me.verified, false);
+  assert.equal((await patch('/technicians/me', { photo: 'javascript:alert(1)' }, token)).status, 400);
+  // admin grants the badge
+  const adm = await (await post('/auth/login', { email: 'admin@demo.com', password: 'Demo@1234' })).json();
+  assert.ok(adm.token);
+  {
+    const v = await patch(`/admin/technicians/${me.id}`, { verified: true }, adm.token);
+    assert.equal(v.status, 200);
+    const c = await (await fetch(`${base}/admin/commissions`, { headers: { authorization: `Bearer ${adm.token}` } })).json();
+    assert.equal(c.commissions.rate, 0.15);
+  }
+});

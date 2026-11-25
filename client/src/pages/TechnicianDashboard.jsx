@@ -5,6 +5,8 @@ import { updateMyProfile } from '../features/technicians/techniciansSlice';
 import { api } from '../api/axios';
 import useGeolocation from '../components/useGeolocation';
 import Stars from '../components/Stars';
+import TechAvatar, { VerifiedBadge } from '../components/TechAvatar';
+import { resizeImage } from '../utils/image';
 import { useT } from '../i18n/useT';
 
 export default function TechnicianDashboard() {
@@ -16,6 +18,7 @@ export default function TechnicianDashboard() {
   const [payments, setPayments] = useState([]);
   const loadPayments = () => api.get('/invoices/technician').then((r) => setPayments(r.data.invoices)).catch(() => {});
   const [saved, setSaved] = useState(false);
+  const [photoErr, setPhotoErr] = useState('');
   const [locate, locating, geoError] = useGeolocation();
 
   useEffect(() => {
@@ -38,12 +41,30 @@ export default function TechnicianDashboard() {
   };
   const count = (f) => incoming.filter(f).length;
 
+  // Photos are resized in the browser, then saved immediately.
+  const savePhotos = async (patch) => {
+    setPhotoErr('');
+    const res = await dispatch(updateMyProfile(patch));
+    if (updateMyProfile.fulfilled.match(res)) setTech((cur) => ({ ...cur, photo: res.payload.photo, workPhotos: res.payload.workPhotos }));
+    else setPhotoErr(t('photoError'));
+  };
+  const pickProfile = async (e) => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try { await savePhotos({ photo: await resizeImage(f, 320, 0.8) }); } catch { setPhotoErr(t('photoError')); }
+  };
+  const pickWork = async (e) => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try { await savePhotos({ workPhotos: [...(tech.workPhotos || []), await resizeImage(f, 900, 0.72)] }); } catch { setPhotoErr(t('photoError')); }
+  };
+
   return (
     <>
       <section className="dash-hero">
         <div>
           <h1>▦ {t('dashboard')}</h1>
-          <p>{t('welcome')}, {user.name}</p>
+          <div className="photo-row"><TechAvatar tech={tech} large /><p>{t('welcome')}, {user.name} {tech.verified && <VerifiedBadge />}</p></div>
           <Stars rating={tech.rating} count={tech.reviewCount} />
         </div>
         <span className={`badge ${tech.addressActive ? 'badge-accepted' : 'badge-declined'}`}>
@@ -86,6 +107,23 @@ export default function TechnicianDashboard() {
         <section>
           <h2 className="section-title">{t('profileSettings')}</h2>
           <div className="card form">
+            <div>
+              <strong>{t('profilePhoto')}</strong>
+              <div className="photo-row">
+                <TechAvatar tech={tech} large />
+                <label className="btn btn-outline btn-sm file-btn">{tech.photo ? t('changePhoto') : t('uploadPhoto')}<input type="file" accept="image/*" onChange={pickProfile} /></label>
+                {tech.photo && <button type="button" className="btn btn-ghost btn-sm danger" onClick={() => savePhotos({ photo: '' })}>{t('removeLabel')}</button>}
+              </div>
+              <strong>{t('workPhotos')}</strong>
+              <div className="work-gallery">
+                {(tech.workPhotos || []).map((p, i) => (
+                  <div key={i} className="work-item"><img src={p} alt="" /><button type="button" className="rm" aria-label={t('removeLabel')} onClick={() => savePhotos({ workPhotos: tech.workPhotos.filter((_, j) => j !== i) })}>×</button></div>
+                ))}
+              </div>
+              {(tech.workPhotos || []).length < 6 && <label className="btn btn-outline btn-sm file-btn" style={{ marginTop: '.6rem', display: 'inline-block' }}>+ {t('addWorkPhoto')}<input type="file" accept="image/*" onChange={pickWork} /></label>}
+              <p className="muted"><small>{t('photoHelp')}</small></p>
+              {photoErr && <p className="error">{photoErr}</p>}
+            </div>
             <label className="check switch"><input type="checkbox" checked={tech.addressActive} onChange={(e) => set('addressActive', e.target.checked)} /> {t('activateAddress')}</label>
             <label>{t('myAddress')}<input value={tech.address || ''} onChange={(e) => set('address', e.target.value)} /></label>
             <button type="button" className="btn btn-outline" onClick={() => locate((p) => { setTech({ ...tech, ...p }); setSaved(false); })} disabled={locating}>

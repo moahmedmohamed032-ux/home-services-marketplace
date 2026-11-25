@@ -34,10 +34,37 @@ init();
 const BOOKING_STATUS = ['pending', 'accepted', 'declined', 'completed', 'cancelled'];
 
 // ---- users ----
+// Egyptian mobile numbers are the login for technicians without email.
+// Accepts 01012345678, +20 101 234 5678, 0020..., and returns 01012345678.
+function normalizePhone(p) {
+  let d = String(p || '').replace(/[^\d+]/g, '');
+  if (d.startsWith('+')) d = d.slice(1);
+  if (d.startsWith('0020')) d = d.slice(4);
+  if (d.startsWith('20') && d.length === 12) d = d.slice(2);
+  if (d.length === 10 && d.startsWith('1')) d = `0${d}`;
+  return d;
+}
+const isEgPhone = (p) => /^01[0125][0-9]{8}$/.test(normalizePhone(p));
+
 async function findUserByEmail(email) {
   await init();
+  const e = String(email || '').trim().toLowerCase();
+  if (!e) return null;
   const all = await db.users.getAll();
-  return all.find((u) => u.email.toLowerCase() === String(email).toLowerCase()) || null;
+  return all.find((u) => u.email && u.email.toLowerCase() === e) || null;
+}
+async function findUserByPhone(phone) {
+  await init();
+  const p = normalizePhone(phone);
+  if (!p) return null;
+  const all = await db.users.getAll();
+  return all.find((u) => u.phone && normalizePhone(u.phone) === p) || null;
+}
+// Login identifier: an email address, or an Egyptian mobile number.
+async function findUserByLogin(identifier) {
+  const id = String(identifier || '').trim();
+  if (id.includes('@')) return findUserByEmail(id);
+  return (await findUserByPhone(id)) || findUserByEmail(id);
 }
 async function findUserById(id) {
   await init();
@@ -48,10 +75,10 @@ function publicUser(u) {
   const { passwordHash, ...rest } = u;
   return rest;
 }
-async function createUser({ name, email, passwordHash, role, city, lat, lng }) {
+async function createUser({ name, email, phone, passwordHash, role, city, lat, lng }) {
   await init();
   const user = {
-    id: await db.nextId('usr'), name, email, passwordHash, role, city: city || '',
+    id: await db.nextId('usr'), name, email: email || '', ...(phone ? { phone: normalizePhone(phone) } : {}), passwordHash, role, city: city || '',
     ...(lat !== undefined && lng !== undefined ? { lat: Number(lat), lng: Number(lng) } : {}),
     createdAt: new Date().toISOString(),
   };
@@ -125,8 +152,11 @@ async function allReviews(t) {
 
 async function publicTechnician(t, { owner = false, withReviews = false } = {}) {
   if (!t) return null;
-  const { phone, reviews, ...rest } = t;
-  const out = { ...rest, phone: owner || t.phonePublic ? phone : null };
+  const { phone, reviews, workPhotos, ...rest } = t;
+  const out = { ...rest, verified: t.verified === true, phone: owner || t.phonePublic ? phone : null };
+  // Work photos are heavy: only on the profile page and the owner's dashboard.
+  if (withReviews || owner) out.workPhotos = workPhotos || [];
+  else out.workPhotoCount = (workPhotos || []).length;
   const all = await allReviews(t);
   out.reviewCount = all.length;
   if (withReviews) out.reviews = all;
@@ -158,11 +188,26 @@ async function createTechnicianProfile(user, { profession, city, district, years
   };
   return db.technicians.insert(t);
 }
+const IMG_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+const PHOTO_MAX = 120000;
+const WORK_PHOTO_MAX = 300000;
+const WORK_PHOTOS_MAX = 6;
+function cleanImage(v, max) {
+  if (v === '' || v === null) return '';
+  if (typeof v !== 'string' || v.length > max || !IMG_RE.test(v)) throw ApiError.badRequest('Invalid or too large image (JPEG/PNG/WebP only)');
+  return v;
+}
 async function updateTechnicianProfile(id, patch) {
   await init();
   const allowed = ['city', 'district', 'yearsExperience', 'hourlyRate', 'bio', 'bioAr', 'profession', 'lat', 'lng', 'phone', 'phonePublic', 'address', 'addressActive'];
   const clean = {};
   for (const k of allowed) if (patch[k] !== undefined) clean[k] = patch[k];
+  // Photos (resized to JPEG data URLs by the browser). 'verified' is admin-only and never accepted here.
+  if (patch.photo !== undefined) clean.photo = cleanImage(patch.photo, PHOTO_MAX);
+  if (patch.workPhotos !== undefined) {
+    if (!Array.isArray(patch.workPhotos) || patch.workPhotos.length > WORK_PHOTOS_MAX) throw ApiError.badRequest(`At most ${WORK_PHOTOS_MAX} work photos`);
+    clean.workPhotos = patch.workPhotos.map((p) => cleanImage(p, WORK_PHOTO_MAX)).filter(Boolean);
+  }
   return db.technicians.update(id, clean);
 }
 
@@ -439,7 +484,7 @@ async function adminListTechnicians() {
   const users = await db.users.getAll();
   return techs.map((t) => {
     const u = users.find((x) => x.id === t.userId);
-    return { ...t, reviews: undefined, email: u ? u.email : '', userActive: u ? u.active !== false : true };
+    return { ...t, reviews: undefined, workPhotos: undefined, workPhotoCount: (t.workPhotos || []).length, verified: t.verified === true, email: u ? u.email : '', userPhone: u ? u.phone || '' : '', userActive: u ? u.active !== false : true };
   }).sort((a, b) => a.name.localeCompare(b.name));
 }
 async function adminCreateTechnician(body, passwordHash) {
@@ -448,12 +493,17 @@ async function adminCreateTechnician(body, passwordHash) {
   const profession = text(body.profession, 'profession');
   assertProfession(profession);
   const city = text(body.city, 'city', { max: 60 });
-  const user = await createUser({ name, email: text(body.email, 'email', { max: 120 }), passwordHash, role: 'technician', city });
+  const email = text(body.email, 'email', { max: 120, required: false });
+  const phoneIn = text(body.phone, 'phone', { max: 20, required: false });
+  if (!email && !phoneIn) throw ApiError.badRequest('email or phone is required');
+  if (phoneIn && !isEgPhone(phoneIn)) throw ApiError.badRequest('Enter a valid Egyptian mobile number (e.g. 01012345678)');
+  if (phoneIn && (await findUserByPhone(phoneIn))) throw ApiError.conflict('Phone is already registered');
+  const user = await createUser({ name, email, phone: phoneIn, passwordHash, role: 'technician', city });
   const t = await createTechnicianProfile(user, {
     profession, city, district: text(body.district, 'district', { max: 60, required: false }),
     yearsExperience: body.yearsExperience === undefined ? 0 : num(body.yearsExperience, 'yearsExperience', { max: 60 }),
     hourlyRate: body.hourlyRate === undefined ? 0 : num(body.hourlyRate, 'hourlyRate', { max: 100000 }),
-    phone: text(body.phone, 'phone', { max: 20, required: false }),
+    phone: phoneIn ? normalizePhone(phoneIn) : '',
     phonePublic: body.phonePublic === true,
   });
   if (body.rating !== undefined && body.rating !== '') {
@@ -475,6 +525,8 @@ async function adminUpdateTechnician(id, body) {
   if (body.hourlyRate !== undefined) patch.hourlyRate = num(body.hourlyRate, 'hourlyRate', { max: 100000 });
   if (body.yearsExperience !== undefined) patch.yearsExperience = num(body.yearsExperience, 'yearsExperience', { max: 60 });
   if (body.addressActive !== undefined) patch.addressActive = body.addressActive === true;
+  if (body.verified !== undefined) patch.verified = body.verified === true;
+  if (body.clearPhoto === true) patch.photo = '';
   if (!Object.keys(patch).length) throw ApiError.badRequest('Nothing to update');
   const updated = await db.technicians.update(id, patch);
   if (patch.name && tech.userId) await db.users.update(tech.userId, { name: patch.name });
@@ -576,6 +628,10 @@ async function adminUpdateInvoice(id, body) {
       Object.assign(patch, { status: 'unpaid', method: null, cardLast4: null, mobileNumber: null, confirmationCode: null, verificationCode: null, paidAt: null });
     }
   }
+  if (body.commissionPaid !== undefined) {
+    patch.commissionPaid = body.commissionPaid === true;
+    patch.commissionPaidAt = body.commissionPaid === true ? new Date().toISOString() : null;
+  }
   if (!Object.keys(patch).length) throw ApiError.badRequest('Nothing to update');
   return hydrateInvoice(await db.invoices.update(id, patch));
 }
@@ -584,6 +640,53 @@ async function adminDeleteInvoice(id) {
   if (!(await db.invoices.getById(id))) throw ApiError.notFound('Invoice not found');
   await db.invoices.remove(id);
   return true;
+}
+
+// ---- commission: 15% of the technician's job amount on every completed booking ----
+// An invoice exists only once a booking is completed, so every invoice is one
+// completed booking. Commission is collected when FIX-IT receives the money
+// itself (Paymob online payment) or when the admin marks the cash commission
+// as received from the technician. Everything else is outstanding.
+const COMMISSION_RATE = 0.15;
+const round2 = (n) => Math.round(n * 100) / 100;
+const commissionBase = (inv) => Number(((inv.items || [])[0] || {}).amount) || 0;
+const commissionOf = (inv) => round2(commissionBase(inv) * COMMISSION_RATE);
+const paidOnline = (inv) => inv.status === 'paid' && (!!inv.paymobTxnId || inv.method === 'card' || inv.method === 'wallet');
+const commissionCollected = (inv) => inv.commissionPaid === true || paidOnline(inv);
+
+async function adminCommissions() {
+  await init();
+  const invoices = await db.invoices.getAll();
+  const techs = await db.technicians.getAll();
+  const users = await db.users.getAll();
+  const rows = [];
+  const by = new Map();
+  for (const inv of invoices) {
+    const tech = techs.find((x) => x.id === inv.technicianId);
+    const client = users.find((x) => x.id === inv.clientId);
+    const base = commissionBase(inv);
+    const commission = commissionOf(inv);
+    const collected = commissionCollected(inv);
+    rows.push({
+      invoiceId: inv.id, number: inv.number, bookingId: inv.bookingId, technicianId: inv.technicianId,
+      technicianName: tech ? tech.name : 'Unknown', clientName: client ? client.name : 'Unknown',
+      base, commission, collected, invoiceStatus: inv.status, method: inv.method || null,
+      viaOnline: paidOnline(inv), createdAt: inv.createdAt, commissionPaidAt: inv.commissionPaidAt || null,
+    });
+    const g = by.get(inv.technicianId) || { technicianId: inv.technicianId, technicianName: tech ? tech.name : 'Unknown', jobs: 0, earned: 0, collected: 0, outstanding: 0 };
+    g.jobs += 1; g.earned = round2(g.earned + commission);
+    if (collected) g.collected = round2(g.collected + commission); else g.outstanding = round2(g.outstanding + commission);
+    by.set(inv.technicianId, g);
+  }
+  rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const earned = round2(rows.reduce((s, r) => s + r.commission, 0));
+  const collected = round2(rows.filter((r) => r.collected).reduce((s, r) => s + r.commission, 0));
+  return {
+    rate: COMMISSION_RATE,
+    totals: { jobs: rows.length, earned, collected, outstanding: round2(earned - collected) },
+    byTechnician: [...by.values()].sort((a, b) => b.outstanding - a.outstanding || b.earned - a.earned),
+    rows,
+  };
 }
 
 async function adminOverview() {
@@ -613,12 +716,14 @@ async function adminOverview() {
       collected: paid.reduce((s, i) => s + i.total, 0),
       outstanding: invoices.filter((i) => i.status !== 'paid').reduce((s, i) => s + i.total, 0),
     },
+    commission: (({ rate, totals }) => ({ rate, ...totals }))(await adminCommissions()),
+    verifiedTechnicians: techs.filter((t) => t.verified === true).length,
   };
 }
 
 module.exports = {
   BOOKING_STATUS, init,
-  findUserByEmail, findUserById, publicUser, createUser,
+  findUserByEmail, findUserByPhone, findUserByLogin, normalizePhone, isEgPhone, findUserById, publicUser, createUser,
   listProfessions, listCities,
   searchTechnicians, publicTechnician, findTechnicianById, findTechnicianByUserId,
   createTechnicianProfile, updateTechnicianProfile,
@@ -626,7 +731,7 @@ module.exports = {
   findInvoiceById, findInvoiceByBookingId, invoicesForClient, invoicesForTechnician, allInvoices,
   payInvoice, verifyInvoice, confirmInvoice, publicInvoice,
   startPaymobPayment, applyPaymobTransaction,
-  listUsersAdmin, adminOverview,
+  listUsersAdmin, adminOverview, adminCommissions, COMMISSION_RATE,
   adminListTechnicians, adminCreateTechnician, adminUpdateTechnician, adminDeleteTechnician,
   adminUpdateUser, adminDeleteUser, adminListBookings, adminSetBookingStatus, adminDeleteBooking,
   adminUpdateInvoice, adminDeleteInvoice,

@@ -5,6 +5,7 @@ import { fetchCities, fetchProfessions, fetchTechnicians, setFilters } from '../
 import TechnicianCard from '../components/TechnicianCard';
 import useGeolocation from '../components/useGeolocation';
 import { useT } from '../i18n/useT';
+import { cityLabel } from '../i18n/translations';
 
 export default function Technicians() {
   const dispatch = useDispatch();
@@ -38,7 +39,7 @@ export default function Technicians() {
         </select>
         <select value={filters.city} onChange={update('city')}>
           <option value="">{t('allCities')}</option>
-          {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+          {cities.map((c) => <option key={c} value={c}>{cityLabel(c, lang)}</option>)}
         </select>
         <button type="button" className={`btn ${sorted ? 'btn-primary' : 'btn-outline'}`} onClick={nearMe} disabled={locating}>
           📍 {locating ? t('locating') : sorted ? `${t('nearMe')} ✓` : t('nearMe')}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { api } from '../api/axios';
 import { useT } from '../i18n/useT';
+import { VerifiedBadge } from '../components/TechAvatar';
 
 const BOOKING_STATUSES = ['pending', 'accepted', 'declined', 'completed', 'cancelled'];
 const emptyTech = { name: '', email: '', password: '', profession: '', city: '', district: '', phone: '', rating: '', hourlyRate: '' };
@@ -17,6 +18,7 @@ export default function AdminDashboard() {
   const [techs, setTechs] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [comm, setComm] = useState(null);
   const [professions, setProfessions] = useState([]);
   const [modal, setModal] = useState(null); // { kind, mode, data }
   const [pendingDel, setPendingDel] = useState(null);
@@ -29,6 +31,7 @@ export default function AdminDashboard() {
     api.get('/admin/technicians').then((r) => setTechs(r.data.technicians)).catch(() => {});
     api.get('/admin/bookings').then((r) => setBookings(r.data.bookings)).catch(() => {});
     api.get('/admin/invoices').then((r) => setInvoices(r.data.invoices)).catch(() => {});
+    api.get('/admin/commissions').then((r) => setComm(r.data.commissions)).catch(() => {});
     api.get('/professions').then((r) => setProfessions(r.data.professions)).catch(() => {});
   };
   useEffect(load, []);
@@ -66,7 +69,7 @@ export default function AdminDashboard() {
   const toggleUser = (u) => run(() => api.patch(`/admin/users/${u.id}`, { active: u.active === false }));
   const togglePaid = (i) => run(() => api.patch(`/admin/invoices/${i.id}`, { status: i.status === 'paid' ? 'unpaid' : 'paid' }));
 
-  const tabs = [['technicians', t('techniciansWord'), techs.length], ['users', t('usersWord'), users.length], ['bookings', t('bookingsWord'), bookings.length], ['invoices', t('invoices'), invoices.length]];
+  const tabs = [['technicians', t('techniciansWord'), techs.length], ['users', t('usersWord'), users.length], ['bookings', t('bookingsWord'), bookings.length], ['invoices', t('invoices'), invoices.length], ['commission', t('commissionsTab'), comm ? comm.totals.jobs : 0]];
 
   return (
     <>
@@ -83,6 +86,10 @@ export default function AdminDashboard() {
           <div className="card stat"><strong>{overview.bookings.total}</strong><span>{t('bookingsWord')} ({overview.bookings.completed} {t('done')})</span></div>
           <div className="card stat"><strong>{overview.invoices.collected} EGP</strong><span>{t('revenue')} · {overview.invoices.paid} {t('paidLabel')}</span></div>
           <div className="card stat"><strong>{overview.invoices.outstanding} EGP</strong><span>{t('outstanding')} · {overview.invoices.unpaid} {t('unpaidLabel')}</span></div>
+          {overview.commission && <div className="card stat"><strong>{overview.commission.earned} EGP</strong><span>{t('commEarned')} ({Math.round(overview.commission.rate * 100)}%)</span></div>}
+          {overview.commission && <div className="card stat"><strong>{overview.commission.collected} EGP</strong><span>{t('commCollected')}</span></div>}
+          {overview.commission && <div className="card stat"><strong>{overview.commission.outstanding} EGP</strong><span>{t('commOutstanding')}</span></div>}
+          {overview.verifiedTechnicians !== undefined && <div className="card stat"><strong>{overview.verifiedTechnicians}</strong><span>{t('verifiedLabel')} · {t('techniciansWord')}</span></div>}
         </div>
       )}
 
@@ -103,8 +110,9 @@ export default function AdminDashboard() {
             <tbody>
               {techs.map((x) => (
                 <tr key={x.id}>
-                  <td>{x.name}</td><td>{profName(x.profession)}</td><td>{x.city}</td><td>{x.district || '-'}</td><td>{x.rating}</td><td dir="ltr">{x.phone || '-'}</td>
+                  <td>{x.photo ? '📷 ' : ''}{x.name} {x.verified && <VerifiedBadge small />}</td><td>{profName(x.profession)}</td><td>{x.city}</td><td>{x.district || '-'}</td><td>{x.rating}</td><td dir="ltr">{x.phone || '-'}</td>
                   <td className="row-actions">
+                    <button className={`btn btn-sm ${x.verified ? 'btn-ghost' : 'btn-primary'}`} onClick={() => run(() => api.patch(`/admin/technicians/${x.id}`, { verified: !x.verified }))}>{x.verified ? t('unverifyAction') : `✔ ${t('verifyAction')}`}</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => setModal({ kind: 'tech', mode: 'edit', data: { id: x.id, name: x.name, profession: x.profession, city: x.city, district: x.district || '', phone: x.phone || '', rating: x.rating, hourlyRate: x.hourlyRate } })}>{t('crudEdit')}</button>
                     <button className="btn btn-ghost btn-sm danger" onClick={() => del(`/admin/technicians/${x.id}`)}>{t('crudDelete')}</button>
                   </td>
@@ -123,7 +131,7 @@ export default function AdminDashboard() {
               {users.map((u) => (
                 <tr key={u.id}>
                   <td>{u.name}{u.technician ? ` · ${profName(u.technician.profession)}` : ''}</td>
-                  <td dir="ltr">{u.email}</td>
+                  <td dir="ltr">{u.email || u.phone || '-'}</td>
                   <td><span className={`badge ${u.role === 'admin' ? 'badge-pending' : u.role === 'technician' ? 'badge-accepted' : ''}`}>{roleLabel(u.role)}</span></td>
                   <td>{u.technician ? `${u.technician.district ? `${u.technician.district}, ` : ''}${u.technician.city}` : u.city || '-'}</td>
                   <td><span className={`badge ${u.active === false ? 'badge-declined' : 'badge-paid'}`}>{u.active === false ? t('inactiveWord') : t('activeWord')}</span></td>
@@ -185,6 +193,43 @@ export default function AdminDashboard() {
         </>
       )}
 
+      {tab === 'commission' && comm && (
+        <>
+          <h2 className="section-title">{t('commissionTitle')} ({Math.round(comm.rate * 100)}%)</h2>
+          <p className="muted comm-note">{t('commNote')}</p>
+          <div className="grid stat-grid">
+            <div className="card stat"><strong>{comm.totals.earned} EGP</strong><span>{t('commEarned')} · {comm.totals.jobs} {t('commJobs')}</span></div>
+            <div className="card stat"><strong>{comm.totals.collected} EGP</strong><span>{t('commCollected')}</span></div>
+            <div className="card stat"><strong>{comm.totals.outstanding} EGP</strong><span>{t('commOutstanding')}</span></div>
+          </div>
+          <h3 className="section-title">{t('commByTech')}</h3>
+          <div className="card table-wrap"><table className="table">
+            <thead><tr><th>{t('techniciansWord')}</th><th>{t('commJobs')}</th><th>{t('commEarned')}</th><th>{t('commCollected')}</th><th>{t('commOutstanding')}</th></tr></thead>
+            <tbody>
+              {comm.byTechnician.map((g) => (
+                <tr key={g.technicianId}><td>{g.technicianName}</td><td>{g.jobs}</td><td>{g.earned} EGP</td><td>{g.collected} EGP</td><td><strong>{g.outstanding} EGP</strong></td></tr>
+              ))}
+              {!comm.byTechnician.length && <tr><td colSpan="5">{t('noData')}</td></tr>}
+            </tbody></table></div>
+          <h3 className="section-title">{t('commRows')}</h3>
+          <div className="card table-wrap"><table className="table">
+            <thead><tr><th>{t('invoice')}</th><th>{t('techniciansWord')}</th><th>{t('jobAmount')}</th><th>{t('commissionWord')}</th><th>{t('statusWord')}</th><th /></tr></thead>
+            <tbody>
+              {comm.rows.map((r) => (
+                <tr key={r.invoiceId}>
+                  <td dir="ltr">{r.number}</td><td>{r.technicianName}</td><td>{r.base} EGP</td><td>{r.commission} EGP</td>
+                  <td><span className={`badge ${r.collected ? 'badge-paid' : 'badge-unpaid'}`}>{r.collected ? t('commCollected') : t('commOutstanding')}</span></td>
+                  <td className="row-actions">
+                    {r.viaOnline ? <span className="muted">{t('viaOnline')}</span>
+                      : <button className={`btn btn-sm ${r.collected ? 'btn-ghost' : 'btn-primary'}`} onClick={() => run(() => api.patch(`/admin/invoices/${r.invoiceId}`, { commissionPaid: !r.collected }))}>{r.collected ? t('markNotReceived') : `✓ ${t('markReceived')}`}</button>}
+                  </td>
+                </tr>
+              ))}
+              {!comm.rows.length && <tr><td colSpan="6">{t('noData')}</td></tr>}
+            </tbody></table></div>
+        </>
+      )}
+
       {pendingDel && (
         <div className="modal-back" onClick={() => setPendingDel(null)}>
           <div className="card modal" role="alertdialog" onClick={(e) => e.stopPropagation()}>
@@ -205,7 +250,7 @@ export default function AdminDashboard() {
             {modal.kind === 'tech' && (
               <>
                 <label>{t('name')}<input required value={modal.data.name} onChange={setF('name')} /></label>
-                {modal.mode === 'add' && <label>{t('email')}<input type="email" required dir="ltr" value={modal.data.email} onChange={setF('email')} /></label>}
+                {modal.mode === 'add' && <label>{t('emailOptional')}<input type="email" dir="ltr" value={modal.data.email} onChange={setF('email')} /></label>}
                 {modal.mode === 'add' && <label>{t('password')}<input type="password" required minLength={8} dir="ltr" value={modal.data.password} onChange={setF('password')} /></label>}
                 <label>{t('profession')}
                   <select required value={modal.data.profession} onChange={setF('profession')}>

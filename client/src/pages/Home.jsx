@@ -52,6 +52,16 @@ export default function Home() {
         ))}
       </div>
 
+      <section className="card seo-luxor">
+        <h2>{t('seoLuxorTitle')}</h2>
+        <p>{t('seoLuxorText')}</p>
+        <div className="chip-row">
+          {professions.filter((p) => ['plumber', 'electrician', 'ac-technician', 'carpenter', 'painter'].includes(p.id)).map((p) => (
+            <Link key={p.id} to={`/technicians?profession=${p.id}`} className="chip">{lang === 'ar' ? `${p.nameAr} الأقصر` : `${p.name} in Luxor`}</Link>
+          ))}
+        </div>
+      </section>
+
       {!user && (
         <section className="cta card">
           <div><h2>{t('areTech')}</h2><p className="muted">{t('areTechSub')}</p></div>

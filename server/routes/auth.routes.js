@@ -15,25 +15,34 @@ function authPayload(user) {
 // POST /api/auth/register — creates a client or a technician (with profile).
 router.post('/register', rateLimiter, async (req, res, next) => {
   try {
-    requireFields(req.body, ['name', 'email', 'password', 'role']);
-    const { name, email, password, role, city, profession, yearsExperience, hourlyRate, bio, lat, lng, phone, phonePublic, address, addressActive } = req.body;
-    assertEmail(email);
+    requireFields(req.body, ['name', 'password', 'role']);
+    const { name, password, role, city, profession, yearsExperience, hourlyRate, bio, lat, lng, phone, phonePublic, address, addressActive } = req.body;
+    const email = String(req.body.email || '').trim();
     assertPassword(password);
     assertRole(role);
-    if (await store.findUserByEmail(email)) throw ApiError.conflict('Email is already registered');
+    // Email is optional: a valid Egyptian mobile number is enough to register and log in.
+    if (!email && !String(phone || '').trim()) throw ApiError.badRequest('Enter a mobile number or an email address');
+    if (email) {
+      assertEmail(email);
+      if (await store.findUserByEmail(email)) throw ApiError.conflict('Email is already registered');
+    }
+    if (String(phone || '').trim()) {
+      if (!store.isEgPhone(phone)) throw ApiError.badRequest('Enter a valid Egyptian mobile number (e.g. 01012345678)');
+      if (await store.findUserByPhone(phone)) throw ApiError.conflict('Phone number is already registered');
+    }
     if (role === 'technician') {
-      requireFields(req.body, ['profession']);
+      requireFields(req.body, ['profession', 'phone']);
       if (!(await store.listProfessions()).some((p) => p.id === profession)) {
         throw ApiError.badRequest('Unknown profession');
       }
     }
 
     const user = await store.createUser({
-      name: String(name).trim(), email: String(email).trim(),
+      name: String(name).trim(), email, phone: String(phone || '').trim() ? phone : undefined,
       passwordHash: await hashPassword(password), role, city, lat, lng,
     });
     if (role === 'technician') {
-      await store.createTechnicianProfile(user, { profession, city, yearsExperience, hourlyRate, bio, lat, lng, phone, phonePublic, address, addressActive });
+      await store.createTechnicianProfile(user, { profession, city, yearsExperience, hourlyRate, bio, lat, lng, phone: store.normalizePhone(phone), phonePublic, address, addressActive });
     }
     res.status(201).json(authPayload(user));
   } catch (err) {
@@ -44,11 +53,12 @@ router.post('/register', rateLimiter, async (req, res, next) => {
 // POST /api/auth/login
 router.post('/login', rateLimiter, async (req, res, next) => {
   try {
-    requireFields(req.body, ['email', 'password']);
-    const { email, password } = req.body;
-    const user = await store.findUserByEmail(email);
+    const identifier = req.body.identifier || req.body.email;
+    requireFields({ identifier, password: req.body.password }, ['identifier', 'password']);
+    const { password } = req.body;
+    const user = await store.findUserByLogin(identifier);
     if (!user || !(await comparePassword(password, user.passwordHash))) {
-      throw ApiError.unauthorized('Wrong email or password');
+      throw ApiError.unauthorized('Wrong email/phone or password');
     }
     if (user.active === false) throw ApiError.unauthorized('Account is deactivated');
     res.json(authPayload(user));

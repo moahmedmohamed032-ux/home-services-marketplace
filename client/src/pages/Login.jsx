@@ -10,11 +10,11 @@ export default function Login() {
   const location = useLocation();
   const { status, error } = useSelector((s) => s.auth);
   const { t } = useT();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ identifier: '', password: '' });
 
   const submit = async (e) => {
     e.preventDefault();
-    const res = await dispatch(login(form));
+    const res = await dispatch(login({ identifier: form.identifier.trim(), password: form.password }));
     if (login.fulfilled.match(res)) {
       const role = res.payload.user.role;
       const home = role === 'technician' ? '/pro' : role === 'admin' ? '/admin' : '/dashboard';
@@ -26,7 +26,7 @@ export default function Login() {
     <div className="auth card">
       <h1>{t('login')}</h1>
       <form onSubmit={submit} className="form">
-        <label>{t('email')}<input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
+        <label>{t('loginId')}<input required dir="ltr" autoComplete="username" value={form.identifier} onChange={(e) => setForm({ ...form, identifier: e.target.value })} /></label>
         <label>{t('password')}<input type="password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></label>
         {error && <p className="error">{error}</p>}
         <button className="btn btn-primary" disabled={status === 'loading'}>{t('login')}</button>

@@ -4,6 +4,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { fetchTechnician } from '../features/technicians/techniciansSlice';
 import { createBooking } from '../features/bookings/bookingsSlice';
 import Stars from '../components/Stars';
+import TechAvatar, { VerifiedBadge } from '../components/TechAvatar';
+import { cityLabel } from '../i18n/translations';
 import { useT } from '../i18n/useT';
 
 export default function TechnicianDetails() {
@@ -17,6 +19,7 @@ export default function TechnicianDetails() {
   const [shareLoc, setShareLoc] = useState(true);
   const [message, setMessage] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [zoom, setZoom] = useState(null);
 
   useEffect(() => { dispatch(fetchTechnician(id)); }, [dispatch, id]);
   if (!tech || tech.id !== id) return <p className="muted">{t('loading')}</p>;
@@ -49,10 +52,10 @@ export default function TechnicianDetails() {
       <div>
         <div className="card tech-profile">
           <div className="tech-card-head">
-            <div className="avatar avatar-lg">{tech.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</div>
+            <TechAvatar tech={tech} large />
             <div>
-              <h1>{tech.name}</h1>
-              <p className="muted">{tech.district ? `${tech.district}, ` : ''}{tech.city} · {tech.yearsExperience} {t('years')}</p>
+              <div className="tech-name-line"><h1>{tech.name}</h1>{tech.verified && <VerifiedBadge />}</div>
+              <p className="muted">{tech.district ? `${tech.district}, ` : ''}{cityLabel(tech.city, lang)} · {tech.yearsExperience} {t('years')}</p>
             </div>
           </div>
           <Stars rating={tech.rating} count={tech.reviewCount} />
@@ -66,6 +69,16 @@ export default function TechnicianDetails() {
             📞 {tech.phone ? <a href={`tel:${tech.phone}`} dir="ltr">{tech.phone}</a> : <span className="muted">{t('phoneHidden')}</span>}
           </p>
         </div>
+
+        {(tech.workPhotos || []).length > 0 && (
+          <div className="card">
+            <h2>{t('workGallery')}</h2>
+            <div className="work-gallery">
+              {tech.workPhotos.map((p, i) => <img key={i} src={p} alt={`${tech.name} ${i + 1}`} loading="lazy" onClick={() => setZoom(p)} />)}
+            </div>
+          </div>
+        )}
+        {zoom && <div className="lightbox" onClick={() => setZoom(null)}><img src={zoom} alt="" /></div>}
 
         <div className="card reviews">
           <h2>{t('clientReviews')} ({reviews.length})</h2>

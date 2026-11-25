@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-<url><loc>https://fanni-marketplace.vercel.app/</loc></url>
-<url><loc>https://fanni-marketplace.vercel.app/technicians</loc></url>
-<url><loc>https://fanni-marketplace.vercel.app/login</loc></url>
-<url><loc>https://fanni-marketplace.vercel.app/register/client</loc></url>
-<url><loc>https://fanni-marketplace.vercel.app/register/technician</loc></url>
+<url><loc>https://fanni-marketplace.vercel.app/</loc><priority>1.0</priority></url>
+<url><loc>https://fanni-marketplace.vercel.app/technicians</loc><priority>0.9</priority></url>
+<url><loc>https://fanni-marketplace.vercel.app/technicians?profession=plumber</loc><priority>0.8</priority></url>
+<url><loc>https://fanni-marketplace.vercel.app/technicians?profession=electrician</loc><priority>0.8</priority></url>
+<url><loc>https://fanni-marketplace.vercel.app/technicians?profession=ac-technician</loc><priority>0.8</priority></url>
+<url><loc>https://fanni-marketplace.vercel.app/register/technician</loc><priority>0.6</priority></url>
+<url><loc>https://fanni-marketplace.vercel.app/register/client</loc><priority>0.5</priority></url>
+<url><loc>https://fanni-marketplace.vercel.app/login</loc><priority>0.3</priority></url>
 </urlset>

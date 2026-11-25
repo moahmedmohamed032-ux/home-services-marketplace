@@ -22,8 +22,14 @@ export default function App() {
       : pathname.startsWith('/login') ? 'login' : pathname.startsWith('/register') ? 'signup'
       : pathname.startsWith('/admin') ? 'admin' : 'dashboard';
     document.title = pathname === '/'
-      ? (lang === 'ar' ? 'FIX-IT | اعثر على أقرب فني بأعلى تقييم' : 'FIX-IT | Find the nearest plumber, electrician and home technician')
+      ? (lang === 'ar' ? 'فني في الأقصر: سباك وكهربائي وفني تكييف | FIX-IT' : 'Technicians in Luxor: plumber, electrician, AC | FIX-IT')
       : `${t(key)} | FIX-IT`;
+    const desc = lang === 'ar'
+      ? 'محتاج فني في الأقصر؟ اطلب سباك الأقصر أو كهربائي الأقصر أو فني تكييف الأقصر أو نجار ونقاش بتقييمات حقيقية. احجز في دقايق وادفع كاش أو أونلاين.'
+      : 'Need a technician in Luxor? Book rated plumbers, electricians, AC technicians, carpenters and painters in minutes. Pay cash or online.';
+    const m = document.querySelector('meta[name="description"]');
+    if (m) m.setAttribute('content', desc);
+    document.documentElement.lang = lang;
   }, [pathname, lang]);
   return (
     <>

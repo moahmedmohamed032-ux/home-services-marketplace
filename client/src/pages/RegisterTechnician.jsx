@@ -35,10 +35,10 @@ export default function RegisterTechnician() {
       <form onSubmit={submit} className="form">
         <div className="row">
           <label>{t('name')}<input required value={form.name} onChange={set('name')} /></label>
-          <label>{t('phone')}<input type="tel" required value={form.phone} onChange={set('phone')} /></label>
+          <label>{t('phone')}<input type="tel" required dir="ltr" placeholder="01012345678" pattern="^(\+?20|0)?1[0125][0-9]{8}$" value={form.phone} onChange={set('phone')} /></label>
         </div>
         <div className="row">
-          <label>{t('email')}<input type="email" required value={form.email} onChange={set('email')} /></label>
+          <label>{t('emailOptional')}<input type="email" dir="ltr" value={form.email} onChange={set('email')} /></label>
           <label>{t('password')}<input type="password" minLength={8} required value={form.password} onChange={set('password')} /></label>
         </div>
         <div className="row">
@@ -53,6 +53,7 @@ export default function RegisterTechnician() {
             <datalist id="cities2">{cities.map((c) => <option key={c} value={c} />)}</datalist>
           </label>
         </div>
+        <p className="muted comm-note">{t('phoneLoginHint')}</p>
         <label>{t('myAddress')}<input value={form.address} onChange={set('address')} /></label>
         <button type="button" className="btn btn-outline" onClick={() => locate(setPos)} disabled={locating}>
           📍 {pos ? t('locationSaved') : locating ? t('locating') : t('detectLocation')}

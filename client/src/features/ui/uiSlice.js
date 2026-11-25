@@ -1,6 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-const lang = (navigator.language || "").startsWith("ar") ? "ar" : "en";
+// Arabic first (Egyptian market); English only when the visitor picked it.
+const lang = "ar";
 const savedLang = localStorage.getItem('fixit_lang');
 const theme = localStorage.getItem('fixit_theme') || 'light';
 

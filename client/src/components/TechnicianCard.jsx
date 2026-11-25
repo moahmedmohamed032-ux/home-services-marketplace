@@ -1,16 +1,18 @@
 import { Link } from 'react-router-dom';
 import Stars from './Stars';
+import TechAvatar, { VerifiedBadge } from './TechAvatar';
 import { useT } from '../i18n/useT';
+import { cityLabel } from '../i18n/translations';
 
 export default function TechnicianCard({ technician: t, professionIcon, professionName }) {
   const { t: tr, lang } = useT();
   return (
     <Link to={`/technicians/${t.id}`} className="card tech-card">
       <div className="tech-card-head">
-        <div className="avatar">{t.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</div>
+        <TechAvatar tech={t} />
         <div>
-          <h3>{t.name}</h3>
-          <p className="muted">{professionIcon} {professionName || t.profession} · {t.district ? `${t.district}, ` : ''}{t.city}</p>
+          <div className="tech-name-line"><h3>{t.name}</h3>{t.verified && <VerifiedBadge small />}</div>
+          <p className="muted">{professionIcon} {professionName || t.profession} · {t.district ? `${t.district}, ` : ''}{cityLabel(t.city, lang)}</p>
         </div>
       </div>
       <Stars rating={t.rating} count={t.reviewCount} />

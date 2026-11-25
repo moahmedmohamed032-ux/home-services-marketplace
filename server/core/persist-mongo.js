@@ -12,7 +12,7 @@ const reviewSchema = new mongoose.Schema(
 
 const User = mongoose.model('User', new mongoose.Schema({
   id: { type: String, unique: true, index: true },
-  name: String, email: { type: String, index: true }, passwordHash: String,
+  name: String, email: { type: String, index: true }, phone: { type: String, index: true }, passwordHash: String,
   role: String, city: String, active: Boolean, lat: Number, lng: Number, createdAt: String,
 }, opts));
 
@@ -22,6 +22,7 @@ const Technician = mongoose.model('Technician', new mongoose.Schema({
   yearsExperience: Number, hourlyRate: Number, rating: Number, jobsDone: Number,
   bio: String, bioAr: String, phone: String, phonePublic: Boolean,
   address: String, addressActive: Boolean, reviews: [reviewSchema], lat: Number, lng: Number,
+  verified: Boolean, photo: String, workPhotos: [String],
 }, opts));
 
 const Booking = mongoose.model('Booking', new mongoose.Schema({
@@ -40,6 +41,7 @@ const Invoice = mongoose.model('Invoice', new mongoose.Schema({
   cardLast4: String, mobileNumber: String, confirmationCode: String, verificationCode: String,
   paidAt: String, createdAt: String,
   paymobRef: String, paymobIntentionId: String, paymobTxnId: String,
+  commissionPaid: Boolean, commissionPaidAt: String,
 }, opts));
 
 const Counter = mongoose.model('Counter', new mongoose.Schema({ _id: String, value: Number }, opts));

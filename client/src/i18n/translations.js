@@ -40,6 +40,14 @@ export const translations = {
     method: 'Method', statusWord: 'Status', joinedLabel: 'Joined', roleWord: 'Role', bookingWord: 'Booking', closeBtn: 'Close',
     payInvoiceTitle: 'Pay invoice', noInvoices: 'No invoices yet.', paymentsSection: 'Payments', cashAwaiting: 'Awaiting cash confirmation',
     bookingsWord: 'Bookings', markPaid: 'Mark paid',
+    verifiedBadge: 'Verified', verifyAction: 'Verify', unverifyAction: 'Remove verified', verifiedLabel: 'Verified',
+    emailOptional: 'Email (optional)', loginId: 'Mobile number or email', phoneLoginHint: 'No email? Your mobile number is your login.',
+    profilePhoto: 'Profile photo', workPhotos: 'Photos of your work', uploadPhoto: 'Upload photo', changePhoto: 'Change photo', addWorkPhoto: 'Add work photo', removeLabel: 'Remove',
+    photoHelp: 'Clear photo of your face builds trust. Up to 6 work photos.', workGallery: 'Work gallery', photoError: 'Could not use this image. Try another photo.',
+    commissionsTab: 'Commission', commissionTitle: 'FIX-IT commission', commEarned: 'Total commission', commCollected: 'Collected', commOutstanding: 'Outstanding', commJobs: 'Completed jobs',
+    commByTech: 'By technician', commRows: 'Per completed booking', jobAmount: 'Job amount', commissionWord: 'Commission', markReceived: 'Mark received', markNotReceived: 'Undo received', viaOnline: 'Online (auto)', commNote: 'Commission = 15% of the technician job amount on every completed booking. Online payments are collected automatically; for cash jobs, tap "Mark received" once the technician pays FIX-IT.',
+    seoLuxorTitle: 'Technicians in Luxor', seoLuxorText: 'Need a plumber, electrician or AC technician in Luxor? FIX-IT shows you rated technicians near you in Luxor, East Bank, West Bank, Karnak and Awamiya.', mostRequested: 'Most requested in Luxor',
+    cityLuxor: 'Luxor', cityCairo: 'Cairo',
     language: 'العربية', theme: 'Theme', light: 'Light', dark: 'Dark', notFound: 'Not found', back: 'Back',
   },
   ar: {
@@ -83,6 +91,19 @@ export const translations = {
     method: 'الطريقة', statusWord: 'الحالة', joinedLabel: 'تاريخ التسجيل', roleWord: 'الدور', bookingWord: 'الحجز', closeBtn: 'إغلاق',
     payInvoiceTitle: 'دفع الفاتورة', noInvoices: 'لا توجد فواتير بعد.', paymentsSection: 'المدفوعات', cashAwaiting: 'في انتظار تأكيد الكاش',
     bookingsWord: 'الحجوزات', markPaid: 'تأكيد الدفع',
+    verifiedBadge: 'موثّق', verifyAction: 'توثيق', unverifyAction: 'إلغاء التوثيق', verifiedLabel: 'موثّق',
+    emailOptional: 'البريد الإلكتروني (اختياري)', loginId: 'رقم الموبايل أو البريد الإلكتروني', phoneLoginHint: 'معندكش إيميل؟ رقم موبايلك هو اسم الدخول.',
+    profilePhoto: 'الصورة الشخصية', workPhotos: 'صور من شغلك', uploadPhoto: 'رفع صورة', changePhoto: 'تغيير الصورة', addWorkPhoto: 'إضافة صورة شغل', removeLabel: 'حذف',
+    photoHelp: 'صورة واضحة لوجهك بتزوّد ثقة العملاء. حتى ٦ صور من شغلك.', workGallery: 'معرض الأعمال', photoError: 'مقدرناش نستخدم الصورة دي. جرّب صورة تانية.',
+    commissionsTab: 'العمولة', commissionTitle: 'عمولة FIX-IT', commEarned: 'إجمالي العمولة', commCollected: 'المحصَّلة', commOutstanding: 'المتبقية', commJobs: 'شغل مكتمل',
+    commByTech: 'حسب الفني', commRows: 'لكل حجز مكتمل', jobAmount: 'قيمة الشغل', commissionWord: 'العمولة', markReceived: 'تم استلام العمولة', markNotReceived: 'تراجع', viaOnline: 'أونلاين (تلقائي)', commNote: 'العمولة = ١٥٪ من قيمة شغل الفني على كل حجز مكتمل. الدفع الأونلاين بيتحصّل تلقائي، وفي الكاش اضغط "تم استلام العمولة" لما الفني يسدّد لـ FIX-IT.',
+    seoLuxorTitle: 'فنيين في الأقصر', seoLuxorText: 'محتاج سباك أو كهربائي أو فني تكييف في الأقصر؟ FIX-IT بيعرض لك فنيين متقيّمين قريبين منك في الأقصر والبر الشرقي والبر الغربي والكرنك والعوامية.', mostRequested: 'الأكثر طلباً في الأقصر',
+    cityLuxor: 'الأقصر', cityCairo: 'القاهرة',
     language: 'English', theme: 'المظهر', light: 'فاتح', dark: 'داكن', notFound: 'غير موجود', back: 'رجوع',
   },
+};
+
+export const cityLabel = (city, lang) => {
+  if (lang !== 'ar') return city;
+  return { Luxor: 'الأقصر', Cairo: 'القاهرة', Aswan: 'أسوان' }[city] || city;
 };

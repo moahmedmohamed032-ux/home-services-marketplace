@@ -31,13 +31,18 @@ router.get('/invoices', async (req, res, next) => {
 
 const wrap = (fn) => async (req, res, next) => { try { await fn(req, res); } catch (err) { next(err); } };
 
+// GET /api/admin/commissions — 15% platform commission per completed booking.
+router.get('/commissions', wrap(async (req, res) => res.json({ commissions: await store.adminCommissions() })));
+
 // ---- technicians ----
 router.get('/technicians', wrap(async (req, res) => res.json({ technicians: await store.adminListTechnicians() })));
 router.post('/technicians', wrap(async (req, res) => {
-  requireFields(req.body, ['name', 'email', 'password', 'profession', 'city']);
-  assertEmail(req.body.email);
+  requireFields(req.body, ['name', 'password', 'profession', 'city']);
+  if (String(req.body.email || '').trim()) {
+    assertEmail(req.body.email);
+    if (await store.findUserByEmail(req.body.email)) throw ApiError.conflict('Email is already registered');
+  }
   assertPassword(req.body.password);
-  if (await store.findUserByEmail(req.body.email)) throw ApiError.conflict('Email is already registered');
   const technician = await store.adminCreateTechnician(req.body, await hashPassword(req.body.password));
   res.status(201).json({ technician });
 }));
