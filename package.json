@@ -2,7 +2,7 @@
   "name": "home-services-marketplace",
   "version": "1.0.0",
   "private": true,
-  "description": "Fanni - a marketplace connecting clients with home-service technicians. React + Redux frontend, Node.js + Express backend.",
+  "description": "FIX-IT - a marketplace connecting clients with home-service technicians. React + Redux frontend, Node.js + Express backend.",
   "main": "server/server.js",
   "scripts": {
     "dev": "node server/server.js",

@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import Stars from './Stars';
+import { useT } from '../i18n/useT';
 
 export default function TechnicianCard({ technician: t, professionIcon, professionName }) {
+  const { t: tr } = useT();
   return (
     <Link to={`/technicians/${t.id}`} className="card tech-card">
       <div className="tech-card-head">
@@ -11,13 +13,12 @@ export default function TechnicianCard({ technician: t, professionIcon, professi
           <p className="muted">{professionIcon} {professionName || t.profession} · {t.city}</p>
         </div>
       </div>
-      <Stars rating={t.rating} />
+      <Stars rating={t.rating} count={t.reviewCount} />
       <p className="tech-bio">{t.bio}</p>
       <div className="tech-card-foot">
-        <span>{t.yearsExperience} yrs experience</span>
-        <span>{t.jobsDone} jobs</span>
-        {t.distanceKm !== undefined && <span className="distance">📍 {t.distanceKm} km away</span>}
-        <strong>{t.hourlyRate} EGP/hr</strong>
+        <span>{t.yearsExperience} {tr('years')}</span>
+        {t.distanceKm !== undefined && <span className="distance">📍 {t.distanceKm} {tr('away')}</span>}
+        <strong>{t.hourlyRate} {tr('perHour')}</strong>
       </div>
     </Link>
   );

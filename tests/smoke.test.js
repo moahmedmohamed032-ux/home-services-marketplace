@@ -105,3 +105,15 @@ test('full client + technician flow', async () => {
   res = await fetch(`${base}/bookings/mine`);
   assert.equal(res.status, 401);
 });
+
+test('technician phone is private unless made public', async () => {
+  const res = await fetch(`${base}/technicians`);
+  const { technicians } = await res.json();
+  const hidden = technicians.find((t) => t.phonePublic === false);
+  const shown = technicians.find((t) => t.phonePublic === true);
+  assert.equal(hidden.phone, null);
+  assert.ok(shown.phone);
+  const detail = await (await fetch(`${base}/technicians/${hidden.id}`)).json();
+  assert.equal(detail.technician.phone, null);
+  assert.ok(detail.technician.reviews.length > 0);
+});

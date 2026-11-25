@@ -1,52 +1,43 @@
 import { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { login } from '../features/auth/authSlice';
+import { useT } from '../i18n/useT';
 
 export default function Login() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const { status, error } = useSelector((s) => s.auth);
+  const { t } = useT();
   const [form, setForm] = useState({ email: '', password: '' });
-
-  const update = (key) => (e) => setForm({ ...form, [key]: e.target.value });
 
   const submit = async (e) => {
     e.preventDefault();
-    const result = await dispatch(login(form));
-    if (result.meta.requestStatus === 'fulfilled') {
-      const dest = location.state?.from?.pathname
-        || (result.payload.user.role === 'technician' ? '/pro' : '/dashboard');
-      navigate(dest, { replace: true });
+    const res = await dispatch(login(form));
+    if (login.fulfilled.match(res)) {
+      const home = res.payload.user.role === 'technician' ? '/pro' : '/dashboard';
+      navigate(location.state?.from?.pathname && location.state.from.pathname !== '/login' ? location.state.from.pathname : home, { replace: true });
     }
   };
+  const fill = (email) => setForm({ email, password: 'Demo@1234' });
 
   return (
-    <div className="auth-page">
-      <form className="card auth-card" onSubmit={submit}>
-        <h1>Welcome back</h1>
-        <label>
-          Email
-          <input type="email" required value={form.email} onChange={update('email')} />
-        </label>
-        <label>
-          Password
-          <input type="password" required value={form.password} onChange={update('password')} />
-        </label>
-        <button className="btn btn-primary" type="submit" disabled={status === 'loading'}>
-          {status === 'loading' ? 'Logging in…' : 'Log in'}
-        </button>
-        {error && <p className="notice err">{error}</p>}
-        <p className="muted">
-          New here? <Link to="/register">Create an account</Link>
-        </p>
-        <div className="demo-hint">
-          <strong>Demo accounts</strong>
-          <span>Client: client@demo.com / Demo@1234</span>
-          <span>Technician: tech@demo.com / Demo@1234</span>
-        </div>
+    <div className="auth card">
+      <h1>{t('login')}</h1>
+      <form onSubmit={submit} className="form">
+        <label>{t('email')}<input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
+        <label>{t('password')}<input type="password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></label>
+        {error && <p className="error">{error}</p>}
+        <button className="btn btn-primary" disabled={status === 'loading'}>{t('login')}</button>
       </form>
+      <p className="muted">{t('noAccount')} <Link to="/register/client">{t('joinClient')}</Link> · <Link to="/register/technician">{t('joinTech')}</Link></p>
+      <div className="demo">
+        <strong>{t('demo')}</strong>
+        <button type="button" className="chip" onClick={() => fill('client@demo.com')}>client@demo.com</button>
+        <button type="button" className="chip" onClick={() => fill('tech@demo.com')}>tech@demo.com</button>
+        <span className="muted">Demo@1234</span>
+      </div>
     </div>
   );
 }

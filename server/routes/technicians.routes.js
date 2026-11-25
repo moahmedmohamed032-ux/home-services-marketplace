@@ -10,14 +10,14 @@ const router = express.Router();
 // (rating breaks ties) so a client sees the closest suitable pros on top.
 router.get('/', (req, res) => {
   const { profession, city, search, minRating, lat, lng } = req.query;
-  res.json({ technicians: store.searchTechnicians({ profession, city, search, minRating, lat, lng }) });
+  res.json({ technicians: store.searchTechnicians({ profession, city, search, minRating, lat, lng }).map((t) => store.publicTechnician(t)) });
 });
 
 // GET /api/technicians/me — the logged-in technician's own profile.
 router.get('/me', authenticate, requireRole('technician'), (req, res, next) => {
   const tech = store.findTechnicianByUserId(req.user.id);
   if (!tech) return next(ApiError.notFound('Technician profile not found'));
-  res.json({ technician: tech });
+  res.json({ technician: store.publicTechnician(tech, { owner: true, withReviews: true }) });
 });
 
 // PATCH /api/technicians/me — update own profile.
@@ -28,14 +28,15 @@ router.patch('/me', authenticate, requireRole('technician'), (req, res, next) =>
     return next(ApiError.badRequest('Unknown profession'));
   }
   const updated = store.updateTechnicianProfile(tech.id, req.body);
-  res.json({ technician: updated });
+  res.json({ technician: store.publicTechnician(updated, { owner: true, withReviews: true }) });
 });
 
 // GET /api/technicians/:id — public profile.
 router.get('/:id', (req, res, next) => {
   const tech = store.findTechnicianById(req.params.id);
   if (!tech) return next(ApiError.notFound('Technician not found'));
-  res.json({ technician: tech });
+  if (tech.addressActive === false) return next(ApiError.notFound('Technician not found'));
+  res.json({ technician: store.publicTechnician(tech, { withReviews: true }) });
 });
 
 module.exports = router;

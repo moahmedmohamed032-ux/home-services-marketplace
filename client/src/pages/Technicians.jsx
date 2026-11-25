@@ -1,107 +1,57 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams } from 'react-router-dom';
-import {
-  fetchCities, fetchProfessions, fetchTechnicians, setFilters,
-} from '../features/technicians/techniciansSlice';
+import { fetchCities, fetchProfessions, fetchTechnicians, setFilters } from '../features/technicians/techniciansSlice';
 import TechnicianCard from '../components/TechnicianCard';
+import useGeolocation from '../components/useGeolocation';
+import { useT } from '../i18n/useT';
 
 export default function Technicians() {
   const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
+  const { t, lang } = useT();
   const { professions, cities, list, filters, status } = useSelector((s) => s.technicians);
-  const [locating, setLocating] = useState(false);
-  const [geoError, setGeoError] = useState(null);
+  const [locate, locating, geoError] = useGeolocation();
+  const pName = (p) => (lang === 'ar' ? p.nameAr : p.name);
 
-  // Seed the filter from the URL once (e.g. /technicians?profession=plumber).
   useEffect(() => {
-    const profession = searchParams.get('profession') || '';
-    dispatch(setFilters({ profession }));
+    const profession = searchParams.get('profession');
+    if (profession !== null) dispatch(setFilters({ profession }));
     dispatch(fetchProfessions());
     dispatch(fetchCities());
   }, [dispatch, searchParams]);
 
-  useEffect(() => {
-    dispatch(fetchTechnicians(filters));
-  }, [dispatch, filters]);
+  useEffect(() => { dispatch(fetchTechnicians(filters)); }, [dispatch, filters]);
 
   const update = (key) => (e) => dispatch(setFilters({ [key]: e.target.value }));
-
-  const nearMe = () => {
-    if (filters.lat && filters.lng) {
-      dispatch(setFilters({ lat: '', lng: '' }));
-      return;
-    }
-    if (!navigator.geolocation) {
-      setGeoError('Geolocation is not supported by this browser');
-      return;
-    }
-    setLocating(true);
-    setGeoError(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocating(false);
-        dispatch(setFilters({ lat: pos.coords.latitude, lng: pos.coords.longitude }));
-      },
-      () => {
-        setLocating(false);
-        setGeoError('Could not get your location — check browser permission');
-      },
-      { timeout: 10000 }
-    );
-  };
-
-  const sortedByDistance = Boolean(filters.lat && filters.lng);
+  const sorted = Boolean(filters.lat && filters.lng);
+  const nearMe = () => (sorted ? dispatch(setFilters({ lat: '', lng: '' })) : locate((pos) => dispatch(setFilters(pos))));
 
   return (
     <>
-      <h1 className="page-title">Find a technician</h1>
+      <h1 className="page-title">{t('find')}</h1>
       <div className="filters card">
-        <input
-          type="search"
-          placeholder="Search by name or keyword…"
-          value={filters.search}
-          onChange={update('search')}
-        />
+        <input type="search" placeholder={t('search')} value={filters.search} onChange={update('search')} />
         <select value={filters.profession} onChange={update('profession')}>
-          <option value="">All professions</option>
-          {professions.map((p) => (
-            <option key={p.id} value={p.id}>{p.icon} {p.name}</option>
-          ))}
+          <option value="">{t('allProfessions')}</option>
+          {professions.map((p) => <option key={p.id} value={p.id}>{p.icon} {pName(p)}</option>)}
         </select>
         <select value={filters.city} onChange={update('city')}>
-          <option value="">All cities</option>
-          {cities.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
+          <option value="">{t('allCities')}</option>
+          {cities.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
-        <button
-          type="button"
-          className={`btn ${sortedByDistance ? 'btn-primary' : 'btn-ghost'}`}
-          onClick={nearMe}
-          disabled={locating}
-        >
-          {locating ? 'Locating…' : sortedByDistance ? '📍 Sorted by nearest (tap to clear)' : '📍 Near me'}
+        <button type="button" className={`btn ${sorted ? 'btn-primary' : 'btn-outline'}`} onClick={nearMe} disabled={locating}>
+          📍 {locating ? t('locating') : sorted ? `${t('nearMe')} ✓` : t('nearMe')}
         </button>
       </div>
-      {geoError && <p className="notice err">{geoError}</p>}
-      {sortedByDistance && (
-        <p className="muted">Showing the nearest suitable technicians first, best-rated on ties.</p>
-      )}
-
-      {status === 'loading' && <p className="muted">Loading…</p>}
-      {status !== 'loading' && list.length === 0 && (
-        <p className="muted">No technicians match these filters yet.</p>
-      )}
+      {geoError && <p className="notice err">{t('locationDenied')}</p>}
+      {status === 'loading' && <p className="muted">{t('loading')}</p>}
+      {status !== 'loading' && list.length === 0 && <p className="muted">{t('noResults')}</p>}
       <div className="grid tech-grid">
-        {list.map((t) => (
-          <TechnicianCard
-            key={t.id}
-            technician={t}
-            professionIcon={professions.find((p) => p.id === t.profession)?.icon}
-            professionName={professions.find((p) => p.id === t.profession)?.name}
-          />
-        ))}
+        {list.map((x) => {
+          const p = professions.find((q) => q.id === x.profession);
+          return <TechnicianCard key={x.id} technician={x} professionIcon={p?.icon} professionName={p && pName(p)} />;
+        })}
       </div>
     </>
   );

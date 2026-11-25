@@ -4,94 +4,92 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { fetchTechnician } from '../features/technicians/techniciansSlice';
 import { createBooking } from '../features/bookings/bookingsSlice';
 import Stars from '../components/Stars';
+import { useT } from '../i18n/useT';
 
 export default function TechnicianDetails() {
   const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { current: t } = useSelector((s) => s.technicians);
+  const { t, lang } = useT();
+  const { current: tech } = useSelector((s) => s.technicians);
   const { user } = useSelector((s) => s.auth);
-
   const [form, setForm] = useState({ date: '', description: '', address: '' });
+  const [shareLoc, setShareLoc] = useState(true);
   const [message, setMessage] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    dispatch(fetchTechnician(id));
-  }, [dispatch, id]);
-
-  if (!t) return <p className="muted">Loading…</p>;
+  useEffect(() => { dispatch(fetchTechnician(id)); }, [dispatch, id]);
+  if (!tech || tech.id !== id) return <p className="muted">{t('loading')}</p>;
 
   const update = (key) => (e) => setForm({ ...form, [key]: e.target.value });
 
   const submit = async (e) => {
     e.preventDefault();
     if (!user) return navigate('/login', { state: { from: { pathname: `/technicians/${id}` } } });
-    setSubmitting(true);
-    setMessage(null);
-    // Attach the client's location when the browser allows it, so the
-    // technician can see where the job is.
+    setSubmitting(true); setMessage(null);
     let coords = {};
-    if (navigator.geolocation) {
+    if (shareLoc && navigator.geolocation) {
       try {
-        const pos = await new Promise((resolve, reject) =>
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 })
-        );
+        const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 }));
         coords = { clientLat: pos.coords.latitude, clientLng: pos.coords.longitude };
-      } catch {
-        coords = {}; // location is optional
-      }
+      } catch { coords = {}; }
     }
     const result = await dispatch(createBooking({ technicianId: id, ...form, ...coords }));
     setSubmitting(false);
     if (result.meta.requestStatus === 'fulfilled') {
-      setMessage({ ok: true, text: 'Booking sent! Track it from your dashboard.' });
+      setMessage({ ok: true, text: '✓' });
       setForm({ date: '', description: '', address: '' });
-    } else {
-      setMessage({ ok: false, text: result.payload });
-    }
+      setTimeout(() => navigate('/dashboard'), 900);
+    } else setMessage({ ok: false, text: result.payload });
   };
 
+  const reviews = tech.reviews || [];
   return (
     <div className="details-layout">
-      <div className="card tech-profile">
-        <div className="tech-card-head">
-          <div className="avatar avatar-lg">{t.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</div>
-          <div>
-            <h1>{t.name}</h1>
-            <p className="muted">{t.city} · {t.yearsExperience} years experience</p>
+      <div>
+        <div className="card tech-profile">
+          <div className="tech-card-head">
+            <div className="avatar avatar-lg">{tech.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</div>
+            <div>
+              <h1>{tech.name}</h1>
+              <p className="muted">{tech.city} · {tech.yearsExperience} {t('years')}</p>
+            </div>
           </div>
+          <Stars rating={tech.rating} count={tech.reviewCount} />
+          <p>{tech.bio}</p>
+          <div className="stats-row">
+            <div><strong>{tech.jobsDone}</strong><span>{t('jobs')}</span></div>
+            <div><strong>{tech.hourlyRate}</strong><span>{t('perHour')}</span></div>
+            <div><strong>{tech.rating ? tech.rating.toFixed(1) : '-'}</strong><span>{t('rating')}</span></div>
+          </div>
+          <p className="phone-line">
+            📞 {tech.phone ? <a href={`tel:${tech.phone}`} dir="ltr">{tech.phone}</a> : <span className="muted">{t('phoneHidden')}</span>}
+          </p>
         </div>
-        <Stars rating={t.rating} />
-        <p>{t.bio}</p>
-        <div className="stats-row">
-          <div><strong>{t.jobsDone}</strong><span>jobs done</span></div>
-          <div><strong>{t.hourlyRate} EGP</strong><span>per hour</span></div>
-          <div><strong>{t.yearsExperience}</strong><span>years</span></div>
+
+        <div className="card reviews">
+          <h2>{t('clientReviews')} ({reviews.length})</h2>
+          {reviews.length === 0 && <p className="muted">{t('noReviews')}</p>}
+          {reviews.map((r, i) => (
+            <div key={i} className="review">
+              <div className="review-head"><strong>{r.clientName}</strong><Stars rating={r.rating} /></div>
+              {(lang === 'ar' && r.commentAr ? r.commentAr : r.comment) && <p>{lang === 'ar' && r.commentAr ? r.commentAr : r.comment}</p>}
+            </div>
+          ))}
         </div>
       </div>
 
       <div className="card booking-form">
-        <h2>Book {t.name.split(' ')[0]}</h2>
+        <h2>{t('book')}</h2>
         {user?.role === 'technician' ? (
-          <p className="muted">Technician accounts can't place bookings. Open a client account to book.</p>
+          <p className="muted">{t('joinClient')}</p>
         ) : (
-          <form onSubmit={submit}>
-            <label>
-              Date
-              <input type="date" required value={form.date} onChange={update('date')} />
-            </label>
-            <label>
-              Describe the job
-              <textarea required rows="3" placeholder="e.g. Kitchen sink is leaking under the cabinet…" value={form.description} onChange={update('description')} />
-            </label>
-            <label>
-              Address
-              <input type="text" required placeholder="Street, building, apartment" value={form.address} onChange={update('address')} />
-            </label>
-            <button className="btn btn-primary" type="submit" disabled={submitting}>
-              {submitting ? 'Sending…' : user ? 'Send booking request' : 'Log in to book'}
-            </button>
+          <form onSubmit={submit} className="form">
+            <label>{t('date')}<input type="date" required value={form.date} onChange={update('date')} /></label>
+            <label>{t('describe')}<textarea required rows="3" value={form.description} onChange={update('description')} /></label>
+            <label>{t('addressLabel')}<input required value={form.address} onChange={update('address')} /></label>
+            <label className="check"><input type="checkbox" checked={shareLoc} onChange={(e) => setShareLoc(e.target.checked)} /> {t('attachLocation')}</label>
+            <button className="btn btn-primary" disabled={submitting}>{user ? t('bookNow') : t('login')}</button>
             {message && <p className={message.ok ? 'notice ok' : 'notice err'}>{message.text}</p>}
           </form>
         )}

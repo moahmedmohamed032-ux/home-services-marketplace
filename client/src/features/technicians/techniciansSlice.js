@@ -7,6 +7,7 @@ const initialState = {
   list: [],
   current: null,
   filters: { profession: '', city: '', search: '' },
+  location: null,
   status: 'idle',
   error: null,
 };
@@ -63,6 +64,9 @@ const techniciansSlice = createSlice({
   name: 'technicians',
   initialState,
   reducers: {
+    setLocation(state, action) {
+      state.location = action.payload;
+    },
     setFilters(state, action) {
       state.filters = { ...state.filters, ...action.payload };
     },
@@ -95,5 +99,5 @@ const techniciansSlice = createSlice({
   },
 });
 
-export const { setFilters } = techniciansSlice.actions;
+export const { setFilters, setLocation } = techniciansSlice.actions;
 export default techniciansSlice.reducer;

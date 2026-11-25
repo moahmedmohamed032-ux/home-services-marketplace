@@ -3,128 +3,109 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchIncomingBookings, updateBookingStatus } from '../features/bookings/bookingsSlice';
 import { updateMyProfile } from '../features/technicians/techniciansSlice';
 import { api } from '../api/axios';
+import useGeolocation from '../components/useGeolocation';
+import Stars from '../components/Stars';
+import { useT } from '../i18n/useT';
 
 export default function TechnicianDashboard() {
   const dispatch = useDispatch();
-  const { incoming } = useSelector((s) => s.bookings);
-  const [profile, setProfile] = useState(null);
+  const { t } = useT();
+  const user = useSelector((s) => s.auth.user);
+  const incoming = useSelector((s) => s.bookings.incoming);
+  const [tech, setTech] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [locate, locating, geoError] = useGeolocation();
 
   useEffect(() => {
     dispatch(fetchIncomingBookings());
-    api.get('/technicians/me').then(({ data }) => setProfile(data.technician)).catch(() => {});
+    api.get('/technicians/me').then((r) => setTech(r.data.technician));
   }, [dispatch]);
 
-  const setStatus = (id, status) => dispatch(updateBookingStatus({ id, status }));
-
-  const saveProfile = async (e) => {
-    e.preventDefault();
-    setSaved(false);
-    const result = await dispatch(updateMyProfile({
-      city: profile.city,
-      hourlyRate: Number(profile.hourlyRate),
-      yearsExperience: Number(profile.yearsExperience),
-      bio: profile.bio,
+  if (!tech) return <p className="muted">{t('loading')}</p>;
+  const set = (k, v) => { setTech({ ...tech, [k]: v }); setSaved(false); };
+  const save = async () => {
+    const res = await dispatch(updateMyProfile({
+      phone: tech.phone, phonePublic: tech.phonePublic, addressActive: tech.addressActive, address: tech.address,
+      bio: tech.bio, hourlyRate: Number(tech.hourlyRate), yearsExperience: Number(tech.yearsExperience), lat: tech.lat, lng: tech.lng,
     }));
-    if (result.meta.requestStatus === 'fulfilled') setSaved(true);
+    if (updateMyProfile.fulfilled.match(res)) { setTech(res.payload); setSaved(true); }
   };
-
-  const pending = incoming.filter((b) => b.status === 'pending');
-  const active = incoming.filter((b) => b.status === 'accepted');
-  const history = incoming.filter((b) => ['completed', 'declined', 'cancelled'].includes(b.status));
+  const count = (f) => incoming.filter(f).length;
 
   return (
     <>
-      <h1 className="page-title">Technician dashboard</h1>
-
-      <section>
-        <h2 className="section-title">New requests ({pending.length})</h2>
-        {pending.length === 0 && <p className="muted">No new requests right now.</p>}
-        <div className="booking-list">
-          {pending.map((b) => (
-            <div key={b.id} className="card booking-card">
-              <div className="booking-head">
-                <div>
-                  <h3>{b.clientName}</h3>
-                  <p className="muted">{new Date(b.date).toLocaleDateString()}</p>
-                </div>
-                <span className="badge status-pending">pending</span>
-              </div>
-              <p>{b.description}</p>
-              <p className="muted">{b.address}</p>
-              <div className="btn-row">
-                <button className="btn btn-primary" onClick={() => setStatus(b.id, 'accepted')}>Accept</button>
-                <button className="btn btn-ghost" onClick={() => setStatus(b.id, 'declined')}>Decline</button>
-              </div>
-            </div>
-          ))}
+      <section className="dash-hero">
+        <div>
+          <h1>▦ {t('dashboard')}</h1>
+          <p>{t('welcome')}, {user.name}</p>
+          <Stars rating={tech.rating} count={tech.reviewCount} />
         </div>
+        <span className={`badge ${tech.addressActive ? 'badge-accepted' : 'badge-declined'}`}>
+          {tech.addressActive ? t('addressActive') : t('addressInactive')}
+        </span>
       </section>
+      <div className="grid stat-grid">
+        <div className="card stat"><strong>{count((b) => b.status === 'pending')}</strong><span>{t('pending')}</span></div>
+        <div className="card stat"><strong>{count((b) => b.status === 'accepted')}</strong><span>{t('accepted')}</span></div>
+        <div className="card stat"><strong>{tech.jobsDone}</strong><span>{t('jobs')}</span></div>
+      </div>
 
-      <section>
-        <h2 className="section-title">Scheduled jobs ({active.length})</h2>
-        <div className="booking-list">
-          {active.map((b) => (
-            <div key={b.id} className="card booking-card">
-              <div className="booking-head">
-                <div>
-                  <h3>{b.clientName}</h3>
-                  <p className="muted">{new Date(b.date).toLocaleDateString()}</p>
-                </div>
-                <span className="badge status-accepted">accepted</span>
-              </div>
-              <p>{b.description}</p>
-              <button className="btn btn-primary" onClick={() => setStatus(b.id, 'completed')}>Mark as completed</button>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="section-title">History ({history.length})</h2>
-        <div className="booking-list">
-          {history.map((b) => (
-            <div key={b.id} className="card booking-card">
-              <div className="booking-head">
-                <div>
-                  <h3>{b.clientName}</h3>
-                  <p className="muted">{new Date(b.date).toLocaleDateString()}</p>
-                </div>
-                <span className={`badge status-${b.status}`}>{b.status}</span>
-              </div>
-              {b.review && <p className="notice ok">{'★'.repeat(b.review.rating)}{b.review.comment ? ` — “${b.review.comment}”` : ''}</p>}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {profile && (
+      <div className="dash-cols">
         <section>
-          <h2 className="section-title">My profile</h2>
-          <form className="card profile-form" onSubmit={saveProfile}>
-            <div className="field-row">
-              <label>
-                City
-                <input value={profile.city || ''} onChange={(e) => setProfile({ ...profile, city: e.target.value })} />
-              </label>
-              <label>
-                Hourly rate (EGP)
-                <input type="number" min="0" value={profile.hourlyRate || 0} onChange={(e) => setProfile({ ...profile, hourlyRate: e.target.value })} />
-              </label>
-              <label>
-                Years of experience
-                <input type="number" min="0" value={profile.yearsExperience || 0} onChange={(e) => setProfile({ ...profile, yearsExperience: e.target.value })} />
-              </label>
-            </div>
-            <label>
-              Bio
-              <textarea rows="3" value={profile.bio || ''} onChange={(e) => setProfile({ ...profile, bio: e.target.value })} />
-            </label>
-            <button className="btn btn-primary" type="submit">Save profile</button>
-            {saved && <p className="notice ok">Profile saved.</p>}
-          </form>
+          <h2 className="section-title">{t('incoming')}</h2>
+          {incoming.length === 0 && <p className="muted">{t('noRequests')}</p>}
+          <div className="list">
+            {incoming.map((b) => (
+              <div key={b.id} className="card booking">
+                <div className="booking-top">
+                  <div><h3>{b.clientName}</h3><p className="muted">{b.date}</p></div>
+                  <span className={`badge badge-${b.status}`}>{t(b.status)}</span>
+                </div>
+                <p>{b.description}</p>
+                <p className="muted">📍 {b.address}
+                  {b.clientLat !== undefined && <> · <a target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${b.clientLat},${b.clientLng}`}>{t('openMap')}</a></>}
+                </p>
+                <div className="btn-row">
+                  {b.status === 'pending' && <>
+                    <button className="btn btn-primary btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'accepted' }))}>{t('accept')}</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'declined' }))}>{t('decline')}</button>
+                  </>}
+                  {b.status === 'accepted' && <button className="btn btn-primary btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'completed' }))}>{t('complete')}</button>}
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
-      )}
+
+        <section>
+          <h2 className="section-title">{t('profileSettings')}</h2>
+          <div className="card form">
+            <label className="check switch"><input type="checkbox" checked={tech.addressActive} onChange={(e) => set('addressActive', e.target.checked)} /> {t('activateAddress')}</label>
+            <label>{t('myAddress')}<input value={tech.address || ''} onChange={(e) => set('address', e.target.value)} /></label>
+            <button type="button" className="btn btn-outline" onClick={() => locate((p) => { setTech({ ...tech, ...p }); setSaved(false); })} disabled={locating}>
+              📍 {locating ? t('locating') : t('detectLocation')}
+            </button>
+            {geoError && <p className="error">{t('locationDenied')}</p>}
+            <label>{t('phone')}<input type="tel" value={tech.phone || ''} onChange={(e) => set('phone', e.target.value)} /></label>
+            <label className="check switch"><input type="checkbox" checked={tech.phonePublic} onChange={(e) => set('phonePublic', e.target.checked)} />
+              <span>{t('phonePublicLabel')}<br /><small className="muted">{t('phonePublicHelp')}</small></span></label>
+            <label>{t('bio')}<textarea rows="3" value={tech.bio || ''} onChange={(e) => set('bio', e.target.value)} /></label>
+            <div className="row">
+              <label>{t('rate')}<input type="number" value={tech.hourlyRate} onChange={(e) => set('hourlyRate', e.target.value)} /></label>
+              <label>{t('experience')}<input type="number" value={tech.yearsExperience} onChange={(e) => set('yearsExperience', e.target.value)} /></label>
+            </div>
+            <button className="btn btn-primary" onClick={save}>{t('save')}</button>
+            {saved && <p className="notice ok">{t('saved')}</p>}
+          </div>
+          <h2 className="section-title">{t('clientReviews')}</h2>
+          <div className="card reviews">
+            {(tech.reviews || []).length === 0 && <p className="muted">{t('noReviews')}</p>}
+            {(tech.reviews || []).slice(0, 5).map((r, i) => (
+              <div key={i} className="review"><div className="review-head"><strong>{r.clientName}</strong><Stars rating={r.rating} /></div><p>{r.comment}</p></div>
+            ))}
+          </div>
+        </section>
+      </div>
     </>
   );
 }

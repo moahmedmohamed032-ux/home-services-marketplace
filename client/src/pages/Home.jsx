@@ -1,69 +1,63 @@
 import { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
-import { fetchProfessions, fetchTechnicians } from '../features/technicians/techniciansSlice';
-import TechnicianCard from '../components/TechnicianCard';
+import { fetchProfessions, setFilters } from '../features/technicians/techniciansSlice';
+import useGeolocation from '../components/useGeolocation';
+import { useT } from '../i18n/useT';
 
 export default function Home() {
   const dispatch = useDispatch();
-  const { professions, list } = useSelector((s) => s.technicians);
+  const navigate = useNavigate();
+  const { t, lang } = useT();
+  const professions = useSelector((s) => s.technicians.professions);
+  const user = useSelector((s) => s.auth.user);
+  const [locate, locating, geoError] = useGeolocation();
 
-  useEffect(() => {
-    dispatch(fetchProfessions());
-    dispatch(fetchTechnicians({}));
-  }, [dispatch]);
+  useEffect(() => { dispatch(fetchProfessions()); }, [dispatch]);
+
+  const findNearest = () => locate((pos) => {
+    dispatch(setFilters({ ...pos, profession: '' }));
+    navigate('/technicians');
+  });
 
   return (
     <>
       <section className="hero">
-        <h1>Every home job, one trusted technician away</h1>
-        <p>
-          Fanni connects you with vetted professionals for any trade — plumbing,
-          electrical, painting, carpentry, AC and more. Book in minutes, track
-          the job, and review the work.
-        </p>
+        <h1>{t('heroTitle')}</h1>
+        <p>{t('heroSub')}</p>
         <div className="hero-actions">
-          <Link to="/technicians" className="btn btn-primary btn-lg">Find a technician</Link>
-          <Link to="/register?role=technician" className="btn btn-ghost btn-lg">Join as a pro</Link>
+          <button className="btn btn-primary btn-lg" onClick={findNearest} disabled={locating}>
+            📍 {locating ? t('locating') : t('findNearest')}
+          </button>
+          {!user && <Link to="/register/client" className="btn btn-outline btn-lg">{t('joinClient')}</Link>}
         </div>
+        {geoError && <p className="error">{t('locationDenied')}</p>}
       </section>
 
-      <section>
-        <h2 className="section-title">Browse by profession</h2>
-        <div className="grid professions-grid">
-          {professions.map((p) => (
-            <Link key={p.id} to={`/technicians?profession=${p.id}`} className="card profession-card">
-              <span className="profession-icon">{p.icon}</span>
-              <h3>{p.name}</h3>
-              <p className="muted">{p.nameAr}</p>
-              <span className="badge">{p.technicianCount} pros</span>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <h2 className="section-title">{t('browseCategories')}</h2>
+      <div className="grid cats">
+        {professions.map((p) => (
+          <Link key={p.id} to={`/technicians?profession=${p.id}`} className="card cat">
+            <span className="cat-icon">{p.icon}</span>
+            <strong>{lang === 'ar' ? p.nameAr : p.name}</strong>
+            <span className="muted">{p.technicianCount}</span>
+          </Link>
+        ))}
+      </div>
 
-      <section>
-        <h2 className="section-title">Top rated near you</h2>
-        <div className="grid tech-grid">
-          {list.slice(0, 3).map((t) => (
-            <TechnicianCard
-              key={t.id}
-              technician={t}
-              professionIcon={professions.find((p) => p.id === t.profession)?.icon}
-              professionName={professions.find((p) => p.id === t.profession)?.name}
-            />
-          ))}
-        </div>
-      </section>
+      <h2 className="section-title">{t('howTitle')}</h2>
+      <div className="grid steps">
+        {['how1', 'how2', 'how3'].map((k, i) => (
+          <div key={k} className="card step"><span className="step-n">{i + 1}</span><p>{t(k)}</p></div>
+        ))}
+      </div>
 
-      <section className="how-it-works">
-        <h2 className="section-title">How it works</h2>
-        <div className="grid three">
-          <div className="card step"><span className="step-num">1</span><h3>Search</h3><p>Filter technicians by trade, city and rating.</p></div>
-          <div className="card step"><span className="step-num">2</span><h3>Book</h3><p>Pick a pro, describe the job and choose a date.</p></div>
-          <div className="card step"><span className="step-num">3</span><h3>Track &amp; review</h3><p>Follow the booking status and rate the finished work.</p></div>
-        </div>
-      </section>
+      {!user && (
+        <section className="cta card">
+          <div><h2>{t('areTech')}</h2><p className="muted">{t('areTechSub')}</p></div>
+          <Link to="/register/technician" className="btn btn-accent btn-lg">🔧 {t('joinTech')}</Link>
+        </section>
+      )}
     </>
   );
 }

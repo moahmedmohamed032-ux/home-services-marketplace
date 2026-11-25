@@ -1,79 +1,64 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMyBookings, reviewBooking, updateBookingStatus } from '../features/bookings/bookingsSlice';
+import { useT } from '../i18n/useT';
 
-const STATUS_LABEL = {
-  pending: 'Waiting for the technician',
-  accepted: 'Accepted — scheduled',
-  declined: 'Declined by the technician',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-};
+function ReviewForm({ booking }) {
+  const dispatch = useDispatch();
+  const { t } = useT();
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  return (
+    <form className="inline-form" onSubmit={(e) => { e.preventDefault(); dispatch(reviewBooking({ id: booking.id, rating, comment })); }}>
+      <strong>{t('leaveReview')}</strong>
+      <select value={rating} onChange={(e) => setRating(Number(e.target.value))}>
+        {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{'★'.repeat(n)}</option>)}
+      </select>
+      <input placeholder={t('comment')} value={comment} onChange={(e) => setComment(e.target.value)} />
+      <button className="btn btn-primary btn-sm">{t('submit')}</button>
+    </form>
+  );
+}
 
 export default function ClientDashboard() {
   const dispatch = useDispatch();
-  const { mine } = useSelector((s) => s.bookings);
-  const [reviewDraft, setReviewDraft] = useState({}); // bookingId -> {rating, comment}
+  const { t } = useT();
+  const user = useSelector((s) => s.auth.user);
+  const bookings = useSelector((s) => s.bookings.mine);
+  useEffect(() => { dispatch(fetchMyBookings()); }, [dispatch]);
 
-  useEffect(() => {
-    dispatch(fetchMyBookings());
-  }, [dispatch]);
-
-  const cancel = (id) => dispatch(updateBookingStatus({ id, status: 'cancelled' }));
-
-  const submitReview = async (id) => {
-    const draft = reviewDraft[id] || {};
-    await dispatch(reviewBooking({ id, rating: Number(draft.rating), comment: draft.comment }));
-    setReviewDraft({ ...reviewDraft, [id]: undefined });
-  };
-
+  const count = (f) => bookings.filter(f).length;
   return (
     <>
-      <h1 className="page-title">My bookings</h1>
-      {mine.length === 0 && <p className="muted">No bookings yet — find a technician to get started.</p>}
-      <div className="booking-list">
-        {mine.map((b) => (
-          <div key={b.id} className="card booking-card">
-            <div className="booking-head">
-              <div>
-                <h3>{b.technicianName}</h3>
-                <p className="muted">{b.profession} · {new Date(b.date).toLocaleDateString()}</p>
-              </div>
-              <span className={`badge status-${b.status}`}>{b.status}</span>
+      <section className="dash-hero">
+        <div>
+          <h1>▦ {t('dashboard')}</h1>
+          <p>{t('welcome')}, {user.name}</p>
+        </div>
+        <Link to="/technicians" className="btn btn-accent btn-lg">📍 {t('findTechBtn')}</Link>
+      </section>
+      <div className="grid stat-grid">
+        <div className="card stat"><strong>{bookings.length}</strong><span>{t('total')}</span></div>
+        <div className="card stat"><strong>{count((b) => ['pending', 'accepted'].includes(b.status))}</strong><span>{t('open')}</span></div>
+        <div className="card stat"><strong>{count((b) => b.status === 'completed')}</strong><span>{t('done')}</span></div>
+      </div>
+      <h2 className="section-title">{t('myRequests')}</h2>
+      {bookings.length === 0 && <p className="muted">{t('noRequests')}</p>}
+      <div className="list">
+        {bookings.map((b) => (
+          <div key={b.id} className="card booking">
+            <div className="booking-top">
+              <div><h3>{b.technicianName}</h3><p className="muted">{b.profession} · {b.date}</p></div>
+              <span className={`badge badge-${b.status}`}>{t(b.status)}</span>
             </div>
             <p>{b.description}</p>
-            <p className="muted">{b.address}</p>
-            <p className="muted small">{STATUS_LABEL[b.status]}</p>
-
+            <p className="muted">📍 {b.address}</p>
             {['pending', 'accepted'].includes(b.status) && (
-              <button className="btn btn-ghost" onClick={() => cancel(b.id)}>Cancel booking</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'cancelled' }))}>{t('cancel')}</button>
             )}
-
-            {b.status === 'completed' && !b.review && (
-              <div className="review-box">
-                <h4>Rate the work</h4>
-                <div className="field-row">
-                  <select
-                    value={reviewDraft[b.id]?.rating || ''}
-                    onChange={(e) => setReviewDraft({ ...reviewDraft, [b.id]: { ...reviewDraft[b.id], rating: e.target.value } })}
-                  >
-                    <option value="">Rating…</option>
-                    {[5, 4, 3, 2, 1].map((r) => <option key={r} value={r}>{'★'.repeat(r)}</option>)}
-                  </select>
-                  <input
-                    type="text"
-                    placeholder="Short comment (optional)"
-                    value={reviewDraft[b.id]?.comment || ''}
-                    onChange={(e) => setReviewDraft({ ...reviewDraft, [b.id]: { ...reviewDraft[b.id], comment: e.target.value } })}
-                  />
-                </div>
-                <button className="btn btn-primary" disabled={!reviewDraft[b.id]?.rating} onClick={() => submitReview(b.id)}>
-                  Submit review
-                </button>
-              </div>
-            )}
-
-            {b.review && <p className="notice ok">You rated this job {'★'.repeat(b.review.rating)}{b.review.comment ? ` — “${b.review.comment}”` : ''}</p>}
+            {b.status === 'completed' && !b.review && <ReviewForm booking={b} />}
+            {b.review && <p>{'★'.repeat(b.review.rating)} {b.review.comment}</p>}
           </div>
         ))}
       </div>

@@ -33,6 +33,7 @@ function seedDatabase() {
     profession: seed.DEMO_TECH.profession, city: seed.DEMO_TECH.city,
     yearsExperience: seed.DEMO_TECH.yearsExperience, hourlyRate: seed.DEMO_TECH.hourlyRate,
     rating: 0, jobsDone: 0, bio: seed.DEMO_TECH.bio,
+    phone: '+20 1000000000', phonePublic: false, addressActive: true, address: 'Luxor', reviews: [],
     ...seed.CITY_COORDS[seed.DEMO_TECH.city],
   });
 
@@ -43,10 +44,28 @@ function seedDatabase() {
     const r = 0.01 + (i % 5) * 0.015;
     db.technicians.push({
       id: nextId('tec'), userId: null, ...t,
+      phone: `+20 10${String(10000000 + i * 7919123).slice(0, 8)}`,
+      phonePublic: i % 3 === 0,
+      addressActive: true,
+      address: `${t.city} (${t.name.split(' ')[0]} workshop)`,
+      reviews: seedReviews(i, t.rating),
       lat: base.lat + r * Math.cos(angle),
       lng: base.lng + r * Math.sin(angle),
     });
   });
+}
+
+const REVIEW_TEXT = [
+  ['Sara M.', 'Arrived on time and finished the job cleanly. Highly recommended.', 'جه في الميعاد وخلص الشغل نضيف. أنصح بيه.'],
+  ['Khaled A.', 'Fair price and very professional.', 'سعر عادل وتعامل محترم جدا.'],
+  ['Heba R.', 'Fixed the problem the same day.', 'صلح المشكلة في نفس اليوم.'],
+];
+function seedReviews(i, rating) {
+  const base = Math.max(1, Math.min(5, Math.round(rating)));
+  return REVIEW_TEXT.map(([name, comment, commentAr], k) => ({
+    clientName: name, comment, commentAr, rating: k === 1 ? Math.max(1, base - 1) : base,
+    createdAt: new Date(Date.UTC(2026, 8 - k, 5 + ((i + k) % 20))).toISOString(),
+  }));
 }
 
 function stripPassword(u) {
@@ -101,7 +120,7 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 // suitability: nearest first, rating as the tie-breaker. Without a location
 // it falls back to rating order.
 function searchTechnicians({ profession, city, search, minRating, lat, lng } = {}) {
-  let out = [...db.technicians];
+  let out = db.technicians.filter((t) => t.addressActive !== false);
   if (profession) out = out.filter((t) => t.profession === profession);
   if (city) out = out.filter((t) => t.city.toLowerCase() === String(city).toLowerCase());
   if (minRating) out = out.filter((t) => t.rating >= Number(minRating));
@@ -121,18 +140,38 @@ function searchTechnicians({ profession, city, search, minRating, lat, lng } = {
   }
   return out;
 }
+// Public shape: the phone number is only included when the technician
+// chose to make it public. Reviews combine seeded and real client reviews.
+function allReviews(t) {
+  const real = db.bookings.filter((b) => b.technicianId === t.id && b.review).map((b) => {
+    const c = findUserById(b.clientId);
+    return { clientName: c ? c.name : 'Client', comment: b.review.comment, rating: b.review.rating, createdAt: b.review.createdAt };
+  });
+  return [...real, ...(t.reviews || [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+function publicTechnician(t, { owner = false, withReviews = false } = {}) {
+  if (!t) return null;
+  const { phone, reviews, ...rest } = t;
+  const out = { ...rest, phone: owner || t.phonePublic ? phone : null };
+  const all = allReviews(t);
+  out.reviewCount = all.length;
+  if (withReviews) out.reviews = all;
+  return out;
+}
 function findTechnicianById(id) {
   return db.technicians.find((t) => t.id === id);
 }
 function findTechnicianByUserId(userId) {
   return db.technicians.find((t) => t.userId === userId);
 }
-function createTechnicianProfile(user, { profession, city, yearsExperience = 0, hourlyRate = 0, bio = '', lat, lng }) {
+function createTechnicianProfile(user, { profession, city, yearsExperience = 0, hourlyRate = 0, bio = '', lat, lng, phone = '', phonePublic = false, address = '', addressActive = true }) {
   const fallback = seed.CITY_COORDS[city || user.city] || {};
   const t = {
     id: nextId('tec'), userId: user.id, name: user.name, profession,
     city: city || user.city || '', yearsExperience: Number(yearsExperience) || 0,
     hourlyRate: Number(hourlyRate) || 0, rating: 0, jobsDone: 0, bio,
+    phone: String(phone || ''), phonePublic: phonePublic === true || phonePublic === 'true',
+    address: String(address || ''), addressActive: addressActive !== false && addressActive !== 'false', reviews: [],
     lat: lat !== undefined ? Number(lat) : fallback.lat,
     lng: lng !== undefined ? Number(lng) : fallback.lng,
   };
@@ -142,7 +181,7 @@ function createTechnicianProfile(user, { profession, city, yearsExperience = 0, 
 function updateTechnicianProfile(id, patch) {
   const t = findTechnicianById(id);
   if (!t) return null;
-  const allowed = ['city', 'yearsExperience', 'hourlyRate', 'bio', 'profession', 'lat', 'lng'];
+  const allowed = ['city', 'yearsExperience', 'hourlyRate', 'bio', 'profession', 'lat', 'lng', 'phone', 'phonePublic', 'address', 'addressActive'];
   for (const k of allowed) {
     if (patch[k] !== undefined) t[k] = patch[k];
   }
@@ -197,7 +236,8 @@ function addReview(booking, { rating, comment }) {
   const techBookings = db.bookings.filter((b) => b.technicianId === booking.technicianId && b.review);
   const tech = findTechnicianById(booking.technicianId);
   if (tech && techBookings.length) {
-    const avg = techBookings.reduce((s, b) => s + b.review.rating, 0) / techBookings.length;
+    const all = allReviews(tech);
+    const avg = all.reduce((s, r) => s + r.rating, 0) / all.length;
     tech.rating = Math.round(avg * 10) / 10;
   }
   return booking;
@@ -209,7 +249,7 @@ module.exports = {
   BOOKING_STATUS,
   findUserByEmail, findUserById, publicUser, createUser,
   listProfessions, listCities,
-  searchTechnicians, findTechnicianById, findTechnicianByUserId,
+  searchTechnicians, publicTechnician, findTechnicianById, findTechnicianByUserId,
   createTechnicianProfile, updateTechnicianProfile,
   createBooking, findBookingById, bookingsForClient, bookingsForTechnician, addReview,
 };

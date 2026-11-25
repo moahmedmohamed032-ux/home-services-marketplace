@@ -16,7 +16,7 @@ function authPayload(user) {
 router.post('/register', rateLimiter, async (req, res, next) => {
   try {
     requireFields(req.body, ['name', 'email', 'password', 'role']);
-    const { name, email, password, role, city, profession, yearsExperience, hourlyRate, bio, lat, lng } = req.body;
+    const { name, email, password, role, city, profession, yearsExperience, hourlyRate, bio, lat, lng, phone, phonePublic, address, addressActive } = req.body;
     assertEmail(email);
     assertPassword(password);
     assertRole(role);
@@ -33,7 +33,7 @@ router.post('/register', rateLimiter, async (req, res, next) => {
       passwordHash: await hashPassword(password), role, city, lat, lng,
     });
     if (role === 'technician') {
-      store.createTechnicianProfile(user, { profession, city, yearsExperience, hourlyRate, bio, lat, lng });
+      store.createTechnicianProfile(user, { profession, city, yearsExperience, hourlyRate, bio, lat, lng, phone, phonePublic, address, addressActive });
     }
     res.status(201).json(authPayload(user));
   } catch (err) {
@@ -59,7 +59,7 @@ router.post('/login', rateLimiter, async (req, res, next) => {
 // GET /api/auth/me — current session user (+ technician profile if any).
 router.get('/me', authenticate, (req, res) => {
   const technician = store.findTechnicianByUserId(req.user.id) || null;
-  res.json({ user: store.publicUser(req.user), technician });
+  res.json({ user: store.publicUser(req.user), technician: technician ? store.publicTechnician(technician, { owner: true, withReviews: true }) : null });
 });
 
 module.exports = router;

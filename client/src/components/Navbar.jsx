@@ -1,42 +1,43 @@
-import { useDispatch, useSelector } from 'react-redux';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../features/auth/authSlice';
+import { toggleLang, toggleTheme } from '../features/ui/uiSlice';
+import { useT } from '../i18n/useT';
 
 export default function Navbar() {
   const { user } = useSelector((s) => s.auth);
+  const theme = useSelector((s) => s.ui.theme);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-
-  const onLogout = () => {
-    dispatch(logout());
-    navigate('/');
-  };
+  const { t } = useT();
+  const dash = user && (user.role === 'technician' ? '/pro' : '/dashboard');
 
   return (
-    <nav className="nav">
+    <header className="navbar">
       <div className="container nav-inner">
-        <Link to="/" className="brand">
-          Fanni<span className="brand-dot">.</span>
-        </Link>
-        <div className="nav-links">
-          <NavLink to="/technicians">Find a technician</NavLink>
-          {user?.role === 'client' && <NavLink to="/dashboard">My bookings</NavLink>}
-          {user?.role === 'technician' && <NavLink to="/pro">Pro dashboard</NavLink>}
-        </div>
+        <Link to="/" className="brand"><span className="brand-mark">🛠</span>{t('brand')}</Link>
+        <nav className="nav-links">
+          <NavLink to="/" end>{t('home')}</NavLink>
+          <NavLink to="/technicians">{t('find')}</NavLink>
+        </nav>
         <div className="nav-actions">
-          {!user ? (
+          <button className="icon-btn" onClick={() => dispatch(toggleLang())} aria-label="language">{t('language')}</button>
+          <button className="icon-btn" onClick={() => dispatch(toggleTheme())} aria-label={t('theme')} title={t('theme')}>
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+          {user ? (
             <>
-              <Link to="/login" className="btn btn-ghost">Log in</Link>
-              <Link to="/register" className="btn btn-primary">Sign up</Link>
+              <Link to={dash} className="btn btn-primary dash-btn">▦ {t('dashboard')}</Link>
+              <button className="btn btn-ghost" onClick={() => { dispatch(logout()); navigate('/'); }}>{t('logout')}</button>
             </>
           ) : (
             <>
-              <span className="nav-user">Hi, {user.name.split(' ')[0]}</span>
-              <button className="btn btn-ghost" onClick={onLogout}>Log out</button>
+              <Link to="/login" className="btn btn-ghost">{t('login')}</Link>
+              <Link to="/register/client" className="btn btn-primary">{t('signup')}</Link>
             </>
           )}
         </div>
       </div>
-    </nav>
+    </header>
   );
 }

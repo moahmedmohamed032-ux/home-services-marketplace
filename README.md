@@ -1,4 +1,4 @@
-# Fanni — Home Services Marketplace
+# FIX-IT — Home Services Marketplace
 
 **Live:** https://fanni-marketplace.vercel.app
 
@@ -95,3 +95,7 @@ book → accept → complete → review, including role-guard and auth failures.
   `server/core/store.js`); on serverless it resets on cold starts. Swap the
   store module for MongoDB/Postgres without touching the routes.
 - Set `JWT_SECRET` in the environment for production.
+
+## Copyright
+
+© 2026 Ahmed Mohamed. All rights reserved. See [LICENSE](LICENSE).
