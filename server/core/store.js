@@ -89,10 +89,15 @@ async function createUser({ name, email, phone, passwordHash, role, city, lat, l
   return db.users.insert(user);
 }
 
+// Public marketplace is Luxor-only. Records for other cities (demo data) are kept, just hidden.
+// Override with PUBLIC_CITIES="Luxor,Cairo" (comma separated) to show more.
+const PUBLIC_CITIES = (process.env.PUBLIC_CITIES || 'Luxor').split(',').map((c) => c.trim().toLowerCase()).filter(Boolean);
+const isPublicCity = (t) => PUBLIC_CITIES.includes(String(t.city || '').toLowerCase());
+
 // ---- professions ----
 async function listProfessions() {
   await init();
-  const techs = await db.technicians.getAll();
+  const techs = (await db.technicians.getAll()).filter(isPublicCity);
   return seed.PROFESSIONS.map((p) => ({
     ...p,
     technicianCount: techs.filter((t) => t.profession === p.id).length,
@@ -100,7 +105,7 @@ async function listProfessions() {
 }
 async function listCities() {
   await init();
-  const techs = await db.technicians.getAll();
+  const techs = (await db.technicians.getAll()).filter(isPublicCity);
   return [...new Set(techs.map((t) => t.city))].sort();
 }
 
@@ -119,7 +124,7 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 // ---- technicians ----
 async function searchTechnicians({ profession, city, search, minRating, lat, lng } = {}) {
   await init();
-  let out = (await db.technicians.getAll()).filter((t) => t.addressActive !== false);
+  let out = (await db.technicians.getAll()).filter((t) => t.addressActive !== false && isPublicCity(t));
   if (profession) out = out.filter((t) => t.profession === profession);
   if (city) out = out.filter((t) => t.city.toLowerCase() === String(city).toLowerCase());
   if (minRating) out = out.filter((t) => t.rating >= Number(minRating));
