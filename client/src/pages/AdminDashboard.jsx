@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   const [invoices, setInvoices] = useState([]);
   const [professions, setProfessions] = useState([]);
   const [modal, setModal] = useState(null); // { kind, mode, data }
+  const [pendingDel, setPendingDel] = useState(null);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
@@ -37,7 +38,8 @@ export default function AdminDashboard() {
     try { const m = await fn(); setMsg(m === 'deleted' ? t('adminDeleted') : t('adminSaved')); setModal(null); load(); }
     catch (e) { setErr((e.response && e.response.data && e.response.data.error && e.response.data.error.message) || t('adminError')); }
   };
-  const del = (path) => { if (window.confirm(t('confirmDelete'))) run(() => api.delete(path).then(() => 'deleted')); };
+  const del = (path) => setPendingDel(path);
+  const confirmDel = () => { const path = pendingDel; setPendingDel(null); run(() => api.delete(path).then(() => 'deleted')); };
 
   const payStatusKey = { paid: 'paidLabel', unpaid: 'unpaidLabel', pending_verification: 'pendingVerification', pending_cash: 'pendingCash', pending_online: 'pendingOnline' };
   const methodLabel = (m) => (m === 'visa' || m === 'card' ? t('visa') : m === 'vodafone-cash' || m === 'wallet' ? t('vodafoneCash') : m === 'cash' ? t('cash') : '-');
@@ -181,6 +183,19 @@ export default function AdminDashboard() {
               {!invoices.length && <tr><td colSpan="8">{t('noData')}</td></tr>}
             </tbody></table></div>
         </>
+      )}
+
+      {pendingDel && (
+        <div className="modal-back" onClick={() => setPendingDel(null)}>
+          <div className="card modal" role="alertdialog" onClick={(e) => e.stopPropagation()}>
+            <h3>{t('crudDelete')}</h3>
+            <p>{t('confirmDelete')}</p>
+            <div className="btn-row">
+              <button className="btn btn-primary danger-solid" onClick={confirmDel}>{t('crudDelete')}</button>
+              <button className="btn btn-ghost" onClick={() => setPendingDel(null)}>{t('cancel')}</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {modal && (
