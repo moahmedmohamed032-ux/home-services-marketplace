@@ -7,6 +7,7 @@ let data = null;
 async function init() {
   if (data) return;
   data = buildDataset();
+  if (!data.notifications) data.notifications = [];
 }
 
 const strip = (o) => (o ? JSON.parse(JSON.stringify(o)) : o);
@@ -36,4 +37,5 @@ module.exports = {
   technicians: table('technicians'),
   bookings: table('bookings'),
   invoices: table('invoices'),
+  notifications: table('notifications'),
 };

@@ -44,9 +44,16 @@ const Invoice = mongoose.model('Invoice', new mongoose.Schema({
   commissionPaid: Boolean, commissionPaidAt: String,
 }, opts));
 
+const Notification = mongoose.model('Notification', new mongoose.Schema({
+  id: { type: String, unique: true, index: true },
+  userId: { type: String, index: true }, type: String, bookingId: String, invoiceId: String,
+  titleAr: String, titleEn: String, bodyAr: String, bodyEn: String, link: String,
+  read: Boolean, createdAt: String,
+}, opts));
+
 const Counter = mongoose.model('Counter', new mongoose.Schema({ _id: String, value: Number }, opts));
 
-const MODELS = { users: User, technicians: Technician, bookings: Booking, invoices: Invoice };
+const MODELS = { users: User, technicians: Technician, bookings: Booking, invoices: Invoice, notifications: Notification };
 
 const strip = (doc) => {
   if (!doc) return null;
@@ -98,4 +105,5 @@ module.exports = {
   technicians: table(MODELS.technicians),
   bookings: table(MODELS.bookings),
   invoices: table(MODELS.invoices),
+  notifications: table(MODELS.notifications),
 };

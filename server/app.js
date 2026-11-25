@@ -12,6 +12,7 @@ const bookingRoutes = require('./routes/bookings.routes');
 const invoiceRoutes = require('./routes/invoices.routes');
 const adminRoutes = require('./routes/admin.routes');
 const paymobRoutes = require('./routes/paymob.routes');
+const notificationRoutes = require('./routes/notifications.routes');
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/paymob', paymobRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.use('/api', (req, res, next) => next(ApiError.notFound(`No route: ${req.method} ${req.originalUrl}`)));
 app.use(errorHandler);

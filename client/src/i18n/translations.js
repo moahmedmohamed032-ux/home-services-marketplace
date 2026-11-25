@@ -1,5 +1,6 @@
 export const translations = {
   en: {
+    notifications: 'Notifications', noNotifications: 'No notifications yet.',
     brand: 'FIX-IT', tagline: 'Find the nearest, best-rated technician for any home job',
     home: 'Home', find: 'Find a technician', dashboard: 'Dashboard', login: 'Log in', logout: 'Log out',
     signup: 'Sign up', joinClient: 'Sign up as a client', joinTech: 'Sign up as a technician',
@@ -51,6 +52,7 @@ export const translations = {
     language: 'العربية', theme: 'Theme', light: 'Light', dark: 'Dark', notFound: 'Not found', back: 'Back',
   },
   ar: {
+    notifications: 'الإشعارات', noNotifications: 'مفيش إشعارات لسه.',
     brand: 'FIX-IT', tagline: 'اعثر على أقرب فني وأعلاهم تقييماً لأي شغل في بيتك',
     home: 'الرئيسية', find: 'ابحث عن فني', dashboard: 'لوحة التحكم', login: 'تسجيل الدخول', logout: 'خروج',
     signup: 'حساب جديد', joinClient: 'سجّل كعميل', joinTech: 'سجّل كفني',

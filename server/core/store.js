@@ -221,6 +221,46 @@ async function updateTechnicianProfile(id, patch) {
 }
 
 // ---- bookings ----
+
+// ---- in-app notifications (stored per user; the app polls and shows toasts) ----
+async function notify(userId, n) {
+  try {
+    if (!userId) return null;
+    await init();
+    const id = await db.nextId('ntf');
+    return await db.notifications.insert({
+      id, userId, type: n.type || 'info', bookingId: n.bookingId || '', invoiceId: n.invoiceId || '',
+      titleAr: n.titleAr, titleEn: n.titleEn, bodyAr: n.bodyAr || '', bodyEn: n.bodyEn || '',
+      link: n.link || '', read: false, createdAt: new Date().toISOString(),
+    });
+  } catch (err) { console.error('notify failed', err.message); return null; }
+}
+async function techUserId(technicianId) {
+  const t = await findTechnicianById(technicianId);
+  return t ? t.userId : null;
+}
+async function notificationsFor(userId, limit = 30) {
+  await init();
+  const all = (await db.notifications.getAll()).filter((n) => n.userId === userId);
+  all.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return { notifications: all.slice(0, limit), unread: all.filter((n) => !n.read).length };
+}
+async function markNotificationsRead(userId, ids) {
+  await init();
+  const all = (await db.notifications.getAll()).filter((n) => n.userId === userId && !n.read && (!ids || ids.includes(n.id)));
+  for (const n of all) await db.notifications.update(n.id, { read: true });
+  return all.length;
+}
+async function notifyPaid(invoice) {
+  const inv = invoice;
+  await notify(inv.clientId, { type: 'paid', bookingId: inv.bookingId, invoiceId: inv.id, link: '/dashboard',
+    titleAr: 'تم تسجيل الدفع ✅', titleEn: 'Payment recorded ✅',
+    bodyAr: `فاتورة ${inv.number} اتدفعت. شكراً لاستخدامك FIX-IT.`, bodyEn: `Invoice ${inv.number} is paid. Thank you for using FIX-IT.` });
+  await notify(await techUserId(inv.technicianId), { type: 'paid', bookingId: inv.bookingId, invoiceId: inv.id, link: '/pro',
+    titleAr: 'استلمت دفعة جديدة 💰', titleEn: 'Payment received 💰',
+    bodyAr: `فاتورة ${inv.number} اتدفعت.`, bodyEn: `Invoice ${inv.number} was paid.` });
+}
+
 async function createBooking({ clientId, technicianId, date, description, descriptionAr = '', address, clientLat, clientLng }) {
   await init();
   const b = {
@@ -230,7 +270,13 @@ async function createBooking({ clientId, technicianId, date, description, descri
       : {}),
     status: 'pending', createdAt: new Date().toISOString(), review: null,
   };
-  return db.bookings.insert(b);
+  const saved = await db.bookings.insert(b);
+  const client = await findUserById(clientId);
+  await notify(await techUserId(technicianId), { type: 'booking_new', bookingId: saved.id, link: '/pro',
+    titleAr: 'طلب جديد 🔔', titleEn: 'New request 🔔',
+    bodyAr: `${client ? client.name : 'عميل'} طلب خدمتك: ${String(description).slice(0, 60)}`,
+    bodyEn: `${client ? client.name : 'A client'} requested you: ${String(description).slice(0, 60)}` });
+  return saved;
 }
 async function findBookingById(id) {
   await init();
@@ -294,6 +340,18 @@ async function setBookingStatus(booking, status) {
     if (tech) await db.technicians.update(tech.id, { jobsDone: (tech.jobsDone || 0) + 1 });
     await createInvoiceForBooking(updated);
   }
+  const msgs = {
+    accepted: ['الفني قبل طلبك ✅', 'Technician accepted your request ✅', 'الفني هيتواصل معاك لتأكيد الميعاد.', 'The technician will contact you to confirm the time.'],
+    declined: ['الفني اعتذر عن الطلب', 'Technician declined the request', 'ممكن تختار فني تاني من القايمة.', 'You can pick another technician.'],
+    completed: ['الشغل خلص، الفاتورة جاهزة 🧾', 'Job done, invoice ready 🧾', 'افتح لوحة التحكم وادفع واكتب تقييمك.', 'Open your dashboard to pay and leave a review.'],
+  };
+  if (msgs[status]) {
+    const m = msgs[status];
+    await notify(booking.clientId, { type: `booking_${status}`, bookingId: booking.id, link: '/dashboard', titleAr: m[0], titleEn: m[1], bodyAr: m[2], bodyEn: m[3] });
+  } else if (status === 'cancelled') {
+    await notify(await techUserId(booking.technicianId), { type: 'booking_cancelled', bookingId: booking.id, link: '/pro',
+      titleAr: 'العميل لغى الطلب', titleEn: 'Client cancelled the request', bodyAr: '', bodyEn: '' });
+  }
   return updated;
 }
 
@@ -309,6 +367,8 @@ async function addReview(booking, { rating, comment, commentAr = '' }) {
       await db.technicians.update(tech.id, { rating: Math.round(avg * 10) / 10 });
     }
   }
+  await notify(tech && tech.userId, { type: 'review', bookingId: booking.id, link: '/pro',
+    titleAr: 'تقييم جديد ⭐', titleEn: 'New review ⭐', bodyAr: `${review.rating} من 5`, bodyEn: `${review.rating} out of 5` });
   return updated;
 }
 
@@ -380,6 +440,7 @@ async function payInvoice(invoice, { method, mobileNumber, cardNumber }) {
       method, status: 'paid', cardLast4: digits.slice(-4),
       confirmationCode: `FX-${code(6)}`, paidAt: now,
     });
+    await notifyPaid(updated);
     return { invoice: await hydrateInvoice(updated) };
   }
   if (method === 'vodafone-cash') {
@@ -394,6 +455,9 @@ async function payInvoice(invoice, { method, mobileNumber, cardNumber }) {
     return { invoice: await hydrateInvoice(updated), demoCode: verificationCode };
   }
   const updated = await db.invoices.update(invoice.id, { method, status: 'pending_cash' });
+  await notify(await techUserId(invoice.technicianId), { type: 'cash_pending', bookingId: invoice.bookingId, invoiceId: invoice.id, link: '/pro',
+    titleAr: 'العميل هيدفع كاش 💵', titleEn: 'Client will pay cash 💵',
+    bodyAr: `فاتورة ${invoice.number}: أكّد الاستلام بعد ما تقبض.`, bodyEn: `Invoice ${invoice.number}: confirm once you are paid.` });
   return { invoice: await hydrateInvoice(updated) };
 }
 
@@ -429,6 +493,7 @@ async function applyPaymobTransaction({ reference, transactionId, amountCents, s
     paymobTxnId: String(transactionId || ''),
     confirmationCode: `FX-${code(6)}`, paidAt: new Date().toISOString(),
   });
+  await notifyPaid(updated);
   return { status: 'paid', invoice: await hydrateInvoice(updated) };
 }
 
@@ -439,6 +504,7 @@ async function verifyInvoice(invoice, codeInput) {
   const updated = await db.invoices.update(invoice.id, {
     status: 'paid', confirmationCode: `FX-${code(6)}`, verificationCode: null, paidAt: new Date().toISOString(),
   });
+  await notifyPaid(updated);
   return hydrateInvoice(updated);
 }
 
@@ -449,6 +515,7 @@ async function confirmInvoice(invoice) {
   const updated = await db.invoices.update(invoice.id, {
     status: 'paid', confirmationCode: `FX-${code(6)}`, verificationCode: null, paidAt: new Date().toISOString(),
   });
+  await notifyPaid(updated);
   return hydrateInvoice(updated);
 }
 
@@ -740,6 +807,7 @@ module.exports = {
   findInvoiceById, findInvoiceByBookingId, invoicesForClient, invoicesForTechnician, allInvoices,
   payInvoice, verifyInvoice, confirmInvoice, publicInvoice,
   startPaymobPayment, applyPaymobTransaction,
+  notify, notificationsFor, markNotificationsRead,
   listUsersAdmin, adminOverview, adminCommissions, COMMISSION_RATE,
   adminListTechnicians, adminCreateTechnician, adminUpdateTechnician, adminDeleteTechnician,
   adminUpdateUser, adminDeleteUser, adminListBookings, adminSetBookingStatus, adminDeleteBooking,

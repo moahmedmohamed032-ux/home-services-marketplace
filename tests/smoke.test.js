@@ -95,6 +95,24 @@ test('full client + technician flow', async () => {
   res = await post(`/bookings/${booking.id}/review`, { rating: 5, comment: 'Great work' }, clientToken);
   assert.equal(res.status, 201);
 
+  // in-app notifications were created for both sides
+  {
+    const tn = await (await fetch(`${base}/notifications`, { headers: { authorization: `Bearer ${techToken}` } })).json();
+    const types = tn.notifications.filter((n) => n.bookingId === booking.id).map((n) => n.type);
+    assert.ok(types.includes('booking_new') && types.includes('review'));
+    const cn = await (await fetch(`${base}/notifications`, { headers: { authorization: `Bearer ${clientToken}` } })).json();
+    const ctypes = cn.notifications.filter((n) => n.bookingId === booking.id).map((n) => n.type);
+    assert.ok(ctypes.includes('booking_accepted') && ctypes.includes('booking_completed'));
+    assert.ok(cn.unread >= 2);
+    const mr = await (await post('/notifications/read', {}, clientToken)).json();
+    assert.ok(mr.marked >= 2);
+    const after = await (await fetch(`${base}/notifications`, { headers: { authorization: `Bearer ${clientToken}` } })).json();
+    assert.equal(after.unread, 0);
+    // a user never sees someone else's notifications
+    assert.ok(!tn.notifications.some((n) => n.userId !== techUser.id));
+    assert.equal((await fetch(`${base}/notifications`)).status, 401);
+  }
+
   // a client cannot drive technician-only transitions
   const res2 = await post('/bookings', { technicianId: target.id, date: '2026-12-02', description: 'x', address: 'y' }, clientToken);
   const { booking: b2 } = await res2.json();
