@@ -11,6 +11,7 @@ async function authenticate(req, res, next) {
     const payload = verifyToken(token);
     const user = await store.findUserById(payload.sub);
     if (!user) return next(ApiError.unauthorized('Account no longer exists'));
+    if (user.active === false) return next(ApiError.unauthorized('Account is deactivated'));
     req.user = user;
     next();
   } catch {

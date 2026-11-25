@@ -13,7 +13,7 @@ const reviewSchema = new mongoose.Schema(
 const User = mongoose.model('User', new mongoose.Schema({
   id: { type: String, unique: true, index: true },
   name: String, email: { type: String, index: true }, passwordHash: String,
-  role: String, city: String, lat: Number, lng: Number, createdAt: String,
+  role: String, city: String, active: Boolean, lat: Number, lng: Number, createdAt: String,
 }, opts));
 
 const Technician = mongoose.model('Technician', new mongoose.Schema({
@@ -80,6 +80,7 @@ const table = (Model) => ({
   getById: async (id) => strip(await Model.findOne({ id }).lean()),
   insert: async (row) => strip(await Model.create(row)),
   update: async (id, patch) => strip(await Model.findOneAndUpdate({ id }, { $set: patch }, { new: true }).lean()),
+  remove: async (id) => (await Model.deleteOne({ id })).deletedCount > 0,
 });
 
 module.exports = {

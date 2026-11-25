@@ -21,6 +21,12 @@ const table = (name) => ({
     Object.assign(row, patch);
     return strip(row);
   },
+  remove: async (id) => {
+    const i = data[name].findIndex((r) => r.id === id);
+    if (i === -1) return false;
+    data[name].splice(i, 1);
+    return true;
+  },
 });
 
 module.exports = {

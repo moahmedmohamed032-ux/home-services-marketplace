@@ -130,3 +130,15 @@ table.table { width: 100%; border-collapse: collapse; font-size: .92rem; }
 .table th { color: var(--muted); font-weight: 700; }
 .stat-grid-4 { grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 720px) { .stat-grid-4 { grid-template-columns: repeat(2, 1fr); } }
+
+/* Admin CRUD */
+.admin-tabs { margin: 1.2rem 0 .4rem; }
+.admin-bar { display: flex; justify-content: space-between; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.row-actions { display: flex; gap: .35rem; align-items: center; }
+.row-actions .status-select { width: auto; padding: .25rem .5rem; font-size: .88rem; }
+.btn.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+.admin-flash { padding: .5rem .8rem; border-radius: 10px; font-weight: 700; margin: .5rem 0; }
+.admin-flash.ok { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+.admin-flash.bad { background: color-mix(in srgb, var(--bad) 15%, transparent); color: var(--bad); }
+.modal-back { position: fixed; inset: 0; background: rgba(15, 23, 42, .45); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
+.modal { width: min(460px, 100%); max-height: 90vh; overflow-y: auto; }

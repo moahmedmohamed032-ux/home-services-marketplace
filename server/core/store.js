@@ -415,6 +415,177 @@ async function listUsersAdmin() {
     })
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
+// ---- admin CRUD ----
+const num = (v, name, { min = 0, max = Infinity, int = false } = {}) => {
+  const n = Number(v);
+  if (v === '' || v === null || Number.isNaN(n) || n < min || n > max || (int && !Number.isInteger(n))) {
+    throw ApiError.badRequest(`${name} must be a number between ${min} and ${max === Infinity ? 'any' : max}`);
+  }
+  return n;
+};
+const text = (v, name, { max = 120, required = true } = {}) => {
+  const s = String(v === undefined || v === null ? '' : v).trim();
+  if (required && !s) throw ApiError.badRequest(`${name} is required`);
+  if (s.length > max) throw ApiError.badRequest(`${name} is too long`);
+  return s;
+};
+const assertProfession = (id) => {
+  if (!seed.PROFESSIONS.some((p) => p.id === id)) throw ApiError.badRequest('Unknown profession');
+};
+
+async function adminListTechnicians() {
+  await init();
+  const techs = await db.technicians.getAll();
+  const users = await db.users.getAll();
+  return techs.map((t) => {
+    const u = users.find((x) => x.id === t.userId);
+    return { ...t, reviews: undefined, email: u ? u.email : '', userActive: u ? u.active !== false : true };
+  }).sort((a, b) => a.name.localeCompare(b.name));
+}
+async function adminCreateTechnician(body, passwordHash) {
+  await init();
+  const name = text(body.name, 'name');
+  const profession = text(body.profession, 'profession');
+  assertProfession(profession);
+  const city = text(body.city, 'city', { max: 60 });
+  const user = await createUser({ name, email: text(body.email, 'email', { max: 120 }), passwordHash, role: 'technician', city });
+  const t = await createTechnicianProfile(user, {
+    profession, city, district: text(body.district, 'district', { max: 60, required: false }),
+    yearsExperience: body.yearsExperience === undefined ? 0 : num(body.yearsExperience, 'yearsExperience', { max: 60 }),
+    hourlyRate: body.hourlyRate === undefined ? 0 : num(body.hourlyRate, 'hourlyRate', { max: 100000 }),
+    phone: text(body.phone, 'phone', { max: 20, required: false }),
+    phonePublic: body.phonePublic === true,
+  });
+  if (body.rating !== undefined && body.rating !== '') {
+    return db.technicians.update(t.id, { rating: num(body.rating, 'rating', { min: 0, max: 5 }) });
+  }
+  return t;
+}
+async function adminUpdateTechnician(id, body) {
+  await init();
+  const tech = await db.technicians.getById(id);
+  if (!tech) throw ApiError.notFound('Technician not found');
+  const patch = {};
+  if (body.name !== undefined) patch.name = text(body.name, 'name');
+  if (body.profession !== undefined) { assertProfession(body.profession); patch.profession = body.profession; }
+  if (body.city !== undefined) patch.city = text(body.city, 'city', { max: 60 });
+  if (body.district !== undefined) patch.district = text(body.district, 'district', { max: 60, required: false });
+  if (body.phone !== undefined) patch.phone = text(body.phone, 'phone', { max: 20, required: false });
+  if (body.rating !== undefined) patch.rating = num(body.rating, 'rating', { min: 0, max: 5 });
+  if (body.hourlyRate !== undefined) patch.hourlyRate = num(body.hourlyRate, 'hourlyRate', { max: 100000 });
+  if (body.yearsExperience !== undefined) patch.yearsExperience = num(body.yearsExperience, 'yearsExperience', { max: 60 });
+  if (body.addressActive !== undefined) patch.addressActive = body.addressActive === true;
+  if (!Object.keys(patch).length) throw ApiError.badRequest('Nothing to update');
+  const updated = await db.technicians.update(id, patch);
+  if (patch.name && tech.userId) await db.users.update(tech.userId, { name: patch.name });
+  return updated;
+}
+async function removeBookingCascade(bookingId) {
+  const inv = (await db.invoices.getAll()).filter((i) => i.bookingId === bookingId);
+  for (const i of inv) await db.invoices.remove(i.id);
+  await db.bookings.remove(bookingId);
+}
+async function removeTechnicianCascade(tech) {
+  for (const b of (await db.bookings.getAll()).filter((x) => x.technicianId === tech.id)) await removeBookingCascade(b.id);
+  await db.technicians.remove(tech.id);
+}
+async function adminDeleteTechnician(id) {
+  await init();
+  const tech = await db.technicians.getById(id);
+  if (!tech) throw ApiError.notFound('Technician not found');
+  await removeTechnicianCascade(tech);
+  const u = tech.userId ? await db.users.getById(tech.userId) : null;
+  if (u && u.role === 'technician') await db.users.remove(u.id);
+  return true;
+}
+async function adminUpdateUser(id, body, actor) {
+  await init();
+  const user = await db.users.getById(id);
+  if (!user) throw ApiError.notFound('User not found');
+  const patch = {};
+  if (body.name !== undefined) patch.name = text(body.name, 'name');
+  if (body.city !== undefined) patch.city = text(body.city, 'city', { max: 60, required: false });
+  if (body.role !== undefined) {
+    if (!['client', 'technician', 'admin'].includes(body.role)) throw ApiError.badRequest('Invalid role');
+    if (user.id === actor.id && body.role !== 'admin') throw ApiError.badRequest('You cannot change your own role');
+    patch.role = body.role;
+  }
+  if (body.active !== undefined) {
+    if (user.id === actor.id && body.active !== true) throw ApiError.badRequest('You cannot deactivate yourself');
+    patch.active = body.active === true;
+  }
+  if (!Object.keys(patch).length) throw ApiError.badRequest('Nothing to update');
+  const updated = await db.users.update(id, patch);
+  const tech = await findTechnicianByUserId(id);
+  if (tech) {
+    const tp = {};
+    if (patch.name) tp.name = patch.name;
+    if (patch.active !== undefined) tp.addressActive = patch.active;
+    if (Object.keys(tp).length) await db.technicians.update(tech.id, tp);
+  }
+  return publicUser(updated);
+}
+async function adminDeleteUser(id, actor) {
+  await init();
+  const user = await db.users.getById(id);
+  if (!user) throw ApiError.notFound('User not found');
+  if (user.id === actor.id) throw ApiError.badRequest('You cannot delete your own account');
+  const tech = await findTechnicianByUserId(id);
+  if (tech) await removeTechnicianCascade(tech);
+  for (const b of (await db.bookings.getAll()).filter((x) => x.clientId === id)) await removeBookingCascade(b.id);
+  await db.users.remove(id);
+  return true;
+}
+async function adminListBookings() {
+  await init();
+  const rows = [];
+  for (const b of await db.bookings.getAll()) rows.push(await hydrateBooking(b));
+  return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+async function adminSetBookingStatus(id, status) {
+  await init();
+  if (!BOOKING_STATUS.includes(status)) throw ApiError.badRequest('Invalid status');
+  const b = await db.bookings.getById(id);
+  if (!b) throw ApiError.notFound('Booking not found');
+  if (b.status === status) return hydrateBooking(b);
+  return hydrateBooking(await setBookingStatus(b, status));
+}
+async function adminDeleteBooking(id) {
+  await init();
+  if (!(await db.bookings.getById(id))) throw ApiError.notFound('Booking not found');
+  await removeBookingCascade(id);
+  return true;
+}
+async function adminUpdateInvoice(id, body) {
+  await init();
+  const inv = await db.invoices.getById(id);
+  if (!inv) throw ApiError.notFound('Invoice not found');
+  const patch = {};
+  if (body.items !== undefined) {
+    if (!Array.isArray(body.items) || body.items.length !== (inv.items || []).length) throw ApiError.badRequest('items must match the invoice lines');
+    patch.items = inv.items.map((it, i) => ({ label: it.label, labelAr: it.labelAr, amount: num(body.items[i], 'amount', { max: 1000000 }) }));
+    patch.total = patch.items.reduce((s, it) => s + it.amount, 0);
+  } else if (body.total !== undefined) {
+    patch.total = num(body.total, 'total', { max: 1000000 });
+  }
+  if (body.status !== undefined) {
+    if (!['paid', 'unpaid'].includes(body.status)) throw ApiError.badRequest("status must be 'paid' or 'unpaid'");
+    if (body.status === 'paid' && inv.status !== 'paid') {
+      Object.assign(patch, { status: 'paid', confirmationCode: `FX-${code(6)}`, verificationCode: null, paidAt: new Date().toISOString() });
+    } else if (body.status === 'unpaid' && inv.status !== 'unpaid') {
+      Object.assign(patch, { status: 'unpaid', method: null, cardLast4: null, mobileNumber: null, confirmationCode: null, verificationCode: null, paidAt: null });
+    }
+  }
+  if (!Object.keys(patch).length) throw ApiError.badRequest('Nothing to update');
+  return hydrateInvoice(await db.invoices.update(id, patch));
+}
+async function adminDeleteInvoice(id) {
+  await init();
+  if (!(await db.invoices.getById(id))) throw ApiError.notFound('Invoice not found');
+  await db.invoices.remove(id);
+  return true;
+}
+
 async function adminOverview() {
   await init();
   const users = await db.users.getAll();
@@ -456,4 +627,7 @@ module.exports = {
   payInvoice, verifyInvoice, confirmInvoice, publicInvoice,
   startPaymobPayment, applyPaymobTransaction,
   listUsersAdmin, adminOverview,
+  adminListTechnicians, adminCreateTechnician, adminUpdateTechnician, adminDeleteTechnician,
+  adminUpdateUser, adminDeleteUser, adminListBookings, adminSetBookingStatus, adminDeleteBooking,
+  adminUpdateInvoice, adminDeleteInvoice,
 };

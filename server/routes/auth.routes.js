@@ -50,6 +50,7 @@ router.post('/login', rateLimiter, async (req, res, next) => {
     if (!user || !(await comparePassword(password, user.passwordHash))) {
       throw ApiError.unauthorized('Wrong email or password');
     }
+    if (user.active === false) throw ApiError.unauthorized('Account is deactivated');
     res.json(authPayload(user));
   } catch (err) {
     next(err);
