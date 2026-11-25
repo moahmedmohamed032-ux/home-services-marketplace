@@ -385,6 +385,48 @@ async function sweepAutoConfirm() {
   return n;
 }
 
+// ---- admin digest: one summary for every 10 completed jobs (Telegram bot + in-app toast) ----
+const DIGEST_EVERY = 10;
+async function sendTelegram(text) {
+  const token = process.env.TELEGRAM_BOT_TOKEN; const chat = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chat) return false;
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: chat, text }),
+    });
+    return r.ok;
+  } catch (err) { console.error('telegram failed', err.message); return false; }
+}
+let digestBusy = false;
+async function adminDigestIfDue() {
+  if (digestBusy) return;
+  digestBusy = true;
+  try {
+    const all = await db.bookings.getAll();
+    const batch = all.filter((b) => b.status === 'completed' && !b.digested);
+    if (batch.length < DIGEST_EVERY) return;
+    const slice = batch.slice(0, DIGEST_EVERY);
+    const invoices = await db.invoices.getAll();
+    let total = 0; let paid = 0;
+    const lines = [];
+    for (const b of slice) {
+      const inv = invoices.find((i) => i.bookingId === b.id);
+      const amt = inv ? commissionBase(inv) : (b.finalAmount || 0);
+      total += amt; if (inv && inv.status === 'paid') paid += 1;
+      lines.push(`- ${b.id}: ${amt} EGP${inv && inv.status === 'paid' ? ' (paid)' : ''}`);
+    }
+    const text = `FIX-IT: ${DIGEST_EVERY} completed jobs\nملخص ${DIGEST_EVERY} عمليات مكتملة\nإجمالي الشغل: ${total} جنيه\nعمولة ${COMMISSION_RATE * 100}%: ${round2(total * COMMISSION_RATE)} جنيه\nمدفوع: ${paid}/${DIGEST_EVERY}\n${lines.join('\n')}`;
+    const sent = await sendTelegram(text);
+    if (!sent) return; // not configured or failed: keep the batch and retry on the next completion
+    const admins = (await db.users.getAll()).filter((u) => u.role === 'admin');
+    for (const a of admins) {
+      await notify(a.id, { type: 'admin_digest', link: '/admin', titleAr: `${DIGEST_EVERY} عمليات اكتملت`, titleEn: `${DIGEST_EVERY} jobs completed`,
+        bodyAr: `إجمالي ${total} جنيه، العمولة ${round2(total * COMMISSION_RATE)} جنيه`, bodyEn: `Total ${total} EGP, commission ${round2(total * COMMISSION_RATE)} EGP` });
+    }
+    for (const b of slice) await db.bookings.update(b.id, { digested: true });
+  } catch (err) { console.error('digest failed', err.message); } finally { digestBusy = false; }
+}
+
 async function setBookingStatus(booking, status, extra = {}) {
   await init();
   const patch = { status, ...extra };
@@ -396,6 +438,7 @@ async function setBookingStatus(booking, status, extra = {}) {
     const tech = await findTechnicianById(booking.technicianId);
     if (tech) await db.technicians.update(tech.id, { jobsDone: (tech.jobsDone || 0) + 1 });
     await createInvoiceForBooking(updated);
+    await adminDigestIfDue();
   }
   const msgs = {
     accepted: ['الفني قبل طلبك ✅', 'Technician accepted your request ✅', 'الفني هيتواصل معاك لتأكيد الميعاد.', 'The technician will contact you to confirm the time.'],
