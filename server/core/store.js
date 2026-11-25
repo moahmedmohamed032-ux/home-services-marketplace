@@ -457,7 +457,7 @@ async function adminCreateTechnician(body, passwordHash) {
     phonePublic: body.phonePublic === true,
   });
   if (body.rating !== undefined && body.rating !== '') {
-    return db.technicians.update(t.id, { rating: num(body.rating, 'rating', { min: 0, max: 5 }) });
+    return db.technicians.update(t.id, { rating: Math.round(num(body.rating, 'rating', { min: 0, max: 5 }) * 10) / 10 });
   }
   return t;
 }
@@ -471,7 +471,7 @@ async function adminUpdateTechnician(id, body) {
   if (body.city !== undefined) patch.city = text(body.city, 'city', { max: 60 });
   if (body.district !== undefined) patch.district = text(body.district, 'district', { max: 60, required: false });
   if (body.phone !== undefined) patch.phone = text(body.phone, 'phone', { max: 20, required: false });
-  if (body.rating !== undefined) patch.rating = num(body.rating, 'rating', { min: 0, max: 5 });
+  if (body.rating !== undefined) patch.rating = Math.round(num(body.rating, 'rating', { min: 0, max: 5 }) * 10) / 10;
   if (body.hourlyRate !== undefined) patch.hourlyRate = num(body.hourlyRate, 'hourlyRate', { max: 100000 });
   if (body.yearsExperience !== undefined) patch.yearsExperience = num(body.yearsExperience, 'yearsExperience', { max: 60 });
   if (body.addressActive !== undefined) patch.addressActive = body.addressActive === true;

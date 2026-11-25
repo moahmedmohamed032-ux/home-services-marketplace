@@ -57,6 +57,9 @@ async function init() {
   if (!global._fixitMongo) {
     global._fixitMongo = mongoose.connect(process.env.MONGODB_URI, {
       serverSelectionTimeoutMS: 8000,
+      readPreference: 'primary',
+      readConcern: { level: 'majority' },
+      writeConcern: { w: 'majority' },
       bufferCommands: false,
     }).then(async () => {
       // First boot on an empty cluster: load the seed dataset.
