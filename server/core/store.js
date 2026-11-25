@@ -31,7 +31,8 @@ function init() {
 }
 init();
 
-const BOOKING_STATUS = ['pending', 'accepted', 'declined', 'completed', 'cancelled'];
+const BOOKING_STATUS = ['pending', 'accepted', 'in_progress', 'awaiting_confirmation', 'declined', 'completed', 'cancelled'];
+const AUTO_CONFIRM_MS = 48 * 3600 * 1000;
 
 // ---- users ----
 // Egyptian mobile numbers are the login for technicians without email.
@@ -320,12 +321,14 @@ async function hydrateBooking(b) {
 }
 async function bookingsForClient(clientId) {
   await init();
+  await sweepAutoConfirm();
   const all = await db.bookings.getAll();
   const rows = [];
   for (const b of all.filter((x) => x.clientId === clientId)) rows.push(await hydrateBooking(b));
   return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 async function bookingsForTechnician(userId) {
+  await sweepAutoConfirm();
   const tech = await findTechnicianByUserId(userId);
   if (!tech) return [];
   const all = await db.bookings.getAll();
@@ -339,16 +342,17 @@ async function createInvoiceForBooking(booking) {
   if (existing.some((i) => i.bookingId === booking.id)) return null;
   const tech = await findTechnicianById(booking.technicianId);
   const prof = seed.PROFESSIONS.find((p) => p.id === (tech && tech.profession));
+  const jobAmount = booking.finalAmount || (tech ? tech.hourlyRate : 0);
   const id = await db.nextId('inv');
   const num = Number(id.split('_')[1]);
   const invoice = {
     id, number: `INV-2026-${String(num).padStart(4, '0')}`,
     bookingId: booking.id, clientId: booking.clientId, technicianId: booking.technicianId,
     items: [
-      { label: `${prof ? prof.name : 'Service'} visit`, labelAr: `زيارة ${prof ? prof.nameAr : 'فني'}`, amount: tech ? tech.hourlyRate : 0 },
+      { label: `${prof ? prof.name : 'Service'} visit`, labelAr: `زيارة ${prof ? prof.nameAr : 'فني'}`, amount: jobAmount },
       { label: 'FIX-IT service fee', labelAr: 'رسوم خدمة FIX-IT', amount: seed.SERVICE_FEE_EGP },
     ],
-    total: (tech ? tech.hourlyRate : 0) + seed.SERVICE_FEE_EGP,
+    total: jobAmount + seed.SERVICE_FEE_EGP,
     method: null, status: 'unpaid',
     cardLast4: null, mobileNumber: null, confirmationCode: null, verificationCode: null,
     paidAt: null, createdAt: new Date().toISOString(),
@@ -356,9 +360,38 @@ async function createInvoiceForBooking(booking) {
   return db.invoices.insert(invoice);
 }
 
-async function setBookingStatus(booking, status) {
+// Technician reports the job as done with the final amount; must be inside the market cap.
+async function submitFinalAmount(booking, amount) {
   await init();
-  const updated = await db.bookings.update(booking.id, { status });
+  const tech = await findTechnicianById(booking.technicianId);
+  const a = Number(amount);
+  if (!Number.isFinite(a) || a <= 0) throw ApiError.badRequest('Enter the final amount in EGP');
+  const band = priceBand(tech && tech.profession);
+  if (band && a > band.priceMax) throw ApiError.badRequest(`Final amount is above the market limit for this service (max ${band.priceMax} EGP)`);
+  return setBookingStatus(booking, 'awaiting_confirmation', { finalAmount: Math.round(a) });
+}
+// Confirm automatically when the client has not answered within 48h. Safe to call often.
+async function sweepAutoConfirm() {
+  await init();
+  const now = Date.now();
+  const all = await db.bookings.getAll();
+  let n = 0;
+  for (const b of all) {
+    if (b.status === 'awaiting_confirmation' && b.awaitingSince && now - Date.parse(b.awaitingSince) >= AUTO_CONFIRM_MS) {
+      await setBookingStatus(b, 'completed', { autoConfirmed: true });
+      n += 1;
+    }
+  }
+  return n;
+}
+
+async function setBookingStatus(booking, status, extra = {}) {
+  await init();
+  const patch = { status, ...extra };
+  if (status === 'in_progress' && !booking.startedAt) patch.startedAt = new Date().toISOString();
+  if (status === 'awaiting_confirmation') patch.awaitingSince = new Date().toISOString();
+  if (status === 'completed') patch.completedAt = new Date().toISOString();
+  const updated = await db.bookings.update(booking.id, patch);
   if (status === 'completed') {
     const tech = await findTechnicianById(booking.technicianId);
     if (tech) await db.technicians.update(tech.id, { jobsDone: (tech.jobsDone || 0) + 1 });
@@ -367,6 +400,8 @@ async function setBookingStatus(booking, status) {
   const msgs = {
     accepted: ['الفني قبل طلبك ✅', 'Technician accepted your request ✅', 'الفني هيتواصل معاك لتأكيد الميعاد.', 'The technician will contact you to confirm the time.'],
     declined: ['الفني اعتذر عن الطلب', 'Technician declined the request', 'ممكن تختار فني تاني من القايمة.', 'You can pick another technician.'],
+    in_progress: ['الفني بدأ الشغل 🔧', 'The technician started the job 🔧', '', ''],
+    awaiting_confirmation: ['الفني أنهى الشغل، أكّد الاستلام', 'Work finished, please confirm', 'راجع المبلغ النهائي وأكّد. لو مفيش رد خلال 48 ساعة هيتأكد تلقائياً.', 'Review the final amount and confirm. It auto-confirms after 48 hours.'],
     completed: ['الشغل خلص، الفاتورة جاهزة 🧾', 'Job done, invoice ready 🧾', 'افتح لوحة التحكم وادفع واكتب تقييمك.', 'Open your dashboard to pay and leave a review.'],
   };
   if (msgs[status]) {
@@ -822,7 +857,7 @@ async function adminOverview() {
 }
 
 module.exports = {
-  BOOKING_STATUS, init,
+  BOOKING_STATUS, submitFinalAmount, sweepAutoConfirm, init,
   findUserByEmail, findUserByPhone, findUserByLogin, setUserPassword, normalizePhone, isEgPhone, findUserById, publicUser, createUser,
   listProfessions, listCities,
   searchTechnicians, publicTechnician, findTechnicianById, findTechnicianByUserId,

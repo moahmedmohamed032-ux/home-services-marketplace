@@ -2,7 +2,19 @@
   "buildCommand": "npm --prefix client install && npm --prefix client run build",
   "outputDirectory": "client/dist",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/index.js" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    {
+      "source": "/api/:path*",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/autoconfirm",
+      "schedule": "0 6 * * *"
+    }
   ]
 }

@@ -17,6 +17,7 @@ export default function TechnicianDashboard() {
   const incoming = useSelector((s) => s.bookings.incoming);
   const [tech, setTech] = useState(null);
   const [saveErr, setSaveErr] = useState('');
+  const [amounts, setAmounts] = useState({});
   const [payments, setPayments] = useState([]);
   const loadPayments = () => api.get('/invoices/technician').then((r) => setPayments(r.data.invoices)).catch(() => {});
   const [saved, setSaved] = useState(false);
@@ -100,7 +101,14 @@ export default function TechnicianDashboard() {
                     <button className="btn btn-primary btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'accepted' }))}>{t('accept')}</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'declined' }))}>{t('decline')}</button>
                   </>}
-                  {b.status === 'accepted' && <button className="btn btn-primary btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'completed' }))}>{t('complete')}</button>}
+                  {b.status === 'accepted' && <button className="btn btn-ghost btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'in_progress' }))}>{t('startJob')}</button>}
+                  {['accepted', 'in_progress'].includes(b.status) && (
+                    <form className="done-form" onSubmit={(e) => { e.preventDefault(); const v = Number(amounts[b.id]); if (v > 0) dispatch(updateBookingStatus({ id: b.id, status: 'awaiting_confirmation', finalAmount: v })); }}>
+                      <input type="number" min="1" placeholder={t('finalAmount')} value={amounts[b.id] || ''} onChange={(e) => setAmounts({ ...amounts, [b.id]: e.target.value })} />
+                      <button className="btn btn-primary btn-sm" type="submit">{t('workDone')}</button>
+                    </form>
+                  )}
+                  {b.status === 'awaiting_confirmation' && <p className="muted">{t('awaitingClient')} · {b.finalAmount} EGP</p>}
                 </div>
               </div>
             ))}

@@ -5,7 +5,7 @@ import { api } from '../api/axios';
 import { useT } from '../i18n/useT';
 import { VerifiedBadge } from '../components/TechAvatar';
 
-const BOOKING_STATUSES = ['pending', 'accepted', 'declined', 'completed', 'cancelled'];
+const BOOKING_STATUSES = ['pending', 'accepted', 'in_progress', 'awaiting_confirmation', 'declined', 'completed', 'cancelled'];
 const emptyTech = { name: '', email: '', password: '', profession: '', city: '', district: '', phone: '', rating: '', hourlyRate: '' };
 
 // Admin-only dashboard: overview plus full create / edit / delete for

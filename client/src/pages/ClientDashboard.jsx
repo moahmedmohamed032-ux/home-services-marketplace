@@ -61,6 +61,16 @@ export default function ClientDashboard() {
             </div>
             <p>{b.description}</p>
             <p className="muted">📍 {b.address}</p>
+            {b.status === 'awaiting_confirmation' && (
+              <div className="confirm-box">
+                <p><strong>{t('finalAmountLabel')}: {b.finalAmount} EGP</strong></p>
+                <p className="muted"><small>{t('autoConfirmNote')}</small></p>
+                <div className="btn-row">
+                  <button className="btn btn-primary btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'completed' })).then(() => loadInvoices())}>{t('confirmDone')}</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'in_progress' }))}>{t('notDone')}</button>
+                </div>
+              </div>
+            )}
             {['pending', 'accepted'].includes(b.status) && (
               <button className="btn btn-ghost btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'cancelled' }))}>{t('cancel')}</button>
             )}

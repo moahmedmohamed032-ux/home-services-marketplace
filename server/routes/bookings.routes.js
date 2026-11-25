@@ -39,7 +39,8 @@ router.get('/incoming', authenticate, requireRole('technician'), async (req, res
 
 // PATCH /api/bookings/:id/status — state machine:
 //   client: pending|accepted -> cancelled
-//   technician: pending -> accepted|declined, accepted -> completed
+//   technician: pending -> accepted|declined, accepted -> in_progress -> awaiting_confirmation (+finalAmount)
+//   client: awaiting_confirmation -> completed (confirm) | in_progress (reopen); auto-confirm after 48h
 router.patch('/:id/status', authenticate, async (req, res, next) => {
   try {
     const { status } = req.body;
@@ -49,20 +50,29 @@ router.patch('/:id/status', authenticate, async (req, res, next) => {
 
     if (req.user.role === 'client') {
       if (booking.clientId !== req.user.id) throw ApiError.forbidden('Not your booking');
-      if (status !== 'cancelled') throw ApiError.forbidden('Clients can only cancel bookings');
-      if (!['pending', 'accepted'].includes(booking.status)) {
-        throw ApiError.badRequest(`Cannot cancel a ${booking.status} booking`);
+      if (status === 'completed') {
+        if (booking.status !== 'awaiting_confirmation') throw ApiError.badRequest(`Cannot confirm a ${booking.status} booking`);
+      } else if (status === 'in_progress') {
+        if (booking.status !== 'awaiting_confirmation') throw ApiError.badRequest(`Cannot reopen a ${booking.status} booking`);
+      } else {
+        if (status !== 'cancelled') throw ApiError.forbidden('Clients can only cancel, confirm or reopen bookings');
+        if (!['pending', 'accepted'].includes(booking.status)) {
+          throw ApiError.badRequest(`Cannot cancel a ${booking.status} booking`);
+        }
       }
     } else {
       const tech = await store.findTechnicianByUserId(req.user.id);
       if (!tech || booking.technicianId !== tech.id) throw ApiError.forbidden('Not your booking');
       const allowed =
         (booking.status === 'pending' && ['accepted', 'declined'].includes(status)) ||
-        (booking.status === 'accepted' && status === 'completed');
+        (booking.status === 'accepted' && status === 'in_progress') ||
+        (['accepted', 'in_progress'].includes(booking.status) && status === 'awaiting_confirmation');
       if (!allowed) throw ApiError.badRequest(`Cannot move booking from ${booking.status} to ${status}`);
     }
 
-    const updated = await store.setBookingStatus(booking, status);
+    const updated = status === 'awaiting_confirmation'
+      ? await store.submitFinalAmount(booking, req.body.finalAmount)
+      : await store.setBookingStatus(booking, status);
     res.json({ booking: updated });
   } catch (err) {
     next(err);

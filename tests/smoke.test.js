@@ -84,7 +84,9 @@ test('full client + technician flow', async () => {
 
   res = await patch(`/bookings/${booking.id}/status`, { status: 'accepted' }, techToken);
   assert.equal(res.status, 200);
-  res = await patch(`/bookings/${booking.id}/status`, { status: 'completed' }, techToken);
+  await patch(`/bookings/${booking.id}/status`, { status: 'in_progress' }, techToken);
+  await patch(`/bookings/${booking.id}/status`, { status: 'awaiting_confirmation', finalAmount: 100 }, techToken);
+  res = await patch(`/bookings/${booking.id}/status`, { status: 'completed' }, clientToken);
   assert.equal(res.status, 200);
 
   // invalid transitions are rejected
@@ -147,7 +149,9 @@ test('invoice and simulated payment flow', async () => {
   res = await post('/bookings', { technicianId: target.id, date: '2026-12-05', description: 'Install ceiling fan', address: '2 Pay St' }, clientToken);
   const { booking } = await res.json();
   await patch(`/bookings/${booking.id}/status`, { status: 'accepted' }, techToken);
-  res = await patch(`/bookings/${booking.id}/status`, { status: 'completed' }, techToken);
+  await patch(`/bookings/${booking.id}/status`, { status: 'in_progress' }, techToken);
+  await patch(`/bookings/${booking.id}/status`, { status: 'awaiting_confirmation', finalAmount: 100 }, techToken);
+  res = await patch(`/bookings/${booking.id}/status`, { status: 'completed' }, clientToken);
   assert.equal(res.status, 200);
 
   // completion generated an invoice for the client
@@ -180,7 +184,9 @@ test('invoice and simulated payment flow', async () => {
   res = await post('/bookings', { technicianId: target.id, date: '2026-12-06', description: 'Check sockets', address: '2 Pay St' }, clientToken);
   const { booking: b2 } = await res.json();
   await patch(`/bookings/${b2.id}/status`, { status: 'accepted' }, techToken);
-  await patch(`/bookings/${b2.id}/status`, { status: 'completed' }, techToken);
+  await patch(`/bookings/${b2.id}/status`, { status: 'in_progress' }, techToken);
+  await patch(`/bookings/${b2.id}/status`, { status: 'awaiting_confirmation', finalAmount: 100 }, techToken);
+  await patch(`/bookings/${b2.id}/status`, { status: 'completed' }, clientToken);
   const { invoices: inv2 } = await (await fetch(`${base}/invoices/mine`, { headers: { authorization: `Bearer ${clientToken}` } })).json();
   const cashInv = inv2.find((i) => i.bookingId === b2.id);
   res = await post(`/invoices/${cashInv.id}/pay`, { method: 'cash' }, clientToken);

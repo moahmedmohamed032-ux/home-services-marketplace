@@ -40,6 +40,10 @@ app.use('/api/invoices', invoiceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/paymob', paymobRoutes);
 app.use('/api/notifications', notificationRoutes);
+// Daily Vercel cron: auto-confirm jobs the client did not answer within 48h (idempotent; also runs lazily on list reads).
+app.get('/api/cron/autoconfirm', async (req, res, next) => {
+  try { res.json({ confirmed: await store.sweepAutoConfirm() }); } catch (e) { next(e); }
+});
 
 app.use('/api', (req, res, next) => next(ApiError.notFound(`No route: ${req.method} ${req.originalUrl}`)));
 app.use(errorHandler);
