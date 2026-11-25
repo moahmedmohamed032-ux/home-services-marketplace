@@ -1,5 +1,7 @@
 # Fanni — Home Services Marketplace
 
+**Live:** https://fanni-marketplace.vercel.app
+
 A full-stack marketplace that connects clients with home-service technicians for any trade
 (plumbing, electrical, painting, carpentry, AC, cleaning and more). Clients search, book and
 review; technicians register, receive requests and manage jobs from their own dashboard.
