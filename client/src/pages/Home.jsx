@@ -58,7 +58,7 @@ export default function Home() {
         <p>{t('seoLuxorText')}</p>
         <div className="chip-row">
           {professions.filter((p) => ['plumber', 'electrician', 'ac-technician', 'carpenter', 'painter'].includes(p.id)).map((p) => (
-            <Link key={p.id} to={`/technicians?profession=${p.id}`} className="chip">{lang === 'ar' ? `${p.nameAr} الأقصر` : `${p.name} in Luxor`}</Link>
+            <Link key={p.id} to={`/luxor/${p.id}`} className="chip">{lang === 'ar' ? `${p.nameAr} الأقصر` : `${p.name} in Luxor`}</Link>
           ))}
         </div>
       </section>

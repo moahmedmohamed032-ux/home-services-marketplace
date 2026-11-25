@@ -10,6 +10,7 @@ import RegisterClient from './pages/RegisterClient';
 import RegisterTechnician from './pages/RegisterTechnician';
 import ClientDashboard from './pages/ClientDashboard';
 import TechnicianDashboard from './pages/TechnicianDashboard';
+import ServiceLanding from './pages/ServiceLanding';
 import AdminDashboard from './pages/AdminDashboard';
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -19,6 +20,7 @@ export default function App() {
   const { t, lang } = useT();
   const { pathname } = useLocation();
   useEffect(() => {
+    if (pathname.startsWith('/luxor/')) return;
     const key = pathname === '/' ? 'home' : pathname.startsWith('/technicians') ? 'find'
       : pathname.startsWith('/login') ? 'login' : pathname.startsWith('/register') ? 'signup'
       : pathname.startsWith('/admin') ? 'admin' : 'dashboard';
@@ -38,6 +40,7 @@ export default function App() {
       <main className="container">
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/luxor/:slug" element={<ServiceLanding />} />
           <Route path="/technicians" element={<Technicians />} />
           <Route path="/technicians/:id" element={<TechnicianDetails />} />
           <Route path="/login" element={<Login />} />
