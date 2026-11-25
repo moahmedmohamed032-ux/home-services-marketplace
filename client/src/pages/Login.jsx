@@ -1,3 +1,4 @@
+import PasswordInput from '../components/PasswordInput';
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -27,7 +28,7 @@ export default function Login() {
       <h1>{t('login')}</h1>
       <form onSubmit={submit} className="form">
         <label>{t('loginId')}<input required dir="ltr" autoComplete="username" value={form.identifier} onChange={(e) => setForm({ ...form, identifier: e.target.value })} /></label>
-        <label>{t('password')}<input type="password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></label>
+        <label>{t('password')}<PasswordInput  required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></label>
         {error && <p className="error">{error}</p>}
         <button className="btn btn-primary" disabled={status === 'loading'}>{t('login')}</button>
       </form>

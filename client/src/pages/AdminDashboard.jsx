@@ -1,3 +1,4 @@
+import PasswordInput from '../components/PasswordInput';
 import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { api } from '../api/axios';
@@ -251,7 +252,7 @@ export default function AdminDashboard() {
               <>
                 <label>{t('name')}<input required value={modal.data.name} onChange={setF('name')} /></label>
                 {modal.mode === 'add' && <label>{t('emailOptional')}<input type="email" dir="ltr" value={modal.data.email} onChange={setF('email')} /></label>}
-                {modal.mode === 'add' && <label>{t('password')}<input type="password" required minLength={8} dir="ltr" value={modal.data.password} onChange={setF('password')} /></label>}
+                {modal.mode === 'add' && <label>{t('password')}<PasswordInput  required minLength={8} dir="ltr" value={modal.data.password} onChange={setF('password')} /></label>}
                 <label>{t('profession')}
                   <select required value={modal.data.profession} onChange={setF('profession')}>
                     <option value="" />

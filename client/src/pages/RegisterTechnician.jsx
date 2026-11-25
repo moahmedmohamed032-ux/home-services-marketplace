@@ -1,3 +1,4 @@
+import PasswordInput from '../components/PasswordInput';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -40,7 +41,7 @@ export default function RegisterTechnician() {
         </div>
         <div className="row">
           <label>{t('emailOptional')}<input type="email" dir="ltr" value={form.email} onChange={set('email')} /></label>
-          <label>{t('password')}<input type="password" minLength={8} required value={form.password} onChange={set('password')} /></label>
+          <label>{t('password')}<PasswordInput  minLength={8} required value={form.password} onChange={set('password')} /></label>
         </div>
         <div className="row">
           <label>{t('profession')}

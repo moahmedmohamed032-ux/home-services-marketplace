@@ -1,3 +1,4 @@
+import PasswordInput from '../components/PasswordInput';
 import { useState } from 'react';
 import { api, errorMessage } from '../api/axios';
 
@@ -24,9 +25,9 @@ export default function ChangePassword() {
     <div className="auth card">
       <h1>تغيير كلمة المرور</h1>
       <form onSubmit={submit} className="form">
-        <label>كلمة المرور الحالية<input id="cp-current" name="current-password" type="password" required autoComplete="current-password" value={form.currentPassword} onChange={set('currentPassword')} /></label>
-        <label>كلمة المرور الجديدة<input id="cp-new" name="new-password" type="password" required minLength={8} autoComplete="new-password" value={form.newPassword} onChange={set('newPassword')} /></label>
-        <label>تأكيد كلمة المرور الجديدة<input id="cp-confirm" name="confirm-password" type="password" required minLength={8} autoComplete="new-password" value={form.confirm} onChange={set('confirm')} /></label>
+        <label>كلمة المرور الحالية<PasswordInput id="cp-current" name="current-password"  required autoComplete="current-password" value={form.currentPassword} onChange={set('currentPassword')} /></label>
+        <label>كلمة المرور الجديدة<PasswordInput id="cp-new" name="new-password"  required minLength={8} autoComplete="new-password" value={form.newPassword} onChange={set('newPassword')} /></label>
+        <label>تأكيد كلمة المرور الجديدة<PasswordInput id="cp-confirm" name="confirm-password"  required minLength={8} autoComplete="new-password" value={form.confirm} onChange={set('confirm')} /></label>
         {err && <p className="error">{err}</p>}
         {msg && <p className="muted" id="cp-ok">{msg}</p>}
         <button className="btn btn-primary">حفظ</button>

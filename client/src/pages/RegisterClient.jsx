@@ -1,3 +1,4 @@
+import PasswordInput from '../components/PasswordInput';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -32,7 +33,7 @@ export default function RegisterClient() {
       <form onSubmit={submit} className="form">
         <label>{t('name')}<input required value={form.name} onChange={set('name')} /></label>
         <label>{t('email')}<input type="email" required value={form.email} onChange={set('email')} /></label>
-        <label>{t('password')}<input type="password" minLength={8} required value={form.password} onChange={set('password')} /></label>
+        <label>{t('password')}<PasswordInput  minLength={8} required value={form.password} onChange={set('password')} /></label>
         <label>{t('city')}
           <input list="cities" value={form.city} onChange={set('city')} />
           <datalist id="cities">{cities.map((c) => <option key={c} value={c} />)}</datalist>
