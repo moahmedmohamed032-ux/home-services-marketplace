@@ -37,7 +37,7 @@ export default function Home() {
 
       <h2 className="section-title">{t('browseCategories')}</h2>
       <div className="grid cats">
-        {professions.map((p) => (
+        {professions.filter((p) => p.technicianCount > 0).map((p) => (
           <Link key={p.id} to={`/technicians?profession=${p.id}`} className="card cat">
             <span className="cat-icon">{p.icon}</span>
             <strong>{lang === 'ar' ? p.nameAr : p.name}</strong>
@@ -57,7 +57,7 @@ export default function Home() {
         <h2>{t('seoLuxorTitle')}</h2>
         <p>{t('seoLuxorText')}</p>
         <div className="chip-row">
-          {professions.filter((p) => ['plumber', 'electrician', 'ac-technician', 'carpenter', 'painter'].includes(p.id)).map((p) => (
+          {professions.filter((p) => p.technicianCount > 0 && ['plumber', 'electrician', 'ac-technician', 'carpenter', 'painter'].includes(p.id)).map((p) => (
             <Link key={p.id} to={`/luxor/${p.id}`} className="chip">{lang === 'ar' ? `${p.nameAr} الأقصر` : `${p.name} in Luxor`}</Link>
           ))}
         </div>
