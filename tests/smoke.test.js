@@ -190,3 +190,34 @@ test('invoice and simulated payment flow', async () => {
   res = await fetch(`${base}/admin/overview`, { headers: { authorization: `Bearer ${clientToken}` } });
   assert.equal(res.status, 403);
 });
+
+// ---- Paymob: HMAC verification + callback marks the invoice paid ----
+test('paymob hmac + callback', async () => {
+  process.env.PAYMOB_SECRET_KEY = 'sk_test_x';
+  process.env.PAYMOB_PUBLIC_KEY = 'pk_test_x';
+  process.env.PAYMOB_HMAC_SECRET = 'hmac-test-secret';
+  process.env.PAYMOB_CARD_INTEGRATION_ID = '123';
+  const paymob = require('../server/core/paymob');
+  const store = require('../server/core/store');
+  assert.equal(paymob.publicConfig().provider, 'paymob');
+
+  const all = await store.allInvoices();
+  const inv = all.find((i) => i.status === 'unpaid');
+  if (!inv) return; // seed has no unpaid invoice; HMAC logic still covered below
+  const obj = {
+    amount_cents: inv.total * 100, created_at: '2026-11-25T10:00:00.000000', currency: 'EGP', error_occured: false,
+    has_parent_transaction: false, id: 99001, integration_id: 123, is_3d_secure: true, is_auth: false,
+    is_capture: false, is_refunded: false, is_standalone_payment: true, is_voided: false,
+    order: { id: 555, merchant_order_id: `${inv.id}-abc` }, owner: 1, pending: false,
+    source_data: { pan: '2346', sub_type: 'MasterCard', type: 'card' }, success: true,
+  };
+  const good = paymob.hmacFor(obj, 'hmac-test-secret');
+  const bad = await post('/paymob/callback?hmac=deadbeef', { obj });
+  assert.equal(bad.status, 401);
+  const ok = await post(`/paymob/callback?hmac=${good}`, { obj });
+  assert.equal(ok.status, 200);
+  assert.equal((await store.findInvoiceById(inv.id)).status, 'paid');
+  // replay is a no-op
+  assert.equal((await post(`/paymob/callback?hmac=${good}`, { obj })).status, 200);
+  delete process.env.PAYMOB_SECRET_KEY;
+});

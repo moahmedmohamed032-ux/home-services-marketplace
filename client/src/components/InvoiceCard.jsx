@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, errorMessage } from '../api/axios';
 import { useT } from '../i18n/useT';
 
@@ -12,6 +12,9 @@ export default function InvoiceCard({ invoice, onChange }) {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [cfg, setCfg] = useState({ provider: 'simulated', methods: [] });
+  useEffect(() => { api.get('/invoices/payment-config').then((r) => setCfg(r.data)).catch(() => {}); }, []);
+  const online = cfg.provider === 'paymob';
   const [done, setDone] = useState(invoice.status === 'paid' ? invoice.confirmationCode : null);
 
   const run = async (fn) => {
@@ -27,13 +30,19 @@ export default function InvoiceCard({ invoice, onChange }) {
     onChange && onChange();
   });
 
+  // Real payment: ask the server for a Paymob checkout and go there.
+  const checkout = (m) => run(async () => {
+    const { data } = await api.post(`/invoices/${invoice.id}/paymob`, { method: m, mobileNumber: mobile });
+    window.location.assign(data.checkoutUrl);
+  });
+
   const verify = () => run(async () => {
     const { data } = await api.post(`/invoices/${invoice.id}/verify`, { code });
     setDone(data.invoice.confirmationCode); setCodeSent(null); setMethod(null);
     onChange && onChange();
   });
 
-  const statusKey = { paid: 'paidLabel', unpaid: 'unpaidLabel', pending_verification: 'pendingVerification', pending_cash: 'pendingCash' }[invoice.status];
+  const statusKey = { paid: 'paidLabel', unpaid: 'unpaidLabel', pending_verification: 'pendingVerification', pending_cash: 'pendingCash', pending_online: 'pendingOnline' }[invoice.status];
 
   return (
     <div className="invoice-card">
@@ -52,7 +61,26 @@ export default function InvoiceCard({ invoice, onChange }) {
         <p className="notice ok">✓ {t('paymentDone')} · {t('confirmationCode')}: <strong dir="ltr">{done}</strong></p>
       )}
 
-      {!done && invoice.status === 'unpaid' && !method && (
+      {!done && online && ['unpaid', 'pending_online'].includes(invoice.status) && !method && (
+        <div className="method-row">
+          <span className="muted">{t('paymentMethod')}:</span>
+          <button className="btn btn-primary btn-sm" onClick={() => setMethod('online-card')}>💳 {t('payCard')}</button>
+          {cfg.methods.includes('wallet') && <button className="btn btn-outline btn-sm" onClick={() => setMethod('online-wallet')}>📱 {t('payWallet')}</button>}
+          {invoice.status === 'unpaid' && <button className="btn btn-ghost btn-sm" onClick={() => pay({ method: 'cash' })}>💵 {t('cash')}</button>}
+        </div>
+      )}
+
+      {!done && online && method && method.startsWith('online-') && (
+        <div className="pay-form">
+          <input dir="ltr" inputMode="tel" placeholder={t('mobileNumber') + ' (010...)'} value={mobile}
+            onChange={(e) => setMobile(e.target.value)} />
+          <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => checkout(method === 'online-wallet' ? 'wallet' : 'card')}>{t('continuePay')}</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setMethod(null)}>{t('closeBtn')}</button>
+        </div>
+      )}
+      {!done && online && method && method.startsWith('online-') && <p className="muted">🔒 {t('secureNote')}</p>}
+
+      {!done && !online && invoice.status === 'unpaid' && !method && (
         <div className="method-row">
           <span className="muted">{t('paymentMethod')}:</span>
           <button className="btn btn-primary btn-sm" onClick={() => setMethod('visa')}>💳 {t('visa')}</button>

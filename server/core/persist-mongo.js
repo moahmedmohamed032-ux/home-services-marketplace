@@ -39,6 +39,7 @@ const Invoice = mongoose.model('Invoice', new mongoose.Schema({
   total: Number, method: String, status: String,
   cardLast4: String, mobileNumber: String, confirmationCode: String, verificationCode: String,
   paidAt: String, createdAt: String,
+  paymobRef: String, paymobIntentionId: String, paymobTxnId: String,
 }, opts));
 
 const Counter = mongoose.model('Counter', new mongoose.Schema({ _id: String, value: Number }, opts));

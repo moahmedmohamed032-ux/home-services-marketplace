@@ -32,6 +32,8 @@ export default function ClientDashboard() {
   const loadInvoices = () => api.get('/invoices/mine').then((r) => setInvoices(r.data.invoices)).catch(() => {});
   useEffect(() => { dispatch(fetchMyBookings()); loadInvoices(); }, [dispatch]);
 
+  const payFlag = new URLSearchParams(window.location.search).get('payment');
+  const flagMsg = { paid: ['ok', 'paySuccess'], failed: ['error', 'payFailed'], pending: ['ok', 'payPending'] }[payFlag];
   const count = (f) => bookings.filter(f).length;
   return (
     <>
@@ -42,6 +44,7 @@ export default function ClientDashboard() {
         </div>
         <Link to="/technicians" className="btn btn-accent btn-lg">📍 {t('findTechBtn')}</Link>
       </section>
+      {flagMsg && <p className={`notice ${flagMsg[0]}`} style={{ margin: '12px 0' }}>{t(flagMsg[1])}</p>}
       <div className="grid stat-grid">
         <div className="card stat"><strong>{bookings.length}</strong><span>{t('total')}</span></div>
         <div className="card stat"><strong>{count((b) => ['pending', 'accepted'].includes(b.status))}</strong><span>{t('open')}</span></div>

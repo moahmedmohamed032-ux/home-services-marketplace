@@ -21,7 +21,7 @@ export default function AdminDashboard() {
   useEffect(load, []);
 
   const confirm = async (id) => { await api.post(`/invoices/${id}/confirm`); load(); };
-  const payStatusKey = { paid: 'paidLabel', unpaid: 'unpaidLabel', pending_verification: 'pendingVerification', pending_cash: 'pendingCash' };
+  const payStatusKey = { paid: 'paidLabel', unpaid: 'unpaidLabel', pending_verification: 'pendingVerification', pending_cash: 'pendingCash', pending_online: 'pendingOnline' };
   const methodLabel = (m) => (m === 'visa' ? t('visa') : m === 'vodafone-cash' ? t('vodafoneCash') : m === 'cash' ? t('cash') : '-');
   const profName = (id) => { const p = professions.find((x) => x.id === id); return p ? (lang === 'ar' ? p.nameAr : p.name) : id; };
   const roleLabel = (r) => (r === 'client' ? t('clientsWord') : r === 'technician' ? t('techniciansWord') : t('admin'));

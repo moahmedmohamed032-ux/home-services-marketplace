@@ -3,6 +3,7 @@
 // Every function is async; routes always await them.
 const ApiError = require('./ApiError');
 const seed = require('./seed');
+const paymob = require('./paymob');
 
 let db = null;
 let ready = null;
@@ -313,8 +314,10 @@ const code = (n) => String(Math.floor(Math.random() * 10 ** n)).padStart(n, '0')
 
 async function payInvoice(invoice, { method, mobileNumber, cardNumber }) {
   await init();
-  if (invoice.status !== 'unpaid') throw ApiError.conflict('Invoice is not awaiting payment');
+  if (!['unpaid', 'pending_online'].includes(invoice.status)) throw ApiError.conflict('Invoice is not awaiting payment');
   if (!['visa', 'cash', 'vodafone-cash'].includes(method)) throw ApiError.badRequest('Unknown payment method');
+  // With a real gateway configured, the simulated card / wallet flows are off.
+  if (method !== 'cash' && paymob.config().enabled) throw ApiError.badRequest('Use the secure online checkout to pay');
   const now = new Date().toISOString();
   if (method === 'visa') {
     const digits = String(cardNumber || '').replace(/\s/g, '');
@@ -338,6 +341,41 @@ async function payInvoice(invoice, { method, mobileNumber, cardNumber }) {
   }
   const updated = await db.invoices.update(invoice.id, { method, status: 'pending_cash' });
   return { invoice: await hydrateInvoice(updated) };
+}
+
+// ---- Paymob (real online payments) ----
+// Start a hosted checkout for an unpaid invoice. Returns the URL to redirect to.
+async function startPaymobPayment(invoice, user, { method = 'card', phone, appUrl }) {
+  await init();
+  if (!['unpaid', 'pending_online'].includes(invoice.status)) throw ApiError.conflict('Invoice is not awaiting payment');
+  const it = await paymob.createIntention({ invoice, user, method, phone, appUrl });
+  await db.invoices.update(invoice.id, {
+    status: 'pending_online', method: method === 'wallet' ? 'wallet' : 'card',
+    paymobRef: it.reference, paymobIntentionId: it.intentionId,
+  });
+  return { checkoutUrl: it.checkoutUrl };
+}
+
+// Apply a verified Paymob transaction result to its invoice. Idempotent.
+// `reference` is "<invoiceId>-<attempt>"; the amount must match the invoice.
+async function applyPaymobTransaction({ reference, transactionId, amountCents, success, sourceType, last4 }) {
+  await init();
+  const invoiceId = String(reference || '').split('-')[0];
+  const invoice = invoiceId ? await db.invoices.getById(invoiceId) : null;
+  if (!invoice) throw ApiError.notFound('Invoice not found for this payment');
+  if (invoice.status === 'paid') return { status: 'paid', invoice: await hydrateInvoice(invoice) };
+  if (!success) {
+    const back = invoice.status === 'pending_online' ? await db.invoices.update(invoice.id, { status: 'unpaid' }) : invoice;
+    return { status: back.status, invoice: await hydrateInvoice(back) };
+  }
+  if (Number(amountCents) !== Math.round(invoice.total * 100)) throw ApiError.badRequest('Paid amount does not match the invoice');
+  const updated = await db.invoices.update(invoice.id, {
+    status: 'paid', method: sourceType === 'wallet' || invoice.method === 'wallet' ? 'wallet' : 'card',
+    cardLast4: sourceType === 'card' ? String(last4 || '').slice(-4) || null : null,
+    paymobTxnId: String(transactionId || ''),
+    confirmationCode: `FX-${code(6)}`, paidAt: new Date().toISOString(),
+  });
+  return { status: 'paid', invoice: await hydrateInvoice(updated) };
 }
 
 async function verifyInvoice(invoice, codeInput) {
@@ -416,5 +454,6 @@ module.exports = {
   createBooking, findBookingById, bookingsForClient, bookingsForTechnician, setBookingStatus, addReview,
   findInvoiceById, findInvoiceByBookingId, invoicesForClient, invoicesForTechnician, allInvoices,
   payInvoice, verifyInvoice, confirmInvoice, publicInvoice,
+  startPaymobPayment, applyPaymobTransaction,
   listUsersAdmin, adminOverview,
 };

@@ -3,7 +3,26 @@ const store = require('../core/store');
 const ApiError = require('../core/ApiError');
 const { authenticate, requireRole } = require('../middleware/auth');
 
+const paymob = require('../core/paymob');
+
 const router = express.Router();
+
+// GET /api/invoices/payment-config — which payment provider/methods are live.
+router.get('/payment-config', (req, res) => res.json(paymob.publicConfig()));
+
+const originOf = (req) => process.env.APP_URL || `${req.headers['x-forwarded-proto'] || req.protocol}://${req.headers['x-forwarded-host'] || req.get('host')}`;
+
+// POST /api/invoices/:id/paymob — start a real Paymob checkout (card or wallet).
+router.post('/:id/paymob', authenticate, requireRole('client'), async (req, res, next) => {
+  try {
+    const invoice = await store.findInvoiceById(req.params.id);
+    if (!invoice) throw ApiError.notFound('Invoice not found');
+    if (invoice.clientId !== req.user.id) throw ApiError.forbidden('Not your invoice');
+    const user = await store.findUserById(req.user.id);
+    const result = await store.startPaymobPayment(invoice, user, { method: req.body.method === 'wallet' ? 'wallet' : 'card', phone: req.body.mobileNumber, appUrl: originOf(req) });
+    res.json(result);
+  } catch (err) { next(err); }
+});
 
 // GET /api/invoices/mine — the client's invoices.
 router.get('/mine', authenticate, requireRole('client'), async (req, res, next) => {

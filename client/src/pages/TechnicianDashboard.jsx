@@ -25,7 +25,7 @@ export default function TechnicianDashboard() {
   }, [dispatch]);
 
   const confirmCash = async (id) => { await api.post(`/invoices/${id}/confirm`); loadPayments(); };
-  const payStatusKey = { paid: 'paidLabel', unpaid: 'unpaidLabel', pending_verification: 'pendingVerification', pending_cash: 'pendingCash' };
+  const payStatusKey = { paid: 'paidLabel', unpaid: 'unpaidLabel', pending_verification: 'pendingVerification', pending_cash: 'pendingCash', pending_online: 'pendingOnline' };
 
   if (!tech) return <p className="muted">{t('loading')}</p>;
   const set = (k, v) => { setTech({ ...tech, [k]: v }); setSaved(false); };
