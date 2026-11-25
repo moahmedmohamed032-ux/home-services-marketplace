@@ -13,13 +13,19 @@ export default function TechnicianDashboard() {
   const user = useSelector((s) => s.auth.user);
   const incoming = useSelector((s) => s.bookings.incoming);
   const [tech, setTech] = useState(null);
+  const [payments, setPayments] = useState([]);
+  const loadPayments = () => api.get('/invoices/technician').then((r) => setPayments(r.data.invoices)).catch(() => {});
   const [saved, setSaved] = useState(false);
   const [locate, locating, geoError] = useGeolocation();
 
   useEffect(() => {
     dispatch(fetchIncomingBookings());
     api.get('/technicians/me').then((r) => setTech(r.data.technician));
+    loadPayments();
   }, [dispatch]);
+
+  const confirmCash = async (id) => { await api.post(`/invoices/${id}/confirm`); loadPayments(); };
+  const payStatusKey = { paid: 'paidLabel', unpaid: 'unpaidLabel', pending_verification: 'pendingVerification', pending_cash: 'pendingCash' };
 
   if (!tech) return <p className="muted">{t('loading')}</p>;
   const set = (k, v) => { setTech({ ...tech, [k]: v }); setSaved(false); };
@@ -96,6 +102,22 @@ export default function TechnicianDashboard() {
             </div>
             <button className="btn btn-primary" onClick={save}>{t('save')}</button>
             {saved && <p className="notice ok">{t('saved')}</p>}
+          </div>
+          <h2 className="section-title">{t('paymentsSection')}</h2>
+          <div className="card">
+            {payments.length === 0 && <p className="muted">{t('noInvoices')}</p>}
+            <div className="list">
+              {payments.slice(0, 8).map((i) => (
+                <div key={i.id} className="invoice-head">
+                  <div><strong>{i.number}</strong> <span className="muted">· {i.clientName}</span></div>
+                  <span className="invoice-total">{i.total} EGP</span>
+                  <span className={`badge badge-${i.status}`}>{t(payStatusKey[i.status])}</span>
+                  {i.status === 'pending_cash' && (
+                    <button className="btn btn-primary btn-sm" onClick={() => confirmCash(i.id)}>{t('confirmCash')}</button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
           <h2 className="section-title">{t('clientReviews')}</h2>
           <div className="card reviews">

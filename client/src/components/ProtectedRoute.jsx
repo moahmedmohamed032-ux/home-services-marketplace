@@ -7,7 +7,7 @@ export default function ProtectedRoute({ role, children }) {
   const location = useLocation();
   if (!token || !user) return <Navigate to="/login" state={{ from: location }} replace />;
   if (role && user.role !== role) {
-    return <Navigate to={user.role === 'technician' ? '/pro' : '/dashboard'} replace />;
+    return <Navigate to={user.role === 'technician' ? '/pro' : user.role === 'admin' ? '/admin' : '/dashboard'} replace />;
   }
   return children;
 }

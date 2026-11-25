@@ -83,18 +83,44 @@ book → accept → complete → review, including role-guard and auth failures.
 | GET | `/api/bookings/incoming` | technician | incoming requests |
 | PATCH | `/api/bookings/:id/status` | both | status lifecycle transitions |
 | POST | `/api/bookings/:id/review` | client | review a completed job |
+| GET | `/api/invoices/mine` | client | own invoices |
+| GET | `/api/invoices/technician` | technician | invoices for own jobs |
+| POST | `/api/invoices/:id/pay` | client | pay an invoice (Visa / Vodafone Cash / cash, simulated) |
+| POST | `/api/invoices/:id/verify` | client | confirm the Vodafone Cash code |
+| POST | `/api/invoices/:id/confirm` | technician/admin | confirm cash received / mark paid |
+| GET | `/api/admin/overview` | admin | site totals (users, bookings, revenue) |
+| GET | `/api/admin/users` | admin | all registered users |
+| GET | `/api/admin/invoices` | admin | all invoices with payment status |
 
 ## Demo accounts
 
 - Client: `client@demo.com` / `Demo@1234`
 - Technician: `tech@demo.com` / `Demo@1234`
+- Admin: `admin@demo.com` / `Demo@1234` (opens the admin panel at `/admin`)
 
-## Notes
+## Database (MongoDB + Mongoose)
 
-- Data lives in an in-memory store seeded with demo technicians (see
-  `server/core/store.js`); on serverless it resets on cold starts. Swap the
-  store module for MongoDB/Postgres without touching the routes.
-- Set `JWT_SECRET` in the environment for production.
+The API persists users, technicians, bookings and invoices in MongoDB through
+Mongoose when `MONGODB_URI` is set (production on Vercel). Without it, the app
+boots with an in-memory store seeded from `server/core/seed.js`, which keeps
+local development and `npm test` self-contained.
+
+Environment variables (set in the Vercel project settings):
+
+- `MONGODB_URI` — MongoDB Atlas connection string
+- `JWT_SECRET` — secret for signing session tokens
+
+On first boot against an empty database the collections are seeded with the
+same sample technicians, demo accounts and admin account.
+
+## Payments (simulated)
+
+Completing a booking generates an invoice (technician visit + FIX-IT service
+fee). The client pays with Visa, Vodafone Cash or cash on visit. No real
+charges are made: Visa "payments" complete instantly, Vodafone Cash returns
+the 4-digit verification code in the API response instead of an SMS, and cash
+is confirmed by the technician or the admin. The admin panel shows collected
+and outstanding totals and every invoice with its confirmation code.
 
 ## Copyright
 

@@ -56,7 +56,7 @@ test('full client + technician flow', async () => {
 
   // passwords are hashed, not stored in plain text
   const store = require('../server/core/store');
-  assert.notEqual(store.findUserByEmail(email).passwordHash, 'Passw0rd!');
+  assert.notEqual((await store.findUserByEmail(email)).passwordHash, 'Passw0rd!');
 
   // login as the demo technician
   res = await post('/auth/login', { email: 'tech@demo.com', password: 'Demo@1234' });
@@ -116,4 +116,77 @@ test('technician phone is private unless made public', async () => {
   const detail = await (await fetch(`${base}/technicians/${hidden.id}`)).json();
   assert.equal(detail.technician.phone, null);
   assert.ok(detail.technician.reviews.length > 0);
+});
+
+test('invoice and simulated payment flow', async () => {
+  // fresh client + booking through to completion
+  const email = `pay_${Date.now()}@test.dev`;
+  let res = await post('/auth/register', { name: 'Pay Client', email, password: 'Passw0rd!', role: 'client', city: 'Cairo' });
+  const { token: clientToken } = await res.json();
+  res = await post('/auth/login', { email: 'tech@demo.com', password: 'Demo@1234' });
+  const { token: techToken } = await res.json();
+  const { technician: target } = await (await fetch(`${base}/technicians/me`, { headers: { authorization: `Bearer ${techToken}` } })).json();
+  res = await post('/bookings', { technicianId: target.id, date: '2026-12-05', description: 'Install ceiling fan', address: '2 Pay St' }, clientToken);
+  const { booking } = await res.json();
+  await patch(`/bookings/${booking.id}/status`, { status: 'accepted' }, techToken);
+  res = await patch(`/bookings/${booking.id}/status`, { status: 'completed' }, techToken);
+  assert.equal(res.status, 200);
+
+  // completion generated an invoice for the client
+  res = await fetch(`${base}/invoices/mine`, { headers: { authorization: `Bearer ${clientToken}` } });
+  const { invoices } = await res.json();
+  const inv = invoices.find((i) => i.bookingId === booking.id);
+  assert.ok(inv, 'invoice exists after completion');
+  assert.equal(inv.status, 'unpaid');
+  assert.ok(inv.number.startsWith('INV-2026-'));
+  assert.equal(inv.verificationCode, undefined, 'verification code never leaks');
+
+  // Vodafone Cash: code issued, wrong code rejected, right code pays
+  res = await post(`/invoices/${inv.id}/pay`, { method: 'vodafone-cash', mobileNumber: '01012345678' }, clientToken);
+  assert.equal(res.status, 200);
+  const { demoCode } = await res.json();
+  assert.ok(/^\d{4}$/.test(demoCode));
+  res = await post(`/invoices/${inv.id}/verify`, { code: '0000' === demoCode ? '9999' : '0000' }, clientToken);
+  assert.equal(res.status, 400);
+  res = await post(`/invoices/${inv.id}/verify`, { code: demoCode }, clientToken);
+  assert.equal(res.status, 200);
+  const { invoice: paid } = await res.json();
+  assert.equal(paid.status, 'paid');
+  assert.ok(paid.confirmationCode.startsWith('FX-'));
+
+  // second payment attempt on a paid invoice is rejected
+  res = await post(`/invoices/${inv.id}/pay`, { method: 'cash' }, clientToken);
+  assert.equal(res.status, 409);
+
+  // a second booking paid by cash, confirmed by the technician
+  res = await post('/bookings', { technicianId: target.id, date: '2026-12-06', description: 'Check sockets', address: '2 Pay St' }, clientToken);
+  const { booking: b2 } = await res.json();
+  await patch(`/bookings/${b2.id}/status`, { status: 'accepted' }, techToken);
+  await patch(`/bookings/${b2.id}/status`, { status: 'completed' }, techToken);
+  const { invoices: inv2 } = await (await fetch(`${base}/invoices/mine`, { headers: { authorization: `Bearer ${clientToken}` } })).json();
+  const cashInv = inv2.find((i) => i.bookingId === b2.id);
+  res = await post(`/invoices/${cashInv.id}/pay`, { method: 'cash' }, clientToken);
+  assert.equal(res.status, 200);
+  res = await post(`/invoices/${cashInv.id}/confirm`, {}, clientToken);
+  assert.equal(res.status, 403, 'client cannot confirm cash receipt');
+  res = await post(`/invoices/${cashInv.id}/confirm`, {}, techToken);
+  assert.equal(res.status, 200);
+
+  // admin sees users, invoices and the overview
+  res = await post('/auth/login', { email: 'admin@demo.com', password: 'Demo@1234' });
+  const { token: adminToken, user: adminUser } = await res.json();
+  assert.equal(adminUser.role, 'admin');
+  res = await fetch(`${base}/admin/overview`, { headers: { authorization: `Bearer ${adminToken}` } });
+  const { overview } = await res.json();
+  assert.ok(overview.invoices.paid >= 2);
+  assert.ok(overview.invoices.collected > 0);
+  res = await fetch(`${base}/admin/users`, { headers: { authorization: `Bearer ${adminToken}` } });
+  const { users } = await res.json();
+  assert.ok(users.some((u) => u.email === email));
+  res = await fetch(`${base}/admin/invoices`, { headers: { authorization: `Bearer ${adminToken}` } });
+  assert.equal(res.status, 200);
+
+  // non-admin is blocked from admin endpoints
+  res = await fetch(`${base}/admin/overview`, { headers: { authorization: `Bearer ${clientToken}` } });
+  assert.equal(res.status, 403);
 });

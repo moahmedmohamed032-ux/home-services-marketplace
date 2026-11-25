@@ -52,11 +52,11 @@ export default function TechnicianDetails() {
             <div className="avatar avatar-lg">{tech.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</div>
             <div>
               <h1>{tech.name}</h1>
-              <p className="muted">{tech.city} · {tech.yearsExperience} {t('years')}</p>
+              <p className="muted">{tech.district ? `${tech.district}, ` : ''}{tech.city} · {tech.yearsExperience} {t('years')}</p>
             </div>
           </div>
           <Stars rating={tech.rating} count={tech.reviewCount} />
-          <p>{tech.bio}</p>
+          <p>{lang === 'ar' && tech.bioAr ? tech.bioAr : tech.bio}</p>
           <div className="stats-row">
             <div><strong>{tech.jobsDone}</strong><span>{t('jobs')}</span></div>
             <div><strong>{tech.hourlyRate}</strong><span>{t('perHour')}</span></div>

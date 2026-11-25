@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import { api } from '../api/axios';
+import InvoiceCard from '../components/InvoiceCard';
 import { fetchMyBookings, reviewBooking, updateBookingStatus } from '../features/bookings/bookingsSlice';
 import { useT } from '../i18n/useT';
 
@@ -26,7 +28,9 @@ export default function ClientDashboard() {
   const { t } = useT();
   const user = useSelector((s) => s.auth.user);
   const bookings = useSelector((s) => s.bookings.mine);
-  useEffect(() => { dispatch(fetchMyBookings()); }, [dispatch]);
+  const [invoices, setInvoices] = useState([]);
+  const loadInvoices = () => api.get('/invoices/mine').then((r) => setInvoices(r.data.invoices)).catch(() => {});
+  useEffect(() => { dispatch(fetchMyBookings()); loadInvoices(); }, [dispatch]);
 
   const count = (f) => bookings.filter(f).length;
   return (
@@ -57,6 +61,9 @@ export default function ClientDashboard() {
             {['pending', 'accepted'].includes(b.status) && (
               <button className="btn btn-ghost btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'cancelled' }))}>{t('cancel')}</button>
             )}
+            {b.status === 'completed' && invoices.filter((i) => i.bookingId === b.id).map((i) => (
+              <InvoiceCard key={i.id} invoice={i} onChange={loadInvoices} />
+            ))}
             {b.status === 'completed' && !b.review && <ReviewForm booking={b} />}
             {b.review && <p>{'★'.repeat(b.review.rating)} {b.review.comment}</p>}
           </div>

@@ -1,0 +1,96 @@
+import { useState } from 'react';
+import { api, errorMessage } from '../api/axios';
+import { useT } from '../i18n/useT';
+
+// One invoice with its (simulated) payment flow: Visa, Vodafone Cash or cash.
+export default function InvoiceCard({ invoice, onChange }) {
+  const { t, lang } = useT();
+  const [method, setMethod] = useState(null);
+  const [cardNumber, setCardNumber] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [codeSent, setCodeSent] = useState(null); // demo: the "SMS" code
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [done, setDone] = useState(invoice.status === 'paid' ? invoice.confirmationCode : null);
+
+  const run = async (fn) => {
+    setBusy(true); setErr('');
+    try { await fn(); } catch (e) { setErr(errorMessage(e, 'Payment failed')); }
+    setBusy(false);
+  };
+
+  const pay = (body) => run(async () => {
+    const { data } = await api.post(`/invoices/${invoice.id}/pay`, body);
+    if (data.invoice.status === 'paid') { setDone(data.invoice.confirmationCode); setMethod(null); }
+    else if (data.demoCode) setCodeSent(data.demoCode);
+    onChange && onChange();
+  });
+
+  const verify = () => run(async () => {
+    const { data } = await api.post(`/invoices/${invoice.id}/verify`, { code });
+    setDone(data.invoice.confirmationCode); setCodeSent(null); setMethod(null);
+    onChange && onChange();
+  });
+
+  const statusKey = { paid: 'paidLabel', unpaid: 'unpaidLabel', pending_verification: 'pendingVerification', pending_cash: 'pendingCash' }[invoice.status];
+
+  return (
+    <div className="invoice-card">
+      <div className="invoice-head">
+        <div>
+          <strong>{t('invoice')} {invoice.number}</strong>
+          <p className="muted" style={{ margin: 0 }}>
+            {(invoice.items || []).map((i) => `${lang === 'ar' && i.labelAr ? i.labelAr : i.label} (${i.amount})`).join(' + ')}
+          </p>
+        </div>
+        <span className="invoice-total">{invoice.total} EGP</span>
+        <span className={`badge badge-${invoice.status}`}>{t(statusKey)}</span>
+      </div>
+
+      {done && (
+        <p className="notice ok">✓ {t('paymentDone')} · {t('confirmationCode')}: <strong dir="ltr">{done}</strong></p>
+      )}
+
+      {!done && invoice.status === 'unpaid' && !method && (
+        <div className="method-row">
+          <span className="muted">{t('paymentMethod')}:</span>
+          <button className="btn btn-primary btn-sm" onClick={() => setMethod('visa')}>💳 {t('visa')}</button>
+          <button className="btn btn-outline btn-sm" onClick={() => setMethod('vodafone-cash')}>📱 {t('vodafoneCash')}</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => pay({ method: 'cash' })}>💵 {t('cash')}</button>
+        </div>
+      )}
+
+      {!done && method === 'visa' && (
+        <div className="pay-form">
+          <input dir="ltr" inputMode="numeric" placeholder={t('cardNumber')} value={cardNumber}
+            onChange={(e) => setCardNumber(e.target.value)} />
+          <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => pay({ method: 'visa', cardNumber })}>{t('payNow')}</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setMethod(null)}>{t('closeBtn')}</button>
+        </div>
+      )}
+
+      {!done && method === 'vodafone-cash' && !codeSent && (
+        <div className="pay-form">
+          <input dir="ltr" inputMode="tel" placeholder={t('mobileNumber') + ' (010...)'} value={mobile}
+            onChange={(e) => setMobile(e.target.value)} />
+          <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => pay({ method: 'vodafone-cash', mobileNumber: mobile })}>{t('sendCode')}</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setMethod(null)}>{t('closeBtn')}</button>
+        </div>
+      )}
+
+      {!done && codeSent && (
+        <>
+          <p className="notice ok">📱 {t('demoCodeNote')}: <strong dir="ltr">{codeSent}</strong></p>
+          <div className="pay-form">
+            <input dir="ltr" inputMode="numeric" placeholder={t('enterCode')} value={code} onChange={(e) => setCode(e.target.value)} />
+            <button className="btn btn-primary btn-sm" disabled={busy} onClick={verify}>{t('verify')}</button>
+          </div>
+        </>
+      )}
+
+      {!done && invoice.status === 'pending_cash' && <p className="muted">💵 {t('cashAwaiting')}</p>}
+      {err && <p className="error">{err}</p>}
+    </div>
+  );
+}

@@ -16,11 +16,11 @@ export default function Login() {
     e.preventDefault();
     const res = await dispatch(login(form));
     if (login.fulfilled.match(res)) {
-      const home = res.payload.user.role === 'technician' ? '/pro' : '/dashboard';
+      const role = res.payload.user.role;
+      const home = role === 'technician' ? '/pro' : role === 'admin' ? '/admin' : '/dashboard';
       navigate(location.state?.from?.pathname && location.state.from.pathname !== '/login' ? location.state.from.pathname : home, { replace: true });
     }
   };
-  const fill = (email) => setForm({ email, password: 'Demo@1234' });
 
   return (
     <div className="auth card">
@@ -32,12 +32,6 @@ export default function Login() {
         <button className="btn btn-primary" disabled={status === 'loading'}>{t('login')}</button>
       </form>
       <p className="muted">{t('noAccount')} <Link to="/register/client">{t('joinClient')}</Link> · <Link to="/register/technician">{t('joinTech')}</Link></p>
-      <div className="demo">
-        <strong>{t('demo')}</strong>
-        <button type="button" className="chip" onClick={() => fill('client@demo.com')}>client@demo.com</button>
-        <button type="button" className="chip" onClick={() => fill('tech@demo.com')}>tech@demo.com</button>
-        <span className="muted">Demo@1234</span>
-      </div>
     </div>
   );
 }

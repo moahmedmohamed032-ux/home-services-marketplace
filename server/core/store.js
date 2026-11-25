@@ -1,106 +1,75 @@
-// In-memory data layer. A single module-level "database" with small
-// query helpers; swap this file for Mongo/Postgres without touching routes.
-const bcrypt = require('bcryptjs');
-const config = require('./config');
+// Business-logic layer over a pluggable persistence backend: MongoDB when
+// MONGODB_URI is set (production), in-memory otherwise (local dev and tests).
+// Every function is async; routes always await them.
+const ApiError = require('./ApiError');
 const seed = require('./seed');
 
-const db = {
-  users: [],        // {id, name, email, passwordHash, role, city, createdAt}
-  technicians: [],  // {id, userId, name, profession, city, yearsExperience, hourlyRate, rating, jobsDone, bio}
-  bookings: [],     // {id, clientId, technicianId, date, description, address, status, createdAt, review?}
-  seq: 1,
-};
+let db = null;
+let ready = null;
 
-const nextId = (prefix) => `${prefix}_${db.seq++}`;
-
-function seedDatabase() {
-  if (db.users.length) return;
-  db.professions = seed.PROFESSIONS;
-
-  const demoClientHash = bcrypt.hashSync(seed.DEMO_CLIENT.password, config.bcryptRounds);
-  const demoTechHash = bcrypt.hashSync(seed.DEMO_TECH.password, config.bcryptRounds);
-
-  const demoClient = {
-    id: nextId('usr'), ...stripPassword(seed.DEMO_CLIENT), passwordHash: demoClientHash,
-    ...seed.CITY_COORDS[seed.DEMO_CLIENT.city], createdAt: new Date().toISOString(),
-  };
-  db.users.push(demoClient);
-
-  const demoTechUser = { id: nextId('usr'), name: seed.DEMO_TECH.name, email: seed.DEMO_TECH.email, passwordHash: demoTechHash, role: 'technician', city: seed.DEMO_TECH.city, createdAt: new Date().toISOString() };
-  db.users.push(demoTechUser);
-  db.technicians.push({
-    id: nextId('tec'), userId: demoTechUser.id, name: demoTechUser.name,
-    profession: seed.DEMO_TECH.profession, city: seed.DEMO_TECH.city,
-    yearsExperience: seed.DEMO_TECH.yearsExperience, hourlyRate: seed.DEMO_TECH.hourlyRate,
-    rating: 0, jobsDone: 0, bio: seed.DEMO_TECH.bio,
-    phone: '+20 1000000000', phonePublic: false, addressActive: true, address: 'Luxor', reviews: [],
-    ...seed.CITY_COORDS[seed.DEMO_TECH.city],
-  });
-
-  // Spread seeded technicians a few km around their city center so distances vary.
-  seed.TECHNICIANS.forEach((t, i) => {
-    const base = seed.CITY_COORDS[t.city] || { lat: 30.0, lng: 31.0 };
-    const angle = i * 2.399963; // golden angle for an even spread
-    const r = 0.01 + (i % 5) * 0.015;
-    db.technicians.push({
-      id: nextId('tec'), userId: null, ...t,
-      phone: `+20 10${String(10000000 + i * 7919123).slice(0, 8)}`,
-      phonePublic: i % 3 === 0,
-      addressActive: true,
-      address: `${t.city} (${t.name.split(' ')[0]} workshop)`,
-      reviews: seedReviews(i, t.rating),
-      lat: base.lat + r * Math.cos(angle),
-      lng: base.lng + r * Math.sin(angle),
-    });
-  });
+function init() {
+  if (!ready) {
+    ready = (async () => {
+      if (process.env.MONGODB_URI) {
+        try {
+          db = require('./persist-mongo');
+          await db.init();
+          console.log('FIX-IT store: MongoDB');
+          return db;
+        } catch (err) {
+          console.error(`FIX-IT store: MongoDB unavailable (${err.message}), using in-memory store`);
+          db = null;
+        }
+      }
+      db = require('./persist-memory');
+      await db.init();
+      return db;
+    })();
+  }
+  return ready;
 }
+init();
 
-const REVIEW_TEXT = [
-  ['Sara M.', 'Arrived on time and finished the job cleanly. Highly recommended.', 'جه في الميعاد وخلص الشغل نضيف. أنصح بيه.'],
-  ['Khaled A.', 'Fair price and very professional.', 'سعر عادل وتعامل محترم جدا.'],
-  ['Heba R.', 'Fixed the problem the same day.', 'صلح المشكلة في نفس اليوم.'],
-];
-function seedReviews(i, rating) {
-  const base = Math.max(1, Math.min(5, Math.round(rating)));
-  return REVIEW_TEXT.map(([name, comment, commentAr], k) => ({
-    clientName: name, comment, commentAr, rating: k === 1 ? Math.max(1, base - 1) : base,
-    createdAt: new Date(Date.UTC(2026, 8 - k, 5 + ((i + k) % 20))).toISOString(),
-  }));
-}
-
-function stripPassword(u) {
-  const { password, ...rest } = u;
-  return rest;
-}
+const BOOKING_STATUS = ['pending', 'accepted', 'declined', 'completed', 'cancelled'];
 
 // ---- users ----
-function findUserByEmail(email) {
-  return db.users.find((u) => u.email.toLowerCase() === String(email).toLowerCase());
+async function findUserByEmail(email) {
+  await init();
+  const all = await db.users.getAll();
+  return all.find((u) => u.email.toLowerCase() === String(email).toLowerCase()) || null;
 }
-function findUserById(id) {
-  return db.users.find((u) => u.id === id);
+async function findUserById(id) {
+  await init();
+  return db.users.getById(id);
 }
 function publicUser(u) {
   if (!u) return null;
   const { passwordHash, ...rest } = u;
   return rest;
 }
-function createUser({ name, email, passwordHash, role, city, lat, lng }) {
+async function createUser({ name, email, passwordHash, role, city, lat, lng }) {
+  await init();
   const user = {
-    id: nextId('usr'), name, email, passwordHash, role, city: city || '',
+    id: await db.nextId('usr'), name, email, passwordHash, role, city: city || '',
     ...(lat !== undefined && lng !== undefined ? { lat: Number(lat), lng: Number(lng) } : {}),
     createdAt: new Date().toISOString(),
   };
-  db.users.push(user);
-  return user;
+  return db.users.insert(user);
 }
 
 // ---- professions ----
-function listProfessions() {
-  return db.professions.map((p) => ({
+async function listProfessions() {
+  await init();
+  const techs = await db.technicians.getAll();
+  return seed.PROFESSIONS.map((p) => ({
     ...p,
-    technicianCount: db.technicians.filter((t) => t.profession === p.id).length,
+    technicianCount: techs.filter((t) => t.profession === p.id).length,
   }));
+}
+async function listCities() {
+  await init();
+  const techs = await db.technicians.getAll();
+  return [...new Set(techs.map((t) => t.city))].sort();
 }
 
 // ---- geo ----
@@ -116,11 +85,9 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 }
 
 // ---- technicians ----
-// With lat/lng, each technician gets distanceKm and the list is ranked by
-// suitability: nearest first, rating as the tie-breaker. Without a location
-// it falls back to rating order.
-function searchTechnicians({ profession, city, search, minRating, lat, lng } = {}) {
-  let out = db.technicians.filter((t) => t.addressActive !== false);
+async function searchTechnicians({ profession, city, search, minRating, lat, lng } = {}) {
+  await init();
+  let out = (await db.technicians.getAll()).filter((t) => t.addressActive !== false);
   if (profession) out = out.filter((t) => t.profession === profession);
   if (city) out = out.filter((t) => t.city.toLowerCase() === String(city).toLowerCase());
   if (minRating) out = out.filter((t) => t.rating >= Number(minRating));
@@ -140,116 +107,314 @@ function searchTechnicians({ profession, city, search, minRating, lat, lng } = {
   }
   return out;
 }
-// Public shape: the phone number is only included when the technician
-// chose to make it public. Reviews combine seeded and real client reviews.
-function allReviews(t) {
-  const real = db.bookings.filter((b) => b.technicianId === t.id && b.review).map((b) => {
-    const c = findUserById(b.clientId);
-    return { clientName: c ? c.name : 'Client', comment: b.review.comment, rating: b.review.rating, createdAt: b.review.createdAt };
-  });
+
+async function allReviews(t) {
+  const bookings = await db.bookings.getAll();
+  const real = [];
+  for (const b of bookings.filter((x) => x.technicianId === t.id && x.review)) {
+    const c = await findUserById(b.clientId);
+    real.push({
+      clientName: c ? c.name : 'Client',
+      comment: b.review.comment, commentAr: b.review.commentAr || '',
+      rating: b.review.rating, createdAt: b.review.createdAt,
+    });
+  }
   return [...real, ...(t.reviews || [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
-function publicTechnician(t, { owner = false, withReviews = false } = {}) {
+
+async function publicTechnician(t, { owner = false, withReviews = false } = {}) {
   if (!t) return null;
   const { phone, reviews, ...rest } = t;
   const out = { ...rest, phone: owner || t.phonePublic ? phone : null };
-  const all = allReviews(t);
+  const all = await allReviews(t);
   out.reviewCount = all.length;
   if (withReviews) out.reviews = all;
   return out;
 }
-function findTechnicianById(id) {
-  return db.technicians.find((t) => t.id === id);
+
+async function findTechnicianById(id) {
+  await init();
+  return db.technicians.getById(id);
 }
-function findTechnicianByUserId(userId) {
-  return db.technicians.find((t) => t.userId === userId);
+async function findTechnicianByUserId(userId) {
+  await init();
+  const all = await db.technicians.getAll();
+  return all.find((t) => t.userId === userId) || null;
 }
-function createTechnicianProfile(user, { profession, city, yearsExperience = 0, hourlyRate = 0, bio = '', lat, lng, phone = '', phonePublic = false, address = '', addressActive = true }) {
+async function createTechnicianProfile(user, { profession, city, district, yearsExperience = 0, hourlyRate = 0, bio = '', bioAr = '', lat, lng, phone = '', phonePublic = false, address = '', addressActive = true }) {
+  await init();
   const fallback = seed.CITY_COORDS[city || user.city] || {};
   const t = {
-    id: nextId('tec'), userId: user.id, name: user.name, profession,
-    city: city || user.city || '', yearsExperience: Number(yearsExperience) || 0,
-    hourlyRate: Number(hourlyRate) || 0, rating: 0, jobsDone: 0, bio,
+    id: await db.nextId('tec'), userId: user.id, name: user.name, profession,
+    city: city || user.city || '', district: district || '',
+    yearsExperience: Number(yearsExperience) || 0, hourlyRate: Number(hourlyRate) || 0,
+    rating: 0, jobsDone: 0, bio, bioAr,
     phone: String(phone || ''), phonePublic: phonePublic === true || phonePublic === 'true',
-    address: String(address || ''), addressActive: addressActive !== false && addressActive !== 'false', reviews: [],
+    address: String(address || ''), addressActive: addressActive !== false && addressActive !== 'false',
+    reviews: [],
     lat: lat !== undefined ? Number(lat) : fallback.lat,
     lng: lng !== undefined ? Number(lng) : fallback.lng,
   };
-  db.technicians.push(t);
-  return t;
+  return db.technicians.insert(t);
 }
-function updateTechnicianProfile(id, patch) {
-  const t = findTechnicianById(id);
-  if (!t) return null;
-  const allowed = ['city', 'yearsExperience', 'hourlyRate', 'bio', 'profession', 'lat', 'lng', 'phone', 'phonePublic', 'address', 'addressActive'];
-  for (const k of allowed) {
-    if (patch[k] !== undefined) t[k] = patch[k];
-  }
-  return t;
-}
-function listCities() {
-  return [...new Set(db.technicians.map((t) => t.city))].sort();
+async function updateTechnicianProfile(id, patch) {
+  await init();
+  const allowed = ['city', 'district', 'yearsExperience', 'hourlyRate', 'bio', 'bioAr', 'profession', 'lat', 'lng', 'phone', 'phonePublic', 'address', 'addressActive'];
+  const clean = {};
+  for (const k of allowed) if (patch[k] !== undefined) clean[k] = patch[k];
+  return db.technicians.update(id, clean);
 }
 
 // ---- bookings ----
-const BOOKING_STATUS = ['pending', 'accepted', 'declined', 'completed', 'cancelled'];
-
-function createBooking({ clientId, technicianId, date, description, address, clientLat, clientLng }) {
+async function createBooking({ clientId, technicianId, date, description, descriptionAr = '', address, clientLat, clientLng }) {
+  await init();
   const b = {
-    id: nextId('bkg'), clientId, technicianId, date, description, address,
+    id: await db.nextId('bkg'), clientId, technicianId, date, description, descriptionAr, address,
     ...(clientLat !== undefined && clientLng !== undefined
       ? { clientLat: Number(clientLat), clientLng: Number(clientLng) }
       : {}),
     status: 'pending', createdAt: new Date().toISOString(), review: null,
   };
-  db.bookings.push(b);
-  return b;
+  return db.bookings.insert(b);
 }
-function findBookingById(id) {
-  return db.bookings.find((b) => b.id === id);
+async function findBookingById(id) {
+  await init();
+  return db.bookings.getById(id);
 }
-function bookingsForClient(clientId) {
-  return db.bookings.filter((b) => b.clientId === clientId).map(hydrateBooking).sort(byNewest);
-}
-function bookingsForTechnician(userId) {
-  const tech = findTechnicianByUserId(userId);
-  if (!tech) return [];
-  return db.bookings.filter((b) => b.technicianId === tech.id).map(hydrateBooking).sort(byNewest);
-}
-function byNewest(a, b) {
-  return b.createdAt.localeCompare(a.createdAt);
-}
-function hydrateBooking(b) {
-  const tech = findTechnicianById(b.technicianId);
-  const client = findUserById(b.clientId);
-  const profession = db.professions.find((p) => p.id === (tech && tech.profession));
+async function hydrateBooking(b) {
+  const tech = await findTechnicianById(b.technicianId);
+  const client = await findUserById(b.clientId);
+  const profession = seed.PROFESSIONS.find((p) => p.id === (tech && tech.profession));
   return {
     ...b,
     technicianName: tech ? tech.name : 'Unknown',
     profession: profession ? profession.name : '',
+    professionAr: profession ? profession.nameAr : '',
     clientName: client ? client.name : 'Unknown',
   };
 }
-function addReview(booking, { rating, comment }) {
-  booking.review = { rating: Number(rating), comment: comment || '', createdAt: new Date().toISOString() };
-  // Recompute the technician's rating as an average of all reviews.
-  const techBookings = db.bookings.filter((b) => b.technicianId === booking.technicianId && b.review);
-  const tech = findTechnicianById(booking.technicianId);
-  if (tech && techBookings.length) {
-    const all = allReviews(tech);
-    const avg = all.reduce((s, r) => s + r.rating, 0) / all.length;
-    tech.rating = Math.round(avg * 10) / 10;
-  }
-  return booking;
+async function bookingsForClient(clientId) {
+  await init();
+  const all = await db.bookings.getAll();
+  const rows = [];
+  for (const b of all.filter((x) => x.clientId === clientId)) rows.push(await hydrateBooking(b));
+  return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+async function bookingsForTechnician(userId) {
+  const tech = await findTechnicianByUserId(userId);
+  if (!tech) return [];
+  const all = await db.bookings.getAll();
+  const rows = [];
+  for (const b of all.filter((x) => x.technicianId === tech.id)) rows.push(await hydrateBooking(b));
+  return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-seedDatabase();
+async function createInvoiceForBooking(booking) {
+  const existing = await db.invoices.getAll();
+  if (existing.some((i) => i.bookingId === booking.id)) return null;
+  const tech = await findTechnicianById(booking.technicianId);
+  const prof = seed.PROFESSIONS.find((p) => p.id === (tech && tech.profession));
+  const id = await db.nextId('inv');
+  const num = Number(id.split('_')[1]);
+  const invoice = {
+    id, number: `INV-2026-${String(num).padStart(4, '0')}`,
+    bookingId: booking.id, clientId: booking.clientId, technicianId: booking.technicianId,
+    items: [
+      { label: `${prof ? prof.name : 'Service'} visit`, labelAr: `زيارة ${prof ? prof.nameAr : 'فني'}`, amount: tech ? tech.hourlyRate : 0 },
+      { label: 'FIX-IT service fee', labelAr: 'رسوم خدمة FIX-IT', amount: seed.SERVICE_FEE_EGP },
+    ],
+    total: (tech ? tech.hourlyRate : 0) + seed.SERVICE_FEE_EGP,
+    method: null, status: 'unpaid',
+    cardLast4: null, mobileNumber: null, confirmationCode: null, verificationCode: null,
+    paidAt: null, createdAt: new Date().toISOString(),
+  };
+  return db.invoices.insert(invoice);
+}
+
+async function setBookingStatus(booking, status) {
+  await init();
+  const updated = await db.bookings.update(booking.id, { status });
+  if (status === 'completed') {
+    const tech = await findTechnicianById(booking.technicianId);
+    if (tech) await db.technicians.update(tech.id, { jobsDone: (tech.jobsDone || 0) + 1 });
+    await createInvoiceForBooking(updated);
+  }
+  return updated;
+}
+
+async function addReview(booking, { rating, comment, commentAr = '' }) {
+  await init();
+  const review = { rating: Number(rating), comment: comment || '', commentAr, createdAt: new Date().toISOString() };
+  const updated = await db.bookings.update(booking.id, { review });
+  const tech = await findTechnicianById(booking.technicianId);
+  if (tech) {
+    const all = await allReviews(tech);
+    if (all.length) {
+      const avg = all.reduce((s, r) => s + r.rating, 0) / all.length;
+      await db.technicians.update(tech.id, { rating: Math.round(avg * 10) / 10 });
+    }
+  }
+  return updated;
+}
+
+// ---- invoices & payments (simulated) ----
+function publicInvoice(inv) {
+  if (!inv) return null;
+  const { verificationCode, ...rest } = inv;
+  return rest;
+}
+async function hydrateInvoice(inv) {
+  const tech = await findTechnicianById(inv.technicianId);
+  const client = await findUserById(inv.clientId);
+  const booking = await findBookingById(inv.bookingId);
+  const profession = seed.PROFESSIONS.find((p) => p.id === (tech && tech.profession));
+  return {
+    ...publicInvoice(inv),
+    technicianName: tech ? tech.name : 'Unknown',
+    clientName: client ? client.name : 'Unknown',
+    profession: profession ? profession.name : '',
+    professionAr: profession ? profession.nameAr : '',
+    bookingDate: booking ? booking.date : '',
+    bookingDescription: booking ? booking.description : '',
+  };
+}
+async function findInvoiceById(id) {
+  await init();
+  return db.invoices.getById(id);
+}
+async function findInvoiceByBookingId(bookingId) {
+  await init();
+  const all = await db.invoices.getAll();
+  return all.find((i) => i.bookingId === bookingId) || null;
+}
+async function invoicesForClient(clientId) {
+  await init();
+  const all = await db.invoices.getAll();
+  const rows = [];
+  for (const i of all.filter((x) => x.clientId === clientId)) rows.push(await hydrateInvoice(i));
+  return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+async function invoicesForTechnician(userId) {
+  const tech = await findTechnicianByUserId(userId);
+  if (!tech) return [];
+  const all = await db.invoices.getAll();
+  const rows = [];
+  for (const i of all.filter((x) => x.technicianId === tech.id)) rows.push(await hydrateInvoice(i));
+  return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+async function allInvoices() {
+  await init();
+  const rows = [];
+  for (const i of await db.invoices.getAll()) rows.push(await hydrateInvoice(i));
+  return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+const code = (n) => String(Math.floor(Math.random() * 10 ** n)).padStart(n, '0');
+
+async function payInvoice(invoice, { method, mobileNumber, cardNumber }) {
+  await init();
+  if (invoice.status !== 'unpaid') throw ApiError.conflict('Invoice is not awaiting payment');
+  if (!['visa', 'cash', 'vodafone-cash'].includes(method)) throw ApiError.badRequest('Unknown payment method');
+  const now = new Date().toISOString();
+  if (method === 'visa') {
+    const digits = String(cardNumber || '').replace(/\s/g, '');
+    if (!/^\d{12,19}$/.test(digits)) throw ApiError.badRequest('Invalid card number');
+    const updated = await db.invoices.update(invoice.id, {
+      method, status: 'paid', cardLast4: digits.slice(-4),
+      confirmationCode: `FX-${code(6)}`, paidAt: now,
+    });
+    return { invoice: await hydrateInvoice(updated) };
+  }
+  if (method === 'vodafone-cash') {
+    if (!/^01[0125][0-9]{8}$/.test(String(mobileNumber || ''))) {
+      throw ApiError.badRequest('Enter a valid Egyptian mobile number (e.g. 01012345678)');
+    }
+    const verificationCode = code(4);
+    const updated = await db.invoices.update(invoice.id, {
+      method, status: 'pending_verification', mobileNumber: String(mobileNumber), verificationCode,
+    });
+    // Demo only: in production this code is sent by SMS; here we return it.
+    return { invoice: await hydrateInvoice(updated), demoCode: verificationCode };
+  }
+  const updated = await db.invoices.update(invoice.id, { method, status: 'pending_cash' });
+  return { invoice: await hydrateInvoice(updated) };
+}
+
+async function verifyInvoice(invoice, codeInput) {
+  await init();
+  if (invoice.status !== 'pending_verification') throw ApiError.badRequest('Invoice is not awaiting verification');
+  if (String(codeInput) !== String(invoice.verificationCode)) throw ApiError.badRequest('Wrong verification code');
+  const updated = await db.invoices.update(invoice.id, {
+    status: 'paid', confirmationCode: `FX-${code(6)}`, verificationCode: null, paidAt: new Date().toISOString(),
+  });
+  return hydrateInvoice(updated);
+}
+
+// Technician confirms cash received for his own invoice; admin can confirm any.
+async function confirmInvoice(invoice) {
+  await init();
+  if (invoice.status === 'paid') throw ApiError.conflict('Invoice is already paid');
+  const updated = await db.invoices.update(invoice.id, {
+    status: 'paid', confirmationCode: `FX-${code(6)}`, verificationCode: null, paidAt: new Date().toISOString(),
+  });
+  return hydrateInvoice(updated);
+}
+
+// ---- admin ----
+async function listUsersAdmin() {
+  await init();
+  const users = await db.users.getAll();
+  const techs = await db.technicians.getAll();
+  return users
+    .map((u) => {
+      const t = techs.find((x) => x.userId === u.id);
+      return {
+        ...publicUser(u),
+        technician: t
+          ? { id: t.id, profession: t.profession, city: t.city, district: t.district, rating: t.rating, jobsDone: t.jobsDone, addressActive: t.addressActive }
+          : null,
+      };
+    })
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+async function adminOverview() {
+  await init();
+  const users = await db.users.getAll();
+  const techs = await db.technicians.getAll();
+  const bookings = await db.bookings.getAll();
+  const invoices = await db.invoices.getAll();
+  const paid = invoices.filter((i) => i.status === 'paid');
+  return {
+    users: {
+      total: users.length,
+      clients: users.filter((u) => u.role === 'client').length,
+      technicians: users.filter((u) => u.role === 'technician').length,
+    },
+    technicians: { total: techs.length, active: techs.filter((t) => t.addressActive !== false).length },
+    bookings: {
+      total: bookings.length,
+      pending: bookings.filter((b) => b.status === 'pending').length,
+      accepted: bookings.filter((b) => b.status === 'accepted').length,
+      completed: bookings.filter((b) => b.status === 'completed').length,
+    },
+    invoices: {
+      total: invoices.length,
+      paid: paid.length,
+      unpaid: invoices.length - paid.length,
+      collected: paid.reduce((s, i) => s + i.total, 0),
+      outstanding: invoices.filter((i) => i.status !== 'paid').reduce((s, i) => s + i.total, 0),
+    },
+  };
+}
 
 module.exports = {
-  BOOKING_STATUS,
+  BOOKING_STATUS, init,
   findUserByEmail, findUserById, publicUser, createUser,
   listProfessions, listCities,
   searchTechnicians, publicTechnician, findTechnicianById, findTechnicianByUserId,
   createTechnicianProfile, updateTechnicianProfile,
-  createBooking, findBookingById, bookingsForClient, bookingsForTechnician, addReview,
+  createBooking, findBookingById, bookingsForClient, bookingsForTechnician, setBookingStatus, addReview,
+  findInvoiceById, findInvoiceByBookingId, invoicesForClient, invoicesForTechnician, allInvoices,
+  payInvoice, verifyInvoice, confirmInvoice, publicInvoice,
+  listUsersAdmin, adminOverview,
 };

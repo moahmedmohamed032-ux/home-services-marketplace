@@ -7,14 +7,14 @@ const { requireFields, assertRating } = require('../utils/validators');
 const router = express.Router();
 
 // POST /api/bookings — client books a technician.
-router.post('/', authenticate, requireRole('client'), (req, res, next) => {
+router.post('/', authenticate, requireRole('client'), async (req, res, next) => {
   try {
     requireFields(req.body, ['technicianId', 'date', 'description', 'address']);
     const { technicianId, date, description, address, clientLat, clientLng } = req.body;
-    const tech = store.findTechnicianById(technicianId);
+    const tech = await store.findTechnicianById(technicianId);
     if (!tech) throw ApiError.notFound('Technician not found');
     if (Number.isNaN(Date.parse(date))) throw ApiError.badRequest('Invalid booking date');
-    const booking = store.createBooking({
+    const booking = await store.createBooking({
       clientId: req.user.id, technicianId, date, description, address, clientLat, clientLng,
     });
     res.status(201).json({ booking });
@@ -24,23 +24,27 @@ router.post('/', authenticate, requireRole('client'), (req, res, next) => {
 });
 
 // GET /api/bookings/mine — the client's own bookings.
-router.get('/mine', authenticate, requireRole('client'), (req, res) => {
-  res.json({ bookings: store.bookingsForClient(req.user.id) });
+router.get('/mine', authenticate, requireRole('client'), async (req, res, next) => {
+  try {
+    res.json({ bookings: await store.bookingsForClient(req.user.id) });
+  } catch (err) { next(err); }
 });
 
 // GET /api/bookings/incoming — requests addressed to the logged-in technician.
-router.get('/incoming', authenticate, requireRole('technician'), (req, res) => {
-  res.json({ bookings: store.bookingsForTechnician(req.user.id) });
+router.get('/incoming', authenticate, requireRole('technician'), async (req, res, next) => {
+  try {
+    res.json({ bookings: await store.bookingsForTechnician(req.user.id) });
+  } catch (err) { next(err); }
 });
 
 // PATCH /api/bookings/:id/status — state machine:
 //   client: pending|accepted -> cancelled
 //   technician: pending -> accepted|declined, accepted -> completed
-router.patch('/:id/status', authenticate, (req, res, next) => {
+router.patch('/:id/status', authenticate, async (req, res, next) => {
   try {
     const { status } = req.body;
     if (!store.BOOKING_STATUS.includes(status)) throw ApiError.badRequest('Unknown status');
-    const booking = store.findBookingById(req.params.id);
+    const booking = await store.findBookingById(req.params.id);
     if (!booking) throw ApiError.notFound('Booking not found');
 
     if (req.user.role === 'client') {
@@ -50,7 +54,7 @@ router.patch('/:id/status', authenticate, (req, res, next) => {
         throw ApiError.badRequest(`Cannot cancel a ${booking.status} booking`);
       }
     } else {
-      const tech = store.findTechnicianByUserId(req.user.id);
+      const tech = await store.findTechnicianByUserId(req.user.id);
       if (!tech || booking.technicianId !== tech.id) throw ApiError.forbidden('Not your booking');
       const allowed =
         (booking.status === 'pending' && ['accepted', 'declined'].includes(status)) ||
@@ -58,29 +62,25 @@ router.patch('/:id/status', authenticate, (req, res, next) => {
       if (!allowed) throw ApiError.badRequest(`Cannot move booking from ${booking.status} to ${status}`);
     }
 
-    booking.status = status;
-    if (status === 'completed') {
-      const tech = store.findTechnicianById(booking.technicianId);
-      if (tech) tech.jobsDone += 1;
-    }
-    res.json({ booking });
+    const updated = await store.setBookingStatus(booking, status);
+    res.json({ booking: updated });
   } catch (err) {
     next(err);
   }
 });
 
 // POST /api/bookings/:id/review — client reviews a completed booking.
-router.post('/:id/review', authenticate, requireRole('client'), (req, res, next) => {
+router.post('/:id/review', authenticate, requireRole('client'), async (req, res, next) => {
   try {
     requireFields(req.body, ['rating']);
     assertRating(req.body.rating);
-    const booking = store.findBookingById(req.params.id);
+    const booking = await store.findBookingById(req.params.id);
     if (!booking) throw ApiError.notFound('Booking not found');
     if (booking.clientId !== req.user.id) throw ApiError.forbidden('Not your booking');
     if (booking.status !== 'completed') throw ApiError.badRequest('Only completed bookings can be reviewed');
     if (booking.review) throw ApiError.conflict('Booking already reviewed');
-    store.addReview(booking, req.body);
-    res.status(201).json({ booking });
+    const updated = await store.addReview(booking, req.body);
+    res.status(201).json({ booking: updated });
   } catch (err) {
     next(err);
   }

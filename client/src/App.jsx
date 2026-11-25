@@ -9,6 +9,7 @@ import RegisterClient from './pages/RegisterClient';
 import RegisterTechnician from './pages/RegisterTechnician';
 import ClientDashboard from './pages/ClientDashboard';
 import TechnicianDashboard from './pages/TechnicianDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useT } from './i18n/useT';
@@ -18,7 +19,8 @@ export default function App() {
   const { pathname } = useLocation();
   useEffect(() => {
     const key = pathname === '/' ? 'home' : pathname.startsWith('/technicians') ? 'find'
-      : pathname.startsWith('/login') ? 'login' : pathname.startsWith('/register') ? 'signup' : 'dashboard';
+      : pathname.startsWith('/login') ? 'login' : pathname.startsWith('/register') ? 'signup'
+      : pathname.startsWith('/admin') ? 'admin' : 'dashboard';
     document.title = pathname === '/'
       ? (lang === 'ar' ? 'FIX-IT | اعثر على أقرب فني بأعلى تقييم' : 'FIX-IT | Find the nearest plumber, electrician and home technician')
       : `${t(key)} | FIX-IT`;
@@ -37,6 +39,7 @@ export default function App() {
           <Route path="/register/technician" element={<RegisterTechnician />} />
           <Route path="/dashboard" element={<ProtectedRoute role="client"><ClientDashboard /></ProtectedRoute>} />
           <Route path="/pro" element={<ProtectedRoute role="technician"><TechnicianDashboard /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

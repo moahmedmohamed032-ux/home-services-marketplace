@@ -10,7 +10,7 @@ export default function Navbar() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { t } = useT();
-  const dash = user && (user.role === 'technician' ? '/pro' : '/dashboard');
+  const dash = user && (user.role === 'technician' ? '/pro' : user.role === 'admin' ? '/admin' : '/dashboard');
 
   return (
     <header className="navbar">
