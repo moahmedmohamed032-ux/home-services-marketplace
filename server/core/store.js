@@ -580,6 +580,7 @@ async function startPaymobPayment(invoice, user, { method = 'card', phone, appUr
 // `reference` is "<invoiceId>-<attempt>"; the amount must match the invoice.
 async function applyPaymobTransaction({ reference, transactionId, amountCents, success, sourceType, last4 }) {
   await init();
+  if (!paymob.isLive()) return { status: 'ignored' }; // sandbox/test results never mark an order paid
   const invoiceId = String(reference || '').split('-')[0];
   const invoice = invoiceId ? await db.invoices.getById(invoiceId) : null;
   if (!invoice) throw ApiError.notFound('Invoice not found for this payment');

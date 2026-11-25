@@ -15,6 +15,7 @@ export default function InvoiceCard({ invoice, onChange }) {
   const [cfg, setCfg] = useState({ provider: 'simulated', methods: [] });
   useEffect(() => { api.get('/invoices/payment-config').then((r) => setCfg(r.data)).catch(() => {}); }, []);
   const online = cfg.provider === 'paymob';
+  const cashOnly = cfg.provider === 'cash_only';
   const [done, setDone] = useState(invoice.status === 'paid' ? invoice.confirmationCode : null);
 
   const run = async (fn) => {
@@ -89,7 +90,15 @@ export default function InvoiceCard({ invoice, onChange }) {
       )}
       {!done && online && method && method.startsWith('online-') && <p className="muted">🔒 {t('secureNote')}</p>}
 
-      {!done && !online && invoice.status === 'unpaid' && !method && (
+      {!done && cashOnly && invoice.status === 'unpaid' && (
+        <div className="method-row">
+          <span className="muted">{t('paymentMethod')}:</span>
+          <button className="btn btn-primary btn-sm" onClick={() => pay({ method: 'cash' })}>💵 {t('cash')}</button>
+          <span className="muted"><small>💳 {t('cardSoon')}</small></span>
+        </div>
+      )}
+
+      {!done && !online && !cashOnly && invoice.status === 'unpaid' && !method && (
         <div className="method-row">
           <span className="muted">{t('paymentMethod')}:</span>
           <button className="btn btn-primary btn-sm" onClick={() => setMethod('visa')}>💳 {t('visa')}</button>

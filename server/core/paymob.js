@@ -28,9 +28,14 @@ function config() {
   };
 }
 
+// Keys present is not enough: real payments are only accepted when PAYMOB_LIVE=true
+// (set after Paymob live activation). Test/sandbox keys must never settle a real order.
+const isLive = () => config().enabled && String(env().PAYMOB_LIVE || '').toLowerCase() === 'true';
+
 // Public description for the client: which methods can the UI offer?
 function publicConfig() {
   const c = config();
+  if (c.enabled && !isLive()) return { provider: 'cash_only', methods: [] };
   return {
     provider: c.enabled ? 'paymob' : 'simulated',
     methods: c.enabled ? ['card', ...(c.integrations.wallet ? ['wallet'] : [])] : [],
@@ -52,7 +57,7 @@ const normalizePhone = (p) => {
 // Create an Intention and return { clientSecret, checkoutUrl, intentionId, reference }.
 async function createIntention({ invoice, user, method, phone, appUrl }) {
   const c = config();
-  if (!c.enabled) throw ApiError.badRequest('Online payment is not configured');
+  if (!c.enabled || !isLive()) throw ApiError.badRequest('Online payment is not available yet');
   const integrationId = method === 'wallet' ? c.integrations.wallet : c.integrations.card;
   if (!integrationId) throw ApiError.badRequest('This payment method is not available yet');
   const mobile = normalizePhone(phone);
@@ -140,4 +145,4 @@ function verifyRedirect(query) {
   return safeEqual(hmacFor(query, c.hmacSecret, { flat: true }), String(query.hmac || '').toLowerCase());
 }
 
-module.exports = { config, publicConfig, createIntention, verifyCallback, verifyRedirect, hmacFor, normalizePhone };
+module.exports = { config, isLive, publicConfig, createIntention, verifyCallback, verifyRedirect, hmacFor, normalizePhone };

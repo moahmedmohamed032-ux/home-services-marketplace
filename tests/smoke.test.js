@@ -221,6 +221,7 @@ test('paymob hmac + callback', async () => {
   process.env.PAYMOB_PUBLIC_KEY = 'pk_test_x';
   process.env.PAYMOB_HMAC_SECRET = 'hmac-test-secret';
   process.env.PAYMOB_CARD_INTEGRATION_ID = '123';
+  process.env.PAYMOB_LIVE = 'true';
   const paymob = require('../server/core/paymob');
   const store = require('../server/core/store');
   assert.equal(paymob.publicConfig().provider, 'paymob');
@@ -243,6 +244,9 @@ test('paymob hmac + callback', async () => {
   assert.equal((await store.findInvoiceById(inv.id)).status, 'paid');
   // replay is a no-op
   assert.equal((await post(`/paymob/callback?hmac=${good}`, { obj })).status, 200);
+  process.env.PAYMOB_LIVE = '';
+  { const r = await (await fetch(`${base}/invoices/payment-config`)).json(); assert.equal(r.provider, 'cash_only'); }
+  delete process.env.PAYMOB_LIVE;
   delete process.env.PAYMOB_SECRET_KEY;
 });
 
