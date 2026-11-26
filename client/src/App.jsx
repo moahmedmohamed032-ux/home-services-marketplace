@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Link } from 'react-router-dom';
+import { Terms, Privacy, Contact, SUPPORT_WHATSAPP } from './pages/LegalPages';
 import Navbar from './components/Navbar';
 import ChangePassword from './pages/ChangePassword';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -45,6 +46,9 @@ export default function App() {
           <Route path="/esna/:slug" element={<ServiceLanding city="esna" />} />
           <Route path="/qena/:slug" element={<ServiceLanding city="qena" />} />
           <Route path="/aswan/:slug" element={<ServiceLanding city="aswan" />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="/request-nearest" element={<NearestRequest />} />
           <Route path="/technicians" element={<Technicians />} />
           <Route path="/technicians/:id" element={<TechnicianDetails />} />
@@ -59,7 +63,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      <footer className="footer"><p>{t('footer')}</p></footer>
+      <footer className="footer"><p>{t('footer')}</p><p><Link to="/terms">شروط الاستخدام</Link> · <Link to="/privacy">سياسة الخصوصية</Link>{SUPPORT_WHATSAPP && <> · <Link to="/contact">تواصل معنا</Link></>}</p></footer>
     </>
   );
 }

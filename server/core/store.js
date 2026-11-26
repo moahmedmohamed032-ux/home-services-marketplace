@@ -95,7 +95,7 @@ async function createUser({ name, email, phone, passwordHash, role, city, lat, l
 const SUPPORTED_CITIES = ['Luxor', 'Esna', 'Qena', 'Aswan'];
 const canonicalCity = (c) => SUPPORTED_CITIES.find((x) => x.toLowerCase() === String(c || '').trim().toLowerCase()) || null;
 const PUBLIC_CITIES = (process.env.PUBLIC_CITIES || SUPPORTED_CITIES.join(',')).split(',').map((c) => c.trim().toLowerCase()).filter(Boolean);
-const isPublicCity = (t) => PUBLIC_CITIES.includes(String(t.city || '').toLowerCase());
+const isPublicCity = (t) => PUBLIC_CITIES.includes(String(t.city || '').toLowerCase()) && t.approved !== false;
 
 // ---- professions ----
 async function listProfessions() {
@@ -214,10 +214,15 @@ async function createTechnicianProfile(user, { profession, city, district, years
     phone: String(phone || ''), phonePublic: phonePublic === true || phonePublic === 'true',
     address: String(address || ''), addressActive: addressActive !== false && addressActive !== 'false',
     reviews: [],
+    approved: false, // new technicians appear publicly only after an admin approves them
     lat: lat !== undefined ? Number(lat) : fallback.lat,
     lng: lng !== undefined ? Number(lng) : fallback.lng,
   };
-  return db.technicians.insert(t);
+  const saved = await db.technicians.insert(t);
+  for (const a of (await db.users.getAll()).filter((u) => u.role === 'admin')) {
+    await notify(a.id, { type: 'tech_pending', link: '/admin', titleAr: 'فني جديد في انتظار الاعتماد', titleEn: 'New technician awaiting approval', bodyAr: `${user.name} (${city})`, bodyEn: `${user.name} (${city})` });
+  }
+  return saved;
 }
 const IMG_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 const PHOTO_MAX = 120000;
@@ -311,7 +316,7 @@ async function collapseDispatch(rows) {
     const waiting = live.filter((x) => x.status === 'pending').length;
     if (['pending', 'accepted'].includes(pick.status)) extra.set(pick, { technicianName: 'أقرب فني متاح', nearestPending: true, offers, waiting });
   }
-  return rows.filter((r) => !hide.has(r)).map((r) => (extra.has(r) ? { ...r, ...extra.get(r) } : r));
+  return rows.filter((r) => !hide.has(r)).map((r) => (extra.has(r) ? { ...r, ...extra.get(r) } : (r.dispatchId && !r.chosen ? { ...r, technicianName: 'أقرب فني متاح' } : r)));
 }
 // Customer picks one offer: it becomes the job, every other request of the group is withdrawn.
 async function chooseNearestOffer(booking) {
@@ -452,8 +457,31 @@ async function submitFinalAmount(booking, amount) {
   return setBookingStatus(booking, 'awaiting_confirmation', { finalAmount: Math.round(a) });
 }
 // Confirm automatically when the client has not answered within 48h. Safe to call often.
+const NEAREST_TIMEOUT_MS = 30 * 60 * 1000;
+// A nearest request nobody accepted within 30 minutes is closed and the customer is told.
+async function sweepNearestExpiry() {
+  const now = Date.now();
+  const all = await db.bookings.getAll();
+  const groups = new Map();
+  for (const b of all) if (b.dispatchId) { if (!groups.has(b.dispatchId)) groups.set(b.dispatchId, []); groups.get(b.dispatchId).push(b); }
+  for (const g of groups.values()) {
+    const live = g.filter((b) => !b.superseded);
+    if (live.some((b) => b.chosen || !['pending', 'declined'].includes(b.status))) continue; // answered, chosen or closed
+    const pending = live.filter((b) => b.status === 'pending');
+    if (!pending.length) continue;
+    if (now - Date.parse(pending[0].createdAt) < NEAREST_TIMEOUT_MS) continue;
+    for (const b of pending) {
+      await db.bookings.update(b.id, { status: 'cancelled', expired: true });
+      await notify(await techUserId(b.technicianId), { type: 'booking_expired', bookingId: b.id, link: '/pro', titleAr: 'انتهى وقت الطلب', titleEn: 'Request expired', bodyAr: '', bodyEn: '' });
+    }
+    await notify(pending[0].clientId, { type: 'nearest_expired', bookingId: pending[0].id, link: '/request-nearest',
+      titleAr: 'مفيش فني رد على طلبك', titleEn: 'No technician replied to your request',
+      bodyAr: 'جرّب تبعت الطلب تاني أو اختار فني من القايمة.', bodyEn: 'Try again or pick a technician from the list.' });
+  }
+}
 async function sweepAutoConfirm() {
   await init();
+  await sweepNearestExpiry();
   const now = Date.now();
   const all = await db.bookings.getAll();
   let n = 0;
@@ -767,8 +795,9 @@ async function adminCreateTechnician(body, passwordHash) {
     phone: phoneIn ? normalizePhone(phoneIn) : '',
     phonePublic: body.phonePublic === true,
   });
+  await db.technicians.update(t.id, { approved: true }); // created by an admin: already vetted
   if (body.rating !== undefined && body.rating !== '') {
-    return db.technicians.update(t.id, { rating: Math.round(num(body.rating, 'rating', { min: 0, max: 5 }) * 10) / 10 });
+    return db.technicians.update(t.id, { approved: true, rating: Math.round(num(body.rating, 'rating', { min: 0, max: 5 }) * 10) / 10 });
   }
   return t;
 }
@@ -787,9 +816,13 @@ async function adminUpdateTechnician(id, body) {
   if (body.yearsExperience !== undefined) patch.yearsExperience = num(body.yearsExperience, 'yearsExperience', { max: 60 });
   if (body.addressActive !== undefined) patch.addressActive = body.addressActive === true;
   if (body.verified !== undefined) patch.verified = body.verified === true;
+  if (body.approved !== undefined) patch.approved = body.approved === true;
   if (body.clearPhoto === true) patch.photo = '';
   if (!Object.keys(patch).length) throw ApiError.badRequest('Nothing to update');
   const updated = await db.technicians.update(id, patch);
+  if (patch.approved === true && tech.approved === false) {
+    await notify(tech.userId, { type: 'tech_approved', link: '/pro', titleAr: 'تم اعتماد حسابك ✅', titleEn: 'Your account was approved ✅', bodyAr: 'بروفايلك ظاهر دلوقتي للعملاء.', bodyEn: 'Your profile is now visible to customers.' });
+  }
   if (patch.name && tech.userId) await db.users.update(tech.userId, { name: patch.name });
   return updated;
 }

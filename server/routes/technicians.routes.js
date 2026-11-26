@@ -43,7 +43,7 @@ router.get('/:id', async (req, res, next) => {
   try {
     const tech = await store.findTechnicianById(req.params.id);
     if (!tech) return next(ApiError.notFound('Technician not found'));
-    if (tech.addressActive === false) return next(ApiError.notFound('Technician not found'));
+    if (tech.addressActive === false || tech.approved === false) return next(ApiError.notFound('Technician not found'));
     res.json({ technician: await store.publicTechnician(tech, { withReviews: true }) });
   } catch (err) { next(err); }
 });

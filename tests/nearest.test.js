@@ -31,3 +31,23 @@ test('nearest request: offers with prices, customer picks, others withdrawn; new
   const after = (await store.adminListBookings()).filter((b) => b.dispatchId === booking.dispatchId);
   assert.equal(after.filter((b) => b.status === 'cancelled' && b.superseded).length, all.length - 1);
 });
+
+test('new technician is hidden until admin approves; nearest request expires after 30 min', async () => {
+  const store = require('../server/core/store');
+  await store.init();
+  const u = await store.createUser({ name: 'Gate Test', phone: '01099990001', passwordHash: 'x', role: 'technician', city: 'Qena' });
+  const t = await store.createTechnicianProfile(u, { profession: 'plumber', city: 'Qena', hourlyRate: 100, phone: '+201099990001' });
+  assert.equal(t.approved, false);
+  assert.equal((await store.searchTechnicians({ city: 'Qena' })).length, 0);
+  await store.adminUpdateTechnician(t.id, { approved: true });
+  assert.equal((await store.searchTechnicians({ city: 'Qena' })).length, 1);
+  const client = await store.findUserByEmail('client@demo.com');
+  const r = await store.createNearestRequest({ clientId: client.id, profession: 'plumber', city: 'Qena', date: '2026-12-21', description: 'expire test', address: 'x' });
+  const all = await store.adminListBookings();
+  const mine = all.filter((b) => b.dispatchId === r.booking.dispatchId);
+  assert.ok(mine.length >= 1);
+  const orig = Date.now; Date.now = () => orig() + 31 * 60 * 1000;
+  try { await store.sweepAutoConfirm(); } finally { Date.now = orig; }
+  const after = (await store.adminListBookings()).filter((b) => b.dispatchId === r.booking.dispatchId);
+  assert.ok(after.every((b) => b.status === 'cancelled'));
+});

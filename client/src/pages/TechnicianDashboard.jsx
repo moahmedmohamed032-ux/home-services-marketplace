@@ -65,6 +65,7 @@ export default function TechnicianDashboard() {
 
   return (
     <>
+      {tech.approved === false && <p className="notice">⏳ {t('pendingApprovalNote')}</p>}
       <section className="dash-hero">
         <div>
           <h1>▦ {t('dashboard')}</h1>

@@ -12,7 +12,7 @@ router.post('/', authenticate, requireRole('client'), async (req, res, next) => 
     requireFields(req.body, ['technicianId', 'date', 'description', 'address']);
     const { technicianId, date, description, address, clientLat, clientLng } = req.body;
     const tech = await store.findTechnicianById(technicianId);
-    if (!tech) throw ApiError.notFound('Technician not found');
+    if (!tech || tech.approved === false) throw ApiError.notFound('Technician not found');
     if (Number.isNaN(Date.parse(date))) throw ApiError.badRequest('Invalid booking date');
     const booking = await store.createBooking({
       clientId: req.user.id, technicianId, date, description, address, clientLat, clientLng,

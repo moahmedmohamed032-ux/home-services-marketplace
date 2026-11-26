@@ -111,8 +111,9 @@ export default function AdminDashboard() {
             <tbody>
               {techs.map((x) => (
                 <tr key={x.id}>
-                  <td>{x.photo ? '📷 ' : ''}{x.name} {x.verified && <VerifiedBadge small />}</td><td>{profName(x.profession)}</td><td>{x.city}</td><td>{x.district || '-'}</td><td>{x.rating}</td><td dir="ltr">{x.phone || '-'}</td>
+                  <td>{x.photo ? '📷 ' : ''}{x.name} {x.verified && <VerifiedBadge small />} {x.approved === false && <span className="badge badge-pending">{t('pendingApproval')}</span>}</td><td>{profName(x.profession)}</td><td>{x.city}</td><td>{x.district || '-'}</td><td>{x.rating}</td><td dir="ltr">{x.phone || '-'}</td>
                   <td className="row-actions">
+                    {x.approved === false && <button className="btn btn-primary btn-sm" onClick={() => run(() => api.patch(`/admin/technicians/${x.id}`, { approved: true }))}>✅ {t('approveAction')}</button>}
                     <button className={`btn btn-sm ${x.verified ? 'btn-ghost' : 'btn-primary'}`} onClick={() => run(() => api.patch(`/admin/technicians/${x.id}`, { verified: !x.verified }))}>{x.verified ? t('unverifyAction') : `✔ ${t('verifyAction')}`}</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => setModal({ kind: 'tech', mode: 'edit', data: { id: x.id, name: x.name, profession: x.profession, city: x.city, district: x.district || '', phone: x.phone || '', rating: x.rating, hourlyRate: x.hourlyRate } })}>{t('crudEdit')}</button>
                     <button className="btn btn-ghost btn-sm danger" onClick={() => del(`/admin/technicians/${x.id}`)}>{t('crudDelete')}</button>
