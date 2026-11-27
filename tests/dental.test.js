@@ -59,6 +59,7 @@ test('dental: structured profile fields validated, empty stays empty', async () 
   assert.equal(adm.registryId, '123-456-789');
   await dental.adminUpdateClinic(r2.id, { approved: true });
   assert.equal((await dental.getClinic(r2.id)).registryId, undefined);
+  await dental.adminUpdateClinic(r2.id, { approved: false });
 });
 
 test('dental: provider directory seeds hidden (449 gov + 25 specialty + 14 hospitals), paginated, never public', async () => {
