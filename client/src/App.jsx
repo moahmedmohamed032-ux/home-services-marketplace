@@ -75,6 +75,7 @@ export default function App() {
         </Routes>
       </main>
       <footer className="footer"><p>{t('footer')}</p><p><Link to="/terms">شروط الاستخدام</Link> · <Link to="/privacy">سياسة الخصوصية</Link>{SUPPORT_WHATSAPP && <> · <Link to="/contact">تواصل معنا</Link></>}</p></footer>
+      {!pathname.startsWith('/admin') && <Assistant />}
     </>
   );
 }
