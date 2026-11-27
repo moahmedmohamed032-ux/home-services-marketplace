@@ -330,7 +330,7 @@ async function chooseNearestOffer(booking) {
   if (all.some((x) => x.dispatchId === booking.dispatchId && x.chosen)) throw ApiError.conflict('A technician was already chosen');
   const updated = await db.bookings.update(booking.id, { chosen: true });
   await withdrawDispatchSiblings(booking, 'العميل اختار فني تاني', 'The client chose another technician', ['pending', 'accepted']);
-  await notify(await techUserId(booking.technicianId), { type: 'booking_chosen', bookingId: booking.id, link: '/pro', titleAr: 'العميل اختارك ✅', titleEn: 'The client chose you ✅', bodyAr: 'تقدر تبدأ الشغل.', bodyEn: 'You can start the job.' });
+  await notify(await techUserId(booking.technicianId), { type: 'booking_chosen', bookingId: booking.id, link: '/pro', titleAr: 'العميل اختارك ✅', titleEn: 'The client chose you ✅', bodyAr: 'تقدر تبدأ الشغل. رقمك وموقعك ظاهرين للعميل في الطلب ده عشان يعرف هتوصله امتى.', bodyEn: 'You can start the job. Your phone and location are visible to this client for this job so they can estimate your arrival.' });
   return updated;
 }
 
@@ -411,12 +411,31 @@ async function hydrateBooking(b) {
     clientName: client ? client.name : 'Unknown',
   };
 }
+// Once the customer has selected a technician (nearest flow: the chosen offer; direct booking: the technician accepted) and the job is
+// active, that technician's phone and location are shown to that customer for this job only, whatever phonePublic says. Only real stored
+// values are returned; missing ones stay out. The customer's own phone is never part of any technician payload.
+const CONTACT_STATUSES = ['accepted', 'in_progress', 'awaiting_confirmation'];
+async function technicianContactFor(b) {
+  if (!CONTACT_STATUSES.includes(b.status) || b.superseded || (b.dispatchId && !b.chosen)) return null;
+  const t = await findTechnicianById(b.technicianId);
+  if (!t) return null;
+  const u = await findUserById(t.userId);
+  const phone = String(t.phone || (u && u.phone) || '').trim();
+  const lat = Number(t.lat), lng = Number(t.lng);
+  const hasLoc = t.lat !== undefined && t.lat !== null && t.lat !== '' && Number.isFinite(lat) && Number.isFinite(lng);
+  const hasClient = b.clientLat !== undefined && b.clientLat !== null && b.clientLat !== '' && Number.isFinite(Number(b.clientLat)) && Number.isFinite(Number(b.clientLng));
+  const out = {};
+  if (phone) out.phone = phone;
+  if (t.address) out.address = t.address;
+  if (hasLoc) { out.lat = lat; out.lng = lng; if (hasClient) out.distanceKm = Math.round(haversineKm(Number(b.clientLat), Number(b.clientLng), lat, lng) * 10) / 10; }
+  return Object.keys(out).length ? out : null;
+}
 async function bookingsForClient(clientId) {
   await init();
   await sweepAutoConfirm();
   const all = await db.bookings.getAll();
   const rows = [];
-  for (const b of all.filter((x) => x.clientId === clientId)) rows.push(await hydrateBooking(b));
+  for (const b of all.filter((x) => x.clientId === clientId)) rows.push({ ...(await hydrateBooking(b)), technicianContact: await technicianContactFor(b) });
   return (await collapseDispatch(rows)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 async function bookingsForTechnician(userId) {

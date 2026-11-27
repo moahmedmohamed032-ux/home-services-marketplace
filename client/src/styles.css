@@ -223,3 +223,7 @@ label small.muted{display:block;margin-top:4px}
 .asst-form button { background: linear-gradient(135deg, #2b7de9, #7a4df0); color: #fff; border: 0; border-radius: 999px; padding: 0 20px; font-weight: 700; cursor: pointer; }
 .asst-form button:disabled { opacity: .45; }
 @media (max-width: 520px) { .asst { left: 16px; bottom: 24px; } .asst-fab { font-size: 16px; padding: 13px 20px; } }
+
+.tech-contact { border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); padding: .7rem .9rem; margin: .5rem 0; max-width: 520px; }
+.tech-contact p { margin: .35rem 0; }
+.tech-map { width: 100%; height: 220px; border: 1px solid var(--border); border-radius: 10px; }

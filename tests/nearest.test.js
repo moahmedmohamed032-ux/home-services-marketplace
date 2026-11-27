@@ -124,3 +124,34 @@ test('silent technician: reminders, customer cash check, auto-complete or disput
     assert.equal(inv.status, 'paid'); assert.equal(inv.method, 'cash');
   } finally { Date.now = real; }
 });
+
+test('selected technician: phone + location shown to that customer on active jobs only; technician never gets the client phone', async () => {
+  const store = require('../server/core/store');
+  await store.init();
+  const client = await store.createUser({ name: 'Contact Client', email: 'contact-client@test.local', phone: '01099990099', passwordHash: 'x', role: 'client' });
+  const tu = await store.createUser({ name: 'Contact Tech', phone: '01099990088', passwordHash: 'x', role: 'technician', city: 'Luxor' });
+  const tech = await store.createTechnicianProfile(tu, { profession: 'plumber', city: 'Luxor', hourlyRate: 100, phone: '+201099990088', phonePublic: false, lat: 25.69, lng: 32.64, address: 'Test St' });
+  const b = await store.createBooking({ clientId: client.id, technicianId: tech.id, date: '2026-12-22', description: 'c', address: 'x', clientLat: 25.7, clientLng: 32.65 });
+  let mine = (await store.bookingsForClient(client.id)).find((x) => x.id === b.id);
+  assert.equal(mine.technicianContact, null); // not accepted yet
+  await store.setBookingStatus(await store.findBookingById(b.id), 'accepted');
+  mine = (await store.bookingsForClient(client.id)).find((x) => x.id === b.id);
+  assert.equal(mine.technicianContact.phone, '+201099990088');
+  assert.equal(mine.technicianContact.lat, 25.69);
+  assert.ok(mine.technicianContact.distanceKm > 0);
+  const pub = await store.publicTechnician(await store.findTechnicianById(tech.id));
+  assert.equal(pub.phone, null); // public profile still hides it
+  const forTech = await store.bookingsForTechnician(tu.id);
+  assert.equal(JSON.stringify(forTech).includes('01099990099'), false);
+  await store.setBookingStatus(await store.findBookingById(b.id), 'cancelled');
+  mine = (await store.bookingsForClient(client.id)).find((x) => x.id === b.id);
+  assert.equal(mine.technicianContact, null);
+  // nearest flow: only after the choice
+  const d = await store.createBooking({ clientId: client.id, technicianId: tech.id, date: '2026-12-23', description: 'n', address: 'x', dispatchId: 'dsp_c1', nearest: true });
+  await store.setBookingStatus(await store.findBookingById(d.id), 'accepted');
+  mine = (await store.bookingsForClient(client.id)).find((x) => x.id === d.id);
+  assert.ok(!mine.technicianContact);
+  await store.chooseNearestOffer(await store.findBookingById(d.id));
+  mine = (await store.bookingsForClient(client.id)).find((x) => x.id === d.id);
+  assert.equal(mine.technicianContact.phone, '+201099990088');
+});

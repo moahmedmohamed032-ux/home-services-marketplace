@@ -61,6 +61,20 @@ export default function ClientDashboard() {
             </div>
             <p>{b.description}</p>
             <p className="muted">📍 {b.address}</p>
+            {b.technicianContact && (
+              <div className="tech-contact">
+                <strong>{t('techContact')}</strong>
+                {b.technicianContact.phone && <p><a className="btn btn-primary btn-sm" href={`tel:${b.technicianContact.phone}`} dir="ltr">📞 {t('techCall')} {b.technicianContact.phone}</a></p>}
+                {b.technicianContact.address && <p className="muted">📍 {b.technicianContact.address}</p>}
+                {b.technicianContact.lat !== undefined ? (
+                  <>
+                    {b.technicianContact.distanceKm !== undefined && <p className="muted">{t('techDistance')}: {b.technicianContact.distanceKm} km</p>}
+                    <iframe title="map" loading="lazy" className="tech-map" src={`https://www.openstreetmap.org/export/embed.html?bbox=${b.technicianContact.lng - 0.02}%2C${b.technicianContact.lat - 0.012}%2C${b.technicianContact.lng + 0.02}%2C${b.technicianContact.lat + 0.012}&layer=mapnik&marker=${b.technicianContact.lat}%2C${b.technicianContact.lng}`} />
+                    <p><a href={`https://www.google.com/maps?q=${b.technicianContact.lat},${b.technicianContact.lng}`} target="_blank" rel="noreferrer">🗺️ {t('techMap')}</a></p>
+                  </>
+                ) : <p className="muted">{t('techNoLoc')}</p>}
+              </div>
+            )}
             {b.nearestPending && (
               <div className="confirm-box">
                 <p><strong>{t('offersTitle')}</strong></p>
