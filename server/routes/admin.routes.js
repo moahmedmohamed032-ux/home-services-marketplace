@@ -61,6 +61,10 @@ router.patch('/bookings/:id', wrap(async (req, res) => {
 }));
 router.delete('/bookings/:id', wrap(async (req, res) => { await store.adminDeleteBooking(req.params.id); res.json({ ok: true }); }));
 
+// ---- disputes ----
+router.get('/disputes', wrap(async (req, res) => res.json({ disputes: await store.adminListDisputes() })));
+router.post('/disputes/:id/resolve', wrap(async (req, res) => res.json({ dispute: await store.adminResolveDispute(req.params.id, (req.body || {}).resolution) })));
+
 // ---- invoices ----
 router.get('/technicians/:id/identity', wrap(async (req, res) => { res.set('Cache-Control', 'no-store'); res.json({ identity: await store.adminGetIdentity(req.params.id) }); }));
 router.post('/technicians/:id/identity', wrap(async (req, res) => res.json(await store.adminDecideIdentity(req.params.id, (req.body || {}).decision))));

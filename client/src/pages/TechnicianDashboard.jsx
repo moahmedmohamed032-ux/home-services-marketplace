@@ -1,3 +1,4 @@
+import DisputeBox from '../components/DisputeBox';
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchIncomingBookings, updateBookingStatus } from '../features/bookings/bookingsSlice';
@@ -7,6 +8,7 @@ import useGeolocation from '../components/useGeolocation';
 import LocationError from '../components/LocationError';
 import Stars from '../components/Stars';
 import TechAvatar, { VerifiedBadge } from '../components/TechAvatar';
+import ProofPhotos from '../components/ProofPhotos';
 import { resizeImage } from '../utils/image';
 import { useT } from '../i18n/useT';
 
@@ -25,6 +27,12 @@ export default function TechnicianDashboard() {
   const [tech, setTech] = useState(null);
   const [saveErr, setSaveErr] = useState('');
   const [amounts, setAmounts] = useState({});
+  const [proof, setProof] = useState({});
+  const addProof = async (id, f, input) => {
+    if (!f) return;
+    try { const d = await resizeImage(f, 900, 0.72); setProof((c) => ({ ...c, [id]: [...(c[id] || []), d].slice(0, 4) })); } catch { /* bad image */ }
+    input.value = '';
+  };
   const [payments, setPayments] = useState([]);
   const loadPayments = () => api.get('/invoices/technician').then((r) => setPayments(r.data.invoices)).catch(() => {});
   const [saved, setSaved] = useState(false);
@@ -106,6 +114,11 @@ export default function TechnicianDashboard() {
           <button className="btn btn-primary" onClick={sendIdentity}>{ar ? 'ارفع للمراجعة' : 'Submit for review'}</button>
         </section>
       )}
+      {tech.idStatus !== 'approved' && (
+        <p className="error" style={{ padding: '.7rem .9rem', border: '1px solid var(--bad)', borderRadius: 10 }}>
+          🚫 {ar ? 'مش بتستقبل طلبات جديدة لحد ما هويتك تتوثق (وش وضهر البطاقة + سيلفي). ارفع الصور وبعد ما الإدارة تراجعها هتبدأ تستقبل الطلبات.' : 'You will not receive new requests until your identity is verified (ID front, back and a selfie). Upload them below; once the team approves, requests start arriving.'}
+        </p>
+      )}
       {tech.idStatus === 'submitted' && <p className="notice">🪪 {ar ? 'صور الهوية اتبعتت وبتتراجع.' : 'Your ID photos were submitted and are under review.'}</p>}
       {comm && comm.active && (
         <section className={`card ${comm.blocked ? 'notice' : ''}`} style={{ border: comm.outstanding > 0 ? '2px solid var(--accent, #e67e22)' : undefined }}>
@@ -167,12 +180,21 @@ export default function TechnicianDashboard() {
                   {b.status === 'accepted' && b.dispatchId && !b.chosen && <p className="muted">{t('waitChoose')}</p>}
                   {b.status === 'accepted' && (!b.dispatchId || b.chosen) && <button className="btn btn-ghost btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'in_progress' }))}>{t('startJob')}</button>}
                   {['accepted', 'in_progress'].includes(b.status) && (!b.dispatchId || b.chosen) && (
-                    <form className="done-form" onSubmit={(e) => { e.preventDefault(); const v = Number(amounts[b.id]); if (v > 0) dispatch(updateBookingStatus({ id: b.id, status: 'awaiting_confirmation', finalAmount: v })); }}>
+                    <form className="done-form" onSubmit={(e) => { e.preventDefault(); const v = Number(amounts[b.id]); if (v > 0) { dispatch(updateBookingStatus({ id: b.id, status: 'awaiting_confirmation', finalAmount: v, photos: proof[b.id] })); setProof((c) => ({ ...c, [b.id]: [] })); } }}>
+                      <div className="proof-pick">
+                        <span className="muted">{ar ? 'صور الشغل بعد التنفيذ (يُفضّل، تحميك في أي خلاف)' : 'Photos of the finished work (recommended, protects you in a dispute)'}</span>
+                        <div className="work-gallery proof-grid">
+                          {(proof[b.id] || []).map((p, i) => <div key={i} className="work-item"><img src={p} alt="" /><button type="button" className="rm" aria-label={t('removeLabel')} onClick={() => setProof((c) => ({ ...c, [b.id]: c[b.id].filter((_, j) => j !== i) }))}>×</button></div>)}
+                        </div>
+                        {(proof[b.id] || []).length < 4 && <label className="btn btn-outline btn-sm file-btn" style={{ display: 'inline-block' }}>📷 {ar ? 'إضافة صورة' : 'Add photo'}<input type="file" accept="image/*" capture="environment" onChange={(e) => addProof(b.id, e.target.files[0], e.target)} /></label>}
+                      </div>
                       <input type="number" min="1" placeholder={t('finalAmount')} value={amounts[b.id] || ''} onChange={(e) => setAmounts({ ...amounts, [b.id]: e.target.value })} />
                       <button className="btn btn-primary btn-sm" type="submit">{t('workDone')}</button>
                     </form>
                   )}
                   {b.status === 'awaiting_confirmation' && <p className="muted">{t('awaitingClient')} · {b.finalAmount} EGP</p>}
+                  {b.proofCount > 0 && <ProofPhotos bookingId={b.id} count={b.proofCount} />}
+                  <DisputeBox booking={b} />
                 </div>
               </div>
             ))}

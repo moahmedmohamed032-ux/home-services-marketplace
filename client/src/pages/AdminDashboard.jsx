@@ -1,3 +1,4 @@
+import ProofPhotos from '../components/ProofPhotos';
 import PasswordInput from '../components/PasswordInput';
 import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
@@ -21,6 +22,8 @@ export default function AdminDashboard() {
   const [invoices, setInvoices] = useState([]);
   const [comm, setComm] = useState(null);
   const [professions, setProfessions] = useState([]);
+  const [disputes, setDisputes] = useState([]);
+  const [notes, setNotes] = useState({});
   const [modal, setModal] = useState(null); // { kind, mode, data }
   const [pendingDel, setPendingDel] = useState(null);
   const [msg, setMsg] = useState('');
@@ -32,6 +35,7 @@ export default function AdminDashboard() {
     api.get('/admin/technicians').then((r) => setTechs(r.data.technicians)).catch(() => {});
     api.get('/admin/bookings').then((r) => setBookings(r.data.bookings)).catch(() => {});
     api.get('/admin/invoices').then((r) => setInvoices(r.data.invoices)).catch(() => {});
+    api.get('/admin/disputes').then((r) => setDisputes(r.data.disputes)).catch(() => {});
     api.get('/admin/commissions').then((r) => setComm(r.data.commissions)).catch(() => {});
     api.get('/professions').then((r) => setProfessions(r.data.professions)).catch(() => {});
   };
@@ -74,7 +78,7 @@ export default function AdminDashboard() {
   const toggleUser = (u) => run(() => api.patch(`/admin/users/${u.id}`, { active: u.active === false }));
   const togglePaid = (i) => run(() => api.patch(`/admin/invoices/${i.id}`, { status: i.status === 'paid' ? 'unpaid' : 'paid' }));
 
-  const tabs = [['technicians', t('techniciansWord'), techs.length], ['users', t('usersWord'), users.length], ['bookings', t('bookingsWord'), bookings.length], ['invoices', t('invoices'), invoices.length], ['commission', t('commissionsTab'), comm ? comm.totals.jobs : 0]];
+  const tabs = [['technicians', t('techniciansWord'), techs.length], ['users', t('usersWord'), users.length], ['bookings', t('bookingsWord'), bookings.length], ['invoices', t('invoices'), invoices.length], ['disputes', lang === 'ar' ? 'المشاكل' : 'Disputes', disputes.filter((d) => d.status === 'open').length], ['commission', t('commissionsTab'), comm ? comm.totals.jobs : 0]];
 
   return (
     <>
@@ -164,7 +168,7 @@ export default function AdminDashboard() {
               {bookings.map((b) => (
                 <tr key={b.id}>
                   <td dir="ltr">{b.id}</td><td>{b.clientName}</td><td>{b.technicianName}</td><td>{(b.date || '').slice(0, 10)}</td>
-                  <td><span className={`badge badge-${b.status}`}>{t(b.status)}</span></td>
+                  <td><span className={`badge badge-${b.status}`}>{t(b.status)}</span>{b.proofCount > 0 && <ProofPhotos bookingId={b.id} count={b.proofCount} />}</td>
                   <td className="row-actions">
                     <select className="status-select" value={b.status} onChange={(e) => run(() => api.patch(`/admin/bookings/${b.id}`, { status: e.target.value }))}>
                       {BOOKING_STATUSES.map((s) => <option key={s} value={s}>{t(s)}</option>)}
@@ -198,6 +202,29 @@ export default function AdminDashboard() {
               ))}
               {!invoices.length && <tr><td colSpan="8">{t('noData')}</td></tr>}
             </tbody></table></div>
+        </>
+      )}
+
+      {tab === 'disputes' && (
+        <>
+          <h2 className="section-title">{lang === 'ar' ? 'المشاكل المسجلة على الطلبات' : 'Job disputes'} ({disputes.length})</h2>
+          {disputes.map((d) => (
+            <div className="card" key={d.id} style={{ marginBottom: '.7rem' }}>
+              <p><span className={`badge badge-${d.status === 'open' ? 'pending' : 'completed'}`}>{d.status === 'open' ? (lang === 'ar' ? 'مفتوحة' : 'Open') : (lang === 'ar' ? 'اتحلت' : 'Resolved')}</span> · <span dir="ltr">{d.bookingId}</span> · {(d.createdAt || '').slice(0, 16).replace('T', ' ')} · {lang === 'ar' ? 'فتحها' : 'opened by'}: {d.openedBy === 'client' ? (lang === 'ar' ? 'العميل' : 'client') : (lang === 'ar' ? 'الفني' : 'technician')}</p>
+              <p>👤 {d.client.name} <span dir="ltr">{d.client.phone || d.client.email || ''}</span> · 🔧 {d.technician.name} <span dir="ltr">{d.technician.phone || ''}</span></p>
+              <p className="muted">{d.job.description} · {d.job.address} · {(d.job.date || '').slice(0, 10)} · {d.job.status}{d.job.finalAmount ? ` · ${d.job.finalAmount} EGP` : ''}</p>
+              <p><strong>{d.reason}</strong></p>
+              {(d.notes || []).map((n, i) => <p key={i} className="muted">↪ {n.by === 'client' ? (lang === 'ar' ? 'العميل' : 'client') : (lang === 'ar' ? 'الفني' : 'technician')}: {n.text}</p>)}
+              {d.job.proofCount > 0 && <ProofPhotos bookingId={d.bookingId} count={d.job.proofCount} />}
+              {d.status === 'resolved' ? <p className="notice">✅ {d.resolution}</p> : (
+                <form onSubmit={(e) => { e.preventDefault(); run(() => api.post(`/admin/disputes/${d.id}/resolve`, { resolution: notes[d.id] })); }}>
+                  <textarea required rows={2} placeholder={lang === 'ar' ? 'ملاحظات الحل' : 'Resolution notes'} value={notes[d.id] || ''} onChange={(e) => setNotes({ ...notes, [d.id]: e.target.value })} />
+                  <button className="btn btn-primary btn-sm">{lang === 'ar' ? 'تم الحل وإغلاق' : 'Mark resolved'}</button>
+                </form>
+              )}
+            </div>
+          ))}
+          {!disputes.length && <p className="muted">{t('noData')}</p>}
         </>
       )}
 

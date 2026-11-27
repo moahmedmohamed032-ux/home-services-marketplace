@@ -30,7 +30,7 @@ const Booking = mongoose.model('Booking', new mongoose.Schema({
   clientId: String, technicianId: String, date: String,
   description: String, descriptionAr: String, address: String,
   clientLat: Number, clientLng: Number, status: String, createdAt: String,
-  startedAt: String, awaitingSince: String, remind1At: String, remind2At: String, cashAskedAt: String, cashAnswer: String, cashAnsweredAt: String, finalAmount: Number, completedAt: String, autoConfirmed: Boolean, digested: Boolean, dispatchId: String, nearest: Boolean, superseded: Boolean, chosen: Boolean, expired: Boolean,
+  startedAt: String, awaitingSince: String, remind1At: String, remind2At: String, cashAskedAt: String, cashAnswer: String, cashAnsweredAt: String, finalAmount: Number, proofPhotos: [String], proofAt: String, completedAt: String, autoConfirmed: Boolean, digested: Boolean, dispatchId: String, nearest: Boolean, superseded: Boolean, chosen: Boolean, expired: Boolean,
   review: { type: new mongoose.Schema({ rating: Number, comment: String, commentAr: String, createdAt: String }, { _id: false }), default: null },
 }, opts));
 
@@ -92,9 +92,15 @@ const Receivable = mongoose.model('Receivable', new mongoose.Schema({
   settledAt: String, settledBy: String,
 }, opts));
 
+// Disputes: either party of an active job can open one; admins review and resolve.
+const Dispute = mongoose.model('Dispute', new mongoose.Schema({
+  id: { type: String, unique: true, index: true }, bookingId: { type: String, index: true }, clientId: String, technicianId: String,
+  openedBy: String, status: String, reason: String, notes: [mongoose.Schema.Types.Mixed], resolution: String, createdAt: String, resolvedAt: String,
+}, opts));
+
 const Counter = mongoose.model('Counter', new mongoose.Schema({ _id: String, value: Number, summary: String }, opts));
 
-const MODELS = { users: User, technicians: Technician, bookings: Booking, invoices: Invoice, notifications: Notification, clinics: Clinic, procedures: Procedure, appointments: Appointment, providers: Provider, idDocs: IdDoc, receivables: Receivable };
+const MODELS = { users: User, technicians: Technician, bookings: Booking, invoices: Invoice, notifications: Notification, clinics: Clinic, procedures: Procedure, appointments: Appointment, providers: Provider, idDocs: IdDoc, receivables: Receivable, disputes: Dispute };
 
 const strip = (doc) => {
   if (!doc) return null;

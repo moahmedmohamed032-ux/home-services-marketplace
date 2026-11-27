@@ -4,6 +4,7 @@ const assert = require('node:assert');
 test('nearest request: offers with prices, customer picks, others withdrawn; new cities empty', async () => {
   const store = require('../server/core/store');
   await store.init();
+  await require('./approve-ids')();
   assert.deepEqual(await store.listCities(), ['Luxor', 'Esna', 'Qena', 'Aswan']);
   const techs = await store.searchTechnicians({ city: 'Aswan' });
   assert.equal(techs.length, 0); // no demo data in the new cities
@@ -35,6 +36,7 @@ test('nearest request: offers with prices, customer picks, others withdrawn; new
 test('new technician is hidden until admin approves; nearest request expires after 30 min', async () => {
   const store = require('../server/core/store');
   await store.init();
+  await require('./approve-ids')();
   const u = await store.createUser({ name: 'Gate Test', phone: '01099990001', passwordHash: 'x', role: 'technician', city: 'Qena' });
   const t = await store.createTechnicianProfile(u, { profession: 'plumber', city: 'Qena', hourlyRate: 100, phone: '+201099990001' });
   assert.equal(t.approved, false);
@@ -42,6 +44,10 @@ test('new technician is hidden until admin approves; nearest request expires aft
   await store.adminUpdateTechnician(t.id, { approved: true });
   assert.equal((await store.searchTechnicians({ city: 'Qena' })).length, 1);
   const client = await store.findUserByEmail('client@demo.com');
+  // ID not verified yet: no new requests
+  await assert.rejects(() => store.createNearestRequest({ clientId: client.id, profession: 'plumber', city: 'Qena', date: '2026-12-21', description: 'x', address: 'x' }), /No technician available/);
+  assert.equal(await store.isTechnicianBlocked(t), true);
+  await (await store.getDb()).technicians.update(t.id, { idStatus: 'approved', verified: true });
   const r = await store.createNearestRequest({ clientId: client.id, profession: 'plumber', city: 'Qena', date: '2026-12-21', description: 'expire test', address: 'x' });
   const all = await store.adminListBookings();
   const mine = all.filter((b) => b.dispatchId === r.booking.dispatchId);
@@ -55,6 +61,7 @@ test('new technician is hidden until admin approves; nearest request expires aft
 test('overdue cash commission blocks new requests until the admin confirms settlement', async () => {
   const store = require('../server/core/store');
   await store.init();
+  await require('./approve-ids')();
   const u = await store.createUser({ name: 'Debt Test', phone: '01099990002', passwordHash: 'x', role: 'technician', city: 'Qena' });
   const t = await store.createTechnicianProfile(u, { profession: 'plumber', city: 'Qena', hourlyRate: 100, phone: '+201099990002' });
   await store.adminUpdateTechnician(t.id, { approved: true });
@@ -89,6 +96,7 @@ test('overdue cash commission blocks new requests until the admin confirms settl
 test('silent technician: reminders, customer cash check, auto-complete or dispute', async () => {
   const store = require('../server/core/store');
   await store.init();
+  await require('./approve-ids')();
   const db = await store.getDb();
   const client = await store.findUserByEmail('client@demo.com');
   const u = await store.createUser({ name: 'Silent Tech', phone: '01099990003', passwordHash: 'x', role: 'technician', city: 'Qena' });
@@ -128,6 +136,7 @@ test('silent technician: reminders, customer cash check, auto-complete or disput
 test('selected technician: phone + location shown to that customer on active jobs only; technician never gets the client phone', async () => {
   const store = require('../server/core/store');
   await store.init();
+  await require('./approve-ids')();
   const client = await store.createUser({ name: 'Contact Client', email: 'contact-client@test.local', phone: '01099990099', passwordHash: 'x', role: 'client' });
   const tu = await store.createUser({ name: 'Contact Tech', phone: '01099990088', passwordHash: 'x', role: 'technician', city: 'Luxor' });
   const tech = await store.createTechnicianProfile(tu, { profession: 'plumber', city: 'Luxor', hourlyRate: 100, phone: '+201099990088', phonePublic: false, lat: 25.69, lng: 32.64, address: 'Test St' });
@@ -154,4 +163,32 @@ test('selected technician: phone + location shown to that customer on active job
   await store.chooseNearestOffer(await store.findBookingById(d.id));
   mine = (await store.bookingsForClient(client.id)).find((x) => x.id === d.id);
   assert.equal(mine.technicianContact.phone, '+201099990088');
+});
+
+test('proof photos stay on the booking, list payloads carry a count; disputes open on active jobs and admin resolves', async () => {
+  const store = require('../server/core/store');
+  await store.init();
+  await require('./approve-ids')();
+  const client = await store.findUserByEmail('client@demo.com');
+  const tech = (await store.searchTechnicians({ lat: 25.6872, lng: 32.6396 }))[0];
+  const b = await store.createBooking({ clientId: client.id, technicianId: tech.id, date: '2026-12-22', description: 'proof test', address: 'x' });
+  await assert.rejects(() => store.openDispute(b, client, 'x'), /Describe/);
+  await assert.rejects(() => store.openDispute(b, client, 'something went wrong'), /active job/);
+  await store.setBookingStatus(b, 'accepted');
+  const d = await store.openDispute(await store.findBookingById(b.id), client, 'something went wrong');
+  assert.equal(d.status, 'open');
+  const tu = await store.findUserById((await store.findTechnicianById(tech.id)).userId);
+  const d2 = await store.openDispute(await store.findBookingById(b.id), { ...tu, role: 'technician' }, 'customer not at home');
+  assert.equal(d2.id, d.id); assert.equal(d2.notes.length, 1);
+  const px = 'data:image/jpeg;base64,/9j/4AAQSkZJRg==';
+  await assert.rejects(async () => store.submitFinalAmount(await store.findBookingById(b.id), 100, ['bad']), /Invalid/);
+  const upd = await store.submitFinalAmount(await store.findBookingById(b.id), 100, [px, px]);
+  assert.equal(upd.proofCount, 2); assert.equal(upd.proofPhotos, undefined);
+  const row = (await store.bookingsForClient(client.id)).find((x) => x.id === b.id);
+  assert.equal(row.proofCount, 2); assert.equal(row.proofPhotos, undefined);
+  assert.equal((await store.getBookingProof(b)).photos.length, 2);
+  const list = await store.adminListDisputes();
+  assert.equal(list[0].status, 'open'); assert.equal(list[0].job.proofCount, 2);
+  await assert.rejects(() => store.adminResolveDispute(d.id, ''), /resolution/);
+  assert.equal((await store.adminResolveDispute(d.id, 'agreed on a partial refund')).status, 'resolved');
 });

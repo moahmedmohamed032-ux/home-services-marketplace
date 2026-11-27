@@ -43,9 +43,9 @@ export const fetchIncomingBookings = createAsyncThunk(
 
 export const updateBookingStatus = createAsyncThunk(
   'bookings/updateStatus',
-  async ({ id, status, finalAmount }, { rejectWithValue }) => {
+  async ({ id, status, finalAmount, photos }, { rejectWithValue }) => {
     try {
-      const { data } = await api.patch(`/bookings/${id}/status`, finalAmount !== undefined ? { status, finalAmount } : { status });
+      const { data } = await api.patch(`/bookings/${id}/status`, finalAmount !== undefined ? { status, finalAmount, ...(photos && photos.length ? { photos } : {}) } : { status });
       return data.booking;
     } catch (err) {
       return rejectWithValue(errorMessage(err, 'Could not update booking'));

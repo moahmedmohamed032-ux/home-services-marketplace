@@ -7,8 +7,7 @@ import Home from './pages/Home';
 import Technicians from './pages/Technicians';
 import TechnicianDetails from './pages/TechnicianDetails';
 import Login from './pages/Login';
-import RegisterClient from './pages/RegisterClient';
-import RegisterTechnician from './pages/RegisterTechnician';
+import Register from './pages/Register';
 import ClientDashboard from './pages/ClientDashboard';
 import TechnicianDashboard from './pages/TechnicianDashboard';
 import NearestRequest from './pages/NearestRequest';
@@ -65,8 +64,8 @@ export default function App() {
           <Route path="/technicians/:id" element={<TechnicianDetails />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Navigate to="/register/client" replace />} />
-          <Route path="/register/client" element={<RegisterClient />} />
-          <Route path="/register/technician" element={<RegisterTechnician />} />
+          <Route path="/register/client" element={<Register />} />
+          <Route path="/register/technician" element={<Register />} />
           <Route path="/dashboard" element={<ProtectedRoute role="client"><ClientDashboard /></ProtectedRoute>} />
           <Route path="/pro" element={<ProtectedRoute role="technician"><TechnicianDashboard /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />

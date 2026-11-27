@@ -1,3 +1,5 @@
+import DisputeBox from '../components/DisputeBox';
+import ProofPhotos from '../components/ProofPhotos';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -91,6 +93,7 @@ export default function ClientDashboard() {
             {b.status === 'awaiting_confirmation' && (
               <div className="confirm-box">
                 <p><strong>{t('finalAmountLabel')}: {b.finalAmount} EGP</strong></p>
+                <ProofPhotos bookingId={b.id} count={b.proofCount} />
                 <p className="muted"><small>{t('payToComplete')}</small></p>
                 {invoices.filter((i) => i.bookingId === b.id).map((i) => (
                   <InvoiceCard key={i.id} invoice={i} onChange={loadInvoices} />
@@ -116,6 +119,8 @@ export default function ClientDashboard() {
             {b.status === 'completed' && invoices.filter((i) => i.bookingId === b.id).map((i) => (
               <InvoiceCard key={i.id} invoice={i} onChange={loadInvoices} />
             ))}
+            <DisputeBox booking={b} />
+            {b.status === 'completed' && b.proofCount > 0 && <ProofPhotos bookingId={b.id} count={b.proofCount} />}
             {b.status === 'completed' && !b.review && <ReviewForm booking={b} />}
             {b.review && <p>{'★'.repeat(b.review.rating)} {b.review.comment}</p>}
           </div>

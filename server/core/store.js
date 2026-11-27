@@ -399,12 +399,23 @@ async function findBookingById(id) {
   await init();
   return db.bookings.getById(id);
 }
+// Proof photos are heavy and sensitive: list payloads carry only a count, photos load via getBookingProof.
+function stripProof(b) {
+  if (!b) return b;
+  const { proofPhotos, ...rest } = b;
+  return { ...rest, proofCount: (proofPhotos || []).length };
+}
+async function getBookingProof(booking) {
+  await init();
+  const b = await db.bookings.getById(booking.id);
+  return { photos: (b && b.proofPhotos) || [], at: (b && b.proofAt) || null };
+}
 async function hydrateBooking(b) {
   const tech = await findTechnicianById(b.technicianId);
   const client = await findUserById(b.clientId);
   const profession = seed.PROFESSIONS.find((p) => p.id === (tech && tech.profession));
   return {
-    ...b,
+    ...stripProof(b),
     technicianName: tech ? tech.name : 'Unknown',
     profession: profession ? profession.name : '',
     professionAr: profession ? profession.nameAr : '',
@@ -477,14 +488,27 @@ async function createInvoiceForBooking(booking) {
 }
 
 // Technician reports the job as done with the final amount; must be inside the market cap.
-async function submitFinalAmount(booking, amount) {
+const PROOF_MAX = 250000;
+const PROOF_PHOTOS_MAX = 6;
+async function submitFinalAmount(booking, amount, photos) {
   await init();
+  let proof = [];
+  if (photos !== undefined && photos !== null) {
+    if (!Array.isArray(photos) || photos.length > PROOF_PHOTOS_MAX) throw ApiError.badRequest(`Up to ${PROOF_PHOTOS_MAX} photos`);
+    proof = photos.map((p) => cleanImage(p, PROOF_MAX)).filter(Boolean);
+  }
   const tech = await findTechnicianById(booking.technicianId);
   const a = Number(amount);
   if (!Number.isFinite(a) || a <= 0) throw ApiError.badRequest('Enter the final amount in EGP');
   const band = priceBand(tech && tech.profession);
   if (band && a > band.priceMax * 5) throw ApiError.badRequest(`Final amount is above the market limit for this service (max ${band.priceMax * 5} EGP per job)`);
-  return setBookingStatus(booking, 'awaiting_confirmation', { finalAmount: Math.round(a) });
+  const extra = { finalAmount: Math.round(a) };
+  if (proof.length) {
+    // Evidence is append-only: a re-submit after the customer reopened keeps the earlier photos.
+    extra.proofPhotos = [...(booking.proofPhotos || []), ...proof].slice(-PROOF_PHOTOS_MAX);
+    extra.proofAt = new Date().toISOString();
+  }
+  return stripProof(await setBookingStatus(booking, 'awaiting_confirmation', extra));
 }
 // Confirm automatically when the client has not answered within 48h. Safe to call often.
 const NEAREST_TIMEOUT_MS = 30 * 60 * 1000;
@@ -1179,7 +1203,64 @@ async function commissionStatusFor(tech) {
   const overdue = active && !!dueBy && Date.parse(dueBy) <= Date.now();
   return { active, rate: COMMISSION_RATE, overdueDays: OVERDUE_DAYS, outstanding, jobs: mine.length, oldest, dueBy, overdue, blocked: overdue, claim: tech.settlementClaim || null, collection: collectionDetails() };
 }
-async function isTechnicianBlocked(tech) { return (await commissionStatusFor(tech)).blocked; }
+// A technician receives new requests only after an admin approved his ID (front + back + selfie).
+function idVerified(tech) { return !!tech && tech.idStatus === 'approved'; }
+async function isTechnicianBlocked(tech) { return !idVerified(tech) || (await commissionStatusFor(tech)).blocked; }
+
+// ---- disputes ----
+const DISPUTE_STATUSES = ['accepted', 'in_progress', 'awaiting_confirmation'];
+async function openDispute(booking, user, text) {
+  await init();
+  const reason = String(text || '').trim().slice(0, 1000);
+  if (reason.length < 5) throw ApiError.badRequest('Describe the problem (at least a few words)');
+  if (!DISPUTE_STATUSES.includes(booking.status)) throw ApiError.badRequest('A problem can be reported on an active job only');
+  const role = user.role === 'technician' ? 'technician' : 'client';
+  const now = new Date().toISOString();
+  const existing = (await db.disputes.getAll()).find((d) => d.bookingId === booking.id && d.status === 'open');
+  let d;
+  if (existing) {
+    d = await db.disputes.update(existing.id, { notes: [...(existing.notes || []), { by: role, text: reason, at: now }] });
+  } else {
+    d = await db.disputes.insert({ id: await db.nextId('dsx'), bookingId: booking.id, clientId: booking.clientId, technicianId: booking.technicianId,
+      openedBy: role, status: 'open', reason, notes: [], resolution: '', createdAt: now, resolvedAt: null });
+  }
+  const tech = await findTechnicianById(booking.technicianId);
+  const otherUserId = role === 'client' ? (tech && tech.userId) : booking.clientId;
+  const who = role === 'client' ? ['العميل', 'The customer'] : ['الفني', 'The technician'];
+  for (const a of (await db.users.getAll()).filter((u) => u.role === 'admin')) {
+    await notify(a.id, { type: 'dispute', bookingId: booking.id, link: '/admin', titleAr: 'مشكلة جديدة في طلب', titleEn: 'New job dispute', bodyAr: `${who[0]}: ${reason.slice(0, 120)}`, bodyEn: `${who[1]}: ${reason.slice(0, 120)}` });
+  }
+  if (otherUserId) await notify(otherUserId, { type: 'dispute', bookingId: booking.id, link: '/dashboard', titleAr: 'تم تسجيل مشكلة في الطلب', titleEn: 'A problem was reported on your job', bodyAr: 'الإدارة هتراجع الطلب وتتواصل معاك لو احتاجت.', bodyEn: 'The FIX-IT team will review the job and contact you if needed.' });
+  return d;
+}
+async function disputesForBooking(booking) {
+  await init();
+  return (await db.disputes.getAll()).filter((d) => d.bookingId === booking.id).map((d) => ({ id: d.id, status: d.status, openedBy: d.openedBy, createdAt: d.createdAt, resolvedAt: d.resolvedAt }));
+}
+async function adminListDisputes() {
+  await init();
+  const [rows, bookings, users, techs] = await Promise.all([db.disputes.getAll(), db.bookings.getAll(), db.users.getAll(), db.technicians.getAll()]);
+  return rows.map((d) => {
+    const b = bookings.find((x) => x.id === d.bookingId) || {};
+    const c = users.find((u) => u.id === d.clientId) || {};
+    const t = techs.find((x) => x.id === d.technicianId) || {};
+    return { ...d, job: { id: b.id, status: b.status, date: b.date, description: b.description, address: b.address, finalAmount: b.finalAmount, proofCount: (b.proofPhotos || []).length },
+      client: { name: c.name, phone: c.phone, email: c.email }, technician: { name: t.name, phone: t.phone } };
+  }).sort((a, b) => (a.status === b.status ? b.createdAt.localeCompare(a.createdAt) : a.status === 'open' ? -1 : 1));
+}
+async function adminResolveDispute(id, resolution) {
+  await init();
+  const d = await db.disputes.getById(id);
+  if (!d) throw ApiError.notFound('Dispute not found');
+  const note = String(resolution || '').trim().slice(0, 1000);
+  if (!note) throw ApiError.badRequest('Write the resolution notes');
+  const upd = await db.disputes.update(id, { status: 'resolved', resolution: note, resolvedAt: new Date().toISOString() });
+  const tech = await findTechnicianById(d.technicianId);
+  for (const uid of [d.clientId, tech && tech.userId].filter(Boolean)) {
+    await notify(uid, { type: 'dispute', bookingId: d.bookingId, link: '/dashboard', titleAr: 'تم إغلاق المشكلة المسجلة على الطلب', titleEn: 'The reported problem was closed', bodyAr: note.slice(0, 160), bodyEn: note.slice(0, 160) });
+  }
+  return upd;
+}
 
 async function submitSettlementClaim(tech, { method, reference }) {
   await init();
@@ -1248,7 +1329,7 @@ async function adminOverview() {
 
 async function getDb() { await init(); return db; }
 module.exports = {
-  getDb, BOOKING_STATUS, createNearestRequest, chooseNearestOffer, SUPPORTED_CITIES, submitFinalAmount, sweepAutoConfirm, clientCashAnswer, init,
+  getDb, BOOKING_STATUS, createNearestRequest, chooseNearestOffer, SUPPORTED_CITIES, submitFinalAmount, getBookingProof, sweepAutoConfirm, clientCashAnswer, init,
   findUserByEmail, findUserByPhone, findUserByLogin, setUserPassword, normalizePhone, isEgPhone, findUserById, publicUser, createUser,
   listProfessions, listCities,
   searchTechnicians, publicTechnician, findTechnicianById, findTechnicianByUserId,
@@ -1259,7 +1340,7 @@ module.exports = {
   startPaymobPayment, applyPaymobTransaction,
   notify, notificationsFor, markNotificationsRead,
   cleanIdentity, saveIdentity, adminGetIdentity, adminDecideIdentity,
-  listUsersAdmin, adminOverview, adminCommissions, syncReceivables, COMMISSION_RATE, commissionStatusFor, isTechnicianBlocked, submitSettlementClaim, adminSettleTechnician,
+  listUsersAdmin, adminOverview, adminCommissions, syncReceivables, COMMISSION_RATE, commissionStatusFor, isTechnicianBlocked, idVerified, openDispute, disputesForBooking, adminListDisputes, adminResolveDispute, submitSettlementClaim, adminSettleTechnician,
   adminListTechnicians, adminCreateTechnician, adminUpdateTechnician, adminDeleteTechnician,
   adminUpdateUser, adminDeleteUser, adminListBookings, adminSetBookingStatus, adminDeleteBooking,
   adminUpdateInvoice, adminDeleteInvoice,

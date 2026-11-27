@@ -236,3 +236,11 @@ label small.muted{display:block;margin-top:4px}
 .google-btn-hit > div { width: 100% !important; }
 .google-or { display: flex; align-items: center; gap: .7rem; margin-top: 14px; color: var(--muted); font-size: .88rem; }
 .google-or::before, .google-or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+.proof-pick { flex-basis: 100%; display: grid; gap: .4rem; margin-bottom: .5rem; }
+.proof-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); margin-top: .3rem; }
+.proof-box { margin-top: .4rem; }
+
+.role-toggle { display: flex; gap: 4px; max-width: 360px; margin: 1.2rem auto .2rem; padding: 4px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; }
+.role-toggle button { flex: 1; border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 700; padding: .6rem .8rem; border-radius: 10px; cursor: pointer; transition: background .15s, color .15s; }
+.role-toggle button.on { background: var(--primary); color: var(--primary-ink); box-shadow: var(--shadow); }

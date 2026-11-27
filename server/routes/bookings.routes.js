@@ -14,6 +14,7 @@ router.post('/', authenticate, requireRole('client'), async (req, res, next) => 
     const tech = await store.findTechnicianById(technicianId);
     if (!tech || tech.approved === false) throw ApiError.notFound('Technician not found');
     if (Number.isNaN(Date.parse(date))) throw ApiError.badRequest('Invalid booking date');
+    if (!store.idVerified(tech)) throw ApiError.conflict('This technician is not accepting new requests yet (identity verification pending). Please choose another technician.');
     if (await store.isTechnicianBlocked(tech)) throw ApiError.conflict('This technician is not accepting new requests right now. Please choose another technician.');
     const booking = await store.createBooking({
       clientId: req.user.id, technicianId, date, description, address, clientLat, clientLng,
@@ -101,12 +102,47 @@ router.patch('/:id/status', authenticate, async (req, res, next) => {
     }
 
     const updated = status === 'awaiting_confirmation'
-      ? await store.submitFinalAmount(booking, req.body.finalAmount)
+      ? await store.submitFinalAmount(booking, req.body.finalAmount, req.body.photos)
       : await store.setBookingStatus(booking, status);
-    res.json({ booking: updated });
+    res.json({ booking: updated && updated.proofPhotos ? { ...updated, proofPhotos: undefined } : updated });
   } catch (err) {
     next(err);
   }
+});
+
+// GET /api/bookings/:id/proof — photos of the finished work. Only the booking's client, its technician and admins.
+router.get('/:id/proof', authenticate, async (req, res, next) => {
+  try {
+    const booking = await store.findBookingById(req.params.id);
+    if (!booking) throw ApiError.notFound('Booking not found');
+    let ok = req.user.role === 'admin' || booking.clientId === req.user.id;
+    if (!ok && req.user.role === 'technician') { const tech = await store.findTechnicianByUserId(req.user.id); ok = !!tech && tech.id === booking.technicianId; }
+    if (!ok) throw ApiError.forbidden('Not your booking');
+    res.set('Cache-Control', 'no-store');
+    res.json(await store.getBookingProof(booking));
+  } catch (err) { next(err); }
+});
+
+// POST /api/bookings/:id/dispute { text } — "I have a problem": client or technician of an active job.
+router.post('/:id/dispute', authenticate, async (req, res, next) => {
+  try {
+    const booking = await store.findBookingById(req.params.id);
+    if (!booking) throw ApiError.notFound('Booking not found');
+    let ok = req.user.role === 'client' && booking.clientId === req.user.id;
+    if (!ok && req.user.role === 'technician') { const tech = await store.findTechnicianByUserId(req.user.id); ok = !!tech && tech.id === booking.technicianId; }
+    if (!ok) throw ApiError.forbidden('Not your booking');
+    res.status(201).json({ dispute: await store.openDispute(booking, req.user, (req.body || {}).text) });
+  } catch (err) { next(err); }
+});
+router.get('/:id/disputes', authenticate, async (req, res, next) => {
+  try {
+    const booking = await store.findBookingById(req.params.id);
+    if (!booking) throw ApiError.notFound('Booking not found');
+    let ok = booking.clientId === req.user.id;
+    if (!ok && req.user.role === 'technician') { const tech = await store.findTechnicianByUserId(req.user.id); ok = !!tech && tech.id === booking.technicianId; }
+    if (!ok) throw ApiError.forbidden('Not your booking');
+    res.json({ disputes: await store.disputesForBooking(booking) });
+  } catch (err) { next(err); }
 });
 
 // POST /api/bookings/:id/review — client reviews a completed booking.

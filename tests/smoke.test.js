@@ -13,6 +13,7 @@ before(async () => {
     server = app.listen(0, resolve);
   });
   base = `http://127.0.0.1:${server.address().port}/api`;
+  await require('./approve-ids')();
 });
 
 after(() => server.close());
