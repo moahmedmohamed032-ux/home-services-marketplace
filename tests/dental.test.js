@@ -52,6 +52,13 @@ test('dental: structured profile fields validated, empty stays empty', async () 
   assert.deepEqual(c.insurance, {});
   assert.deepEqual(c.faq, { emergency: 'yes' });
   assert.equal(c.mapUrl, 'https://maps.app.goo.gl/abc123');
+  assert.equal(c.registryId, '');
+  await assert.rejects(() => dental.registerClinic({ ...base, registryId: '<script>' }), /السجل/);
+  const r2 = await dental.registerClinic({ ...base, registryId: '123-456-789' });
+  const adm = (await dental.adminClinics()).find((x) => x.id === r2.id);
+  assert.equal(adm.registryId, '123-456-789');
+  await dental.adminUpdateClinic(r2.id, { approved: true });
+  assert.equal((await dental.getClinic(r2.id)).registryId, undefined);
 });
 
 test('dental: provider directory seeds hidden (449 gov + 25 specialty + 14 hospitals), paginated, never public', async () => {

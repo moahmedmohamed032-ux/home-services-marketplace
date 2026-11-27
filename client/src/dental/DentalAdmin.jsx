@@ -94,6 +94,7 @@ export default function DentalAdmin() {
                 <p className="small mb-1">{c.address}</p>
                 <p className="small mb-1" dir="ltr">📞 {c.phone || '—'}{c.phoneRaw && c.phoneRaw !== c.phone ? ` (أصل: ${c.phoneRaw.slice(0, 30)})` : ''} {c.whatsapp && ` | WA ${c.whatsapp}`}</p>
                 {c.email && <p className="small mb-1" dir="ltr">✉ {c.email} {c.invited && '(اتبعتلها دعوة)'}</p>}
+                {c.registryId && <p className="small mb-1" dir="ltr">🧾 سجل تجاري / ضريبي: {c.registryId}</p>}
                 {c.notes && <p className="small text-muted mb-1">{c.notes}</p>}
                 {(c.sources || []).map((s) => <div key={s} className="small"><a href={s} target="_blank" rel="noopener noreferrer nofollow">مصدر</a></div>)}
                 {(c.photos || []).length > 0 && <div className="d-flex gap-1 flex-wrap my-2">{c.photos.map((p, k) => <div key={k}><img src={p} alt={`${c.name} ${k + 1}`} style={{ width: 70, height: 55, objectFit: 'cover', borderRadius: 6 }} /><br /><button className="btn btn-sm btn-outline-danger py-0" onClick={() => patch(`/admin/dental/clinics/${c.id}`, { photos: c.photos.filter((_, j) => j !== k) })}>×</button></div>)}</div>}

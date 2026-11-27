@@ -305,7 +305,7 @@ export function ClinicPage() {
 
 export function ClinicRegister() {
   const [procs, setProcs] = useState([]);
-  const [f, setF] = useState({ name: '', contactName: '', city: '', address: '', phone: '', whatsapp: '', email: '', about: '', schedule: {}, insAccepted: '', insNames: '', mapUrl: '', otherServices: '', faq: {}, services: [], prices: {}, photos: [], photoConsent: false, confirmOwner: false });
+  const [f, setF] = useState({ name: '', contactName: '', city: '', address: '', phone: '', whatsapp: '', email: '', registryId: '', about: '', schedule: {}, insAccepted: '', insNames: '', mapUrl: '', otherServices: '', faq: {}, services: [], prices: {}, photos: [], photoConsent: false, confirmOwner: false });
   const [err, setErr] = useState(''); const [done, setDone] = useState(false); const [busy, setBusy] = useState(false);
   useSeo({ title: 'سجّل عيادة أسنان | FIX-IT', desc: 'دكتور أسنان في الأقصر أو إسنا أو قنا أو أرمنت؟ سجّل عيادتك مجانًا لمدة 3 شهور كميزة إطلاق، وهتظهر للمرضى بعد المراجعة.', path: '/dental/register' });
   useEffect(() => { api.get('/dental/register-options').then((r) => setProcs(r.data.procedures)); }, []);
@@ -339,6 +339,7 @@ export function ClinicRegister() {
           <div className="col-md-6"><label className="form-label">تليفون العيادة<input className="form-control" required dir="ltr" type="tel" value={f.phone} onChange={set('phone')} /></label></div>
           <div className="col-md-6"><label className="form-label">واتساب (اختياري)<input className="form-control" dir="ltr" type="tel" value={f.whatsapp} onChange={set('whatsapp')} /></label></div>
           <div className="col-md-6"><label className="form-label">إيميل (اختياري، مش بيظهر للعامة)<input className="form-control" dir="ltr" type="email" value={f.email} onChange={set('email')} /></label></div>
+          <div className="col-md-6"><label className="form-label">رقم السجل التجاري أو البطاقة الضريبية (اختياري، مش بيظهر للعامة)<input className="form-control" dir="ltr" maxLength={40} value={f.registryId} onChange={set('registryId')} /></label><div className="form-text">بنستخدمه بس عشان نتأكد إن العيادة نشاط مسجل، وبيساعد في توثيقها.</div></div>
           <div className="col-12"><label className="form-label">رابط موقع العيادة على خرائط جوجل (اختياري)<input className="form-control" dir="ltr" type="url" placeholder="https://maps.app.goo.gl/..." value={f.mapUrl} onChange={set('mapUrl')} /></label><div className="form-text">افتح العيادة في Google Maps واضغط "مشاركة" وانسخ الرابط.</div></div>
           <div className="col-12"><label className="form-label">نبذة عن العيادة<textarea className="form-control" rows={2} maxLength={600} value={f.about} onChange={set('about')} /></label></div>
         </div></fieldset>

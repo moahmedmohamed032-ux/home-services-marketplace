@@ -59,7 +59,7 @@ const Clinic = mongoose.model('Clinic', new mongoose.Schema({
   prices: { type: mongoose.Schema.Types.Mixed, default: {} },
   photos: [String], origin: String, sources: [String], notes: String, invited: Boolean,
   schedule: { type: mongoose.Schema.Types.Mixed, default: {} }, insurance: { type: mongoose.Schema.Types.Mixed, default: {} },
-  faq: { type: mongoose.Schema.Types.Mixed, default: {} }, mapUrl: String, otherServices: String, directoryListed: Boolean,
+  faq: { type: mongoose.Schema.Types.Mixed, default: {} }, mapUrl: String, otherServices: String, registryId: String, directoryListed: Boolean,
   approved: Boolean, verified: Boolean, removed: Boolean, createdAt: String, updatedAt: String,
 }, opts));
 const Procedure = mongoose.model('Procedure', new mongoose.Schema({

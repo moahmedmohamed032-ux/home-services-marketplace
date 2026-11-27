@@ -288,13 +288,15 @@ async function registerClinic(b) {
   if (address.length < 5) throw ApiError.badRequest('العنوان مطلوب');
   const phone = checkPhone(b.phone);
   const whatsapp = b.whatsapp ? checkPhone(b.whatsapp, 'رقم واتساب') : '';
+  const registryId = str(b.registryId, 40);
+  if (registryId && !/^[0-9A-Za-z\u0660-\u0669\/\-\s]{4,40}$/.test(registryId)) throw ApiError.badRequest('رقم السجل التجاري أو البطاقة الضريبية غير صالح');
   const procs = await listProcedures();
   const services = (Array.isArray(b.services) ? b.services : []).filter((s) => procs.find((p) => p.id === s));
   const now = new Date().toISOString();
   const clinic = await db.clinics.insert({
     id: await db.nextId('cln'), name, city: b.city, address, phone, phoneRaw: '', whatsapp,
     email: str(b.email, 120), about: str(b.about, 600), hours: str(b.hours, 120), services,
-    schedule: cleanSchedule(b.schedule), insurance: cleanInsurance(b.insurance), mapUrl: cleanMapUrl(b.mapUrl), faq: cleanFaq(b.faq), otherServices: str(b.otherServices, 200),
+    schedule: cleanSchedule(b.schedule), insurance: cleanInsurance(b.insurance), mapUrl: cleanMapUrl(b.mapUrl), faq: cleanFaq(b.faq), otherServices: str(b.otherServices, 200), registryId,
     prices: await cleanPrices(b.prices), photos: cleanPhotos(b.photos, b.photoConsent === true || b.photoConsent === 'true'),
     origin: 'registered', sources: [], notes: `contact: ${str(b.contactName, 80)}`, invited: false,
     approved: false, verified: false, removed: false, createdAt: now, updatedAt: now,
