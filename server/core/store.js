@@ -500,7 +500,64 @@ async function sweepAutoConfirm() {
   for (const b of all) {
     if (b.status === 'awaiting_confirmation' && !have.has(b.id)) { await createInvoiceForBooking(b); n += 1; }
   }
+  await sweepCashConfirmations();
   return n;
+}
+
+// The technician never confirms cash: remind him (3h, 24h); at 48h ask the customer "did he collect his money?".
+// Customer yes, or no answer for 24h -> the job completes as cash-paid and the commission accrues.
+// Customer no -> the job stays open and the admin is told to step in.
+const CASH_REMIND_1_H = 3; const CASH_REMIND_2_H = 24; const CASH_ASK_H = 48; const CASH_ASK_GRACE_H = 24;
+async function sweepCashConfirmations() {
+  const H = 3600e3; const now = Date.now();
+  const invoices = await db.invoices.getAll();
+  for (const b of await db.bookings.getAll()) {
+    if (b.status !== 'awaiting_confirmation' || !b.awaitingSince) continue;
+    const inv = invoices.find((i) => i.bookingId === b.id);
+    if (!inv || inv.status === 'paid') continue;
+    const age = now - Date.parse(b.awaitingSince);
+    if (!Number.isFinite(age)) continue;
+    const tuid = await techUserId(b.technicianId);
+    const remind = (field, at) => notify(tuid, { type: 'cash_reminder', bookingId: b.id, invoiceId: inv.id, link: '/pro',
+      titleAr: 'أكّد استلام فلوس الشغلانة 💰', titleEn: 'Confirm you received the cash 💰',
+      bodyAr: `فاتورة ${inv.number} (${inv.total} جنيه) لسه متأكدتش. لو استلمت الفلوس اضغط تأكيد الاستلام عشان الشغلانة تتقفل.`,
+      bodyEn: `Invoice ${inv.number} (${inv.total} EGP) is not confirmed yet. If you were paid, confirm receipt so the job can close.` }).then(() => db.bookings.update(b.id, { [field]: at }));
+    if (!b.remind1At && age >= CASH_REMIND_1_H * H) { await remind('remind1At', new Date().toISOString()); continue; }
+    if (!b.remind2At && b.remind1At && age >= CASH_REMIND_2_H * H) { await remind('remind2At', new Date().toISOString()); continue; }
+    if (!b.cashAskedAt && age >= CASH_ASK_H * H) {
+      await notify(b.clientId, { type: 'cash_check', bookingId: b.id, invoiceId: inv.id, link: '/dashboard',
+        titleAr: 'الفني قبض فلوسه؟', titleEn: 'Did the technician collect his money?',
+        bodyAr: `الفني خلّص الشغلانة وفاتورتها ${inv.total} جنيه. افتح لوحتك وقول لو دفعت له. لو مردّيتش هنقفل الشغلانة كمدفوعة.`,
+        bodyEn: `The technician finished the job (invoice ${inv.total} EGP). Open your dashboard and tell us if you paid him. If you do not answer, we will close it as paid.` });
+      await db.bookings.update(b.id, { cashAskedAt: new Date().toISOString() });
+      continue;
+    }
+    if (b.cashAskedAt && !b.cashAnswer && now - Date.parse(b.cashAskedAt) >= CASH_ASK_GRACE_H * H) await autoCompleteCash(b, inv, 'no-response');
+  }
+}
+async function autoCompleteCash(b, inv, why) {
+  await db.bookings.update(b.id, { cashAnswer: why === 'client-yes' ? 'yes' : 'no-response', cashAnsweredAt: new Date().toISOString() });
+  await db.invoices.update(inv.id, { method: 'cash', autoCompleted: why });
+  const fresh = await db.invoices.getById(inv.id);
+  await confirmInvoice(fresh);
+}
+// The customer answers the "did the technician collect his money?" question.
+async function clientCashAnswer(bookingId, clientId, collected) {
+  await init();
+  const b = await findBookingById(bookingId);
+  if (!b || b.clientId !== clientId) throw ApiError.notFound('Booking not found');
+  if (b.status !== 'awaiting_confirmation' || !b.cashAskedAt) throw ApiError.badRequest('Nothing to confirm for this booking');
+  if (b.cashAnswer) throw ApiError.conflict('Already answered');
+  const inv = (await db.invoices.getAll()).find((i) => i.bookingId === b.id);
+  if (!inv || inv.status === 'paid') throw ApiError.badRequest('Invoice is already paid');
+  if (collected) { await autoCompleteCash(b, inv, 'client-yes'); return { completed: true }; }
+  await db.bookings.update(b.id, { cashAnswer: 'no', cashAnsweredAt: new Date().toISOString() });
+  for (const a of (await db.users.getAll()).filter((u) => u.role === 'admin')) {
+    await notify(a.id, { type: 'cash_dispute', bookingId: b.id, invoiceId: inv.id, link: '/admin',
+      titleAr: 'عميل بيقول إنه مدفعش للفني ⚠️', titleEn: 'Customer says he did not pay the technician ⚠️',
+      bodyAr: `الحجز ${b.id} / فاتورة ${inv.number}: العميل قال إن الفني ما قبضش. اتدخل وراجع الطرفين.`, bodyEn: `Booking ${b.id} / invoice ${inv.number}: the customer says the technician was not paid. Please step in.` });
+  }
+  return { completed: false };
 }
 
 // ---- admin digest: one summary for every 10 completed jobs (Telegram bot + in-app toast) ----
@@ -1134,7 +1191,7 @@ async function adminOverview() {
 
 async function getDb() { await init(); return db; }
 module.exports = {
-  getDb, BOOKING_STATUS, createNearestRequest, chooseNearestOffer, SUPPORTED_CITIES, submitFinalAmount, sweepAutoConfirm, init,
+  getDb, BOOKING_STATUS, createNearestRequest, chooseNearestOffer, SUPPORTED_CITIES, submitFinalAmount, sweepAutoConfirm, clientCashAnswer, init,
   findUserByEmail, findUserByPhone, findUserByLogin, setUserPassword, normalizePhone, isEgPhone, findUserById, publicUser, createUser,
   listProfessions, listCities,
   searchTechnicians, publicTechnician, findTechnicianById, findTechnicianByUserId,

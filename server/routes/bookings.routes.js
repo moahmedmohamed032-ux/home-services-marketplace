@@ -63,6 +63,11 @@ router.get('/incoming', authenticate, requireRole('technician'), async (req, res
 //   client: pending|accepted -> cancelled
 //   technician: pending -> accepted|declined, accepted -> in_progress -> awaiting_confirmation (+finalAmount)
 //   client: awaiting_confirmation -> in_progress (reopen). completed happens when the invoice is paid (cash confirmed by the technician, or online).
+// POST /api/bookings/:id/cash-answer { collected: true|false } - customer answers "did the technician collect his money?"
+router.post('/:id/cash-answer', authenticate, requireRole('client'), async (req, res, next) => {
+  try { res.json(await store.clientCashAnswer(req.params.id, req.user.id, req.body && req.body.collected === true)); } catch (err) { next(err); }
+});
+
 router.patch('/:id/status', authenticate, async (req, res, next) => {
   try {
     const { status } = req.body;

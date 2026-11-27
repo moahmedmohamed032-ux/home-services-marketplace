@@ -77,3 +77,42 @@ test('overdue cash commission blocks new requests until the admin confirms settl
     assert.equal(after.outstanding, 0); assert.equal(after.blocked, false); assert.equal(after.claim, null);
   } finally { delete process.env.COMMISSION_ACTIVE; }
 });
+
+test('silent technician: reminders, customer cash check, auto-complete or dispute', async () => {
+  const store = require('../server/core/store');
+  await store.init();
+  const db = await store.getDb();
+  const client = await store.findUserByEmail('client@demo.com');
+  const u = await store.createUser({ name: 'Silent Tech', phone: '01099990003', passwordHash: 'x', role: 'technician', city: 'Qena' });
+  const t = await store.createTechnicianProfile(u, { profession: 'plumber', city: 'Qena', hourlyRate: 100, phone: '+201099990003' });
+  const mk = async (desc) => {
+    const b = await store.createBooking({ clientId: client.id, technicianId: t.id, date: '2026-12-23', description: desc, address: 'x' });
+    await db.bookings.update(b.id, { status: 'in_progress' });
+    await store.submitFinalAmount(await store.findBookingById(b.id), 300);
+    return b.id;
+  };
+  const ids = [await mk('cash a'), await mk('cash b')];
+  const real = Date.now;
+  const at = (h) => { Date.now = () => real() + h * 3600e3; };
+  const notes = async (uid) => (await db.notifications.getAll()).filter((n) => n.userId === uid);
+  try {
+    at(4); await store.sweepAutoConfirm();
+    assert.ok((await notes(u.id)).some((n) => n.type === 'cash_reminder'));
+    assert.ok(!(await notes(client.id)).some((n) => n.type === 'cash_check' && ids.includes(n.bookingId)));
+    at(25); await store.sweepAutoConfirm();
+    assert.equal((await notes(u.id)).filter((n) => n.type === 'cash_reminder' && n.bookingId === ids[0]).length, 2);
+    at(49); await store.sweepAutoConfirm();
+    assert.ok((await notes(client.id)).some((n) => n.type === 'cash_check' && n.bookingId === ids[0]));
+    assert.equal((await store.findBookingById(ids[0])).status, 'awaiting_confirmation');
+    // customer says no on b: stays open, admin told
+    await store.clientCashAnswer(ids[1], client.id, false);
+    assert.equal((await store.findBookingById(ids[1])).status, 'awaiting_confirmation');
+    assert.ok((await db.notifications.getAll()).some((n) => n.type === 'cash_dispute' && n.bookingId === ids[1]));
+    // no answer on a for 24h more: completes as cash
+    at(74); await store.sweepAutoConfirm();
+    assert.equal((await store.findBookingById(ids[0])).status, 'completed');
+    assert.equal((await store.findBookingById(ids[1])).status, 'awaiting_confirmation');
+    const inv = (await db.invoices.getAll()).find((i) => i.bookingId === ids[0]);
+    assert.equal(inv.status, 'paid'); assert.equal(inv.method, 'cash');
+  } finally { Date.now = real; }
+});

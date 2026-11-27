@@ -30,7 +30,7 @@ const Booking = mongoose.model('Booking', new mongoose.Schema({
   clientId: String, technicianId: String, date: String,
   description: String, descriptionAr: String, address: String,
   clientLat: Number, clientLng: Number, status: String, createdAt: String,
-  startedAt: String, awaitingSince: String, finalAmount: Number, completedAt: String, autoConfirmed: Boolean, digested: Boolean, dispatchId: String, nearest: Boolean, superseded: Boolean, chosen: Boolean, expired: Boolean,
+  startedAt: String, awaitingSince: String, remind1At: String, remind2At: String, cashAskedAt: String, cashAnswer: String, cashAnsweredAt: String, finalAmount: Number, completedAt: String, autoConfirmed: Boolean, digested: Boolean, dispatchId: String, nearest: Boolean, superseded: Boolean, chosen: Boolean, expired: Boolean,
   review: { type: new mongoose.Schema({ rating: Number, comment: String, commentAr: String, createdAt: String }, { _id: false }), default: null },
 }, opts));
 

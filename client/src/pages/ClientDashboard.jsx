@@ -25,7 +25,7 @@ function ReviewForm({ booking }) {
 
 export default function ClientDashboard() {
   const dispatch = useDispatch();
-  const { t } = useT();
+  const { t, lang } = useT();
   const user = useSelector((s) => s.auth.user);
   const bookings = useSelector((s) => s.bookings.mine);
   const [invoices, setInvoices] = useState([]);
@@ -81,6 +81,16 @@ export default function ClientDashboard() {
                 {invoices.filter((i) => i.bookingId === b.id).map((i) => (
                   <InvoiceCard key={i.id} invoice={i} onChange={loadInvoices} />
                 ))}
+                {b.cashAskedAt && !b.cashAnswer && (
+                  <div className="notice">
+                    <p><strong>{lang === 'ar' ? 'الفني قبض فلوسه؟' : 'Did the technician collect his money?'}</strong></p>
+                    <div className="btn-row">
+                      <button className="btn btn-primary btn-sm" onClick={() => api.post(`/bookings/${b.id}/cash-answer`, { collected: true }).then(() => { loadInvoices(); dispatch(fetchMyBookings()); })}>{lang === 'ar' ? 'أيوه دفعتله' : 'Yes, I paid'}</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => api.post(`/bookings/${b.id}/cash-answer`, { collected: false }).then(() => dispatch(fetchMyBookings()))}>{lang === 'ar' ? 'لأ، مادفعتش' : 'No, I did not'}</button>
+                    </div>
+                  </div>
+                )}
+                {b.cashAnswer === 'no' && <p className="muted">{lang === 'ar' ? 'بلّغنا الإدارة وهتتواصل معاك.' : 'We told the admin, who will contact you.'}</p>}
                 <div className="btn-row">
                   <button className="btn btn-ghost btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'in_progress' })).then(() => loadInvoices())}>{t('notDone')}</button>
                 </div>
