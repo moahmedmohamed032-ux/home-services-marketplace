@@ -77,6 +77,7 @@ export default function AdminDashboard() {
       <section className="dash-hero">
         <div>
           <h1>🛡 {t('adminPanel')}</h1>
+          <p><a href="/admin/dental" className="btn btn-outline btn-sm">🦷 إدارة دليل الأسنان</a></p>
           <p>{t('welcome')}, {user.name} · {t('adminWelcome')}</p>
         </div>
       </section>

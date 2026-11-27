@@ -1,0 +1,28 @@
+// Bootstrap 5.3 pieces (card, carousel, badge, buttons, forms, grid, utilities) scoped under .bs
+// so the rest of the site's CSS is untouched.
+.bs {
+  --bs-body-color: #1f2a37; --bs-body-bg: #fff; --bs-border-width: 1px; --bs-border-style: solid;
+  --bs-border-color: #e3e8ef; --bs-border-color-translucent: rgba(0,0,0,.175); --bs-border-radius: .75rem;
+  --bs-secondary-color: rgba(33,37,41,.75); --bs-emphasis-color: #000; --bs-tertiary-bg: #f8f9fa;
+  --bs-font-sans-serif: inherit; --bs-body-font-size: 1rem; --bs-body-font-weight: 400; --bs-body-line-height: 1.5;
+  --bs-link-color-rgb: 43,125,233; --bs-gutter-x: 1rem; --bs-gutter-y: 1rem;
+  --bs-primary: #2b7de9; --bs-primary-rgb: 43,125,233; --bs-success-rgb: 25,135,84; --bs-secondary-rgb: 108,117,125;
+  --bs-warning-rgb: 255,193,7; --bs-light-rgb: 248,249,250; --bs-danger-rgb: 220,53,69; --bs-info-rgb:13,202,240;
+  --bs-white-rgb: 255,255,255; --bs-dark-rgb: 33,37,41;
+  --bs-box-shadow-sm: 0 .125rem .25rem rgba(0,0,0,.075);
+  @import "bootstrap/scss/functions";
+  @import "bootstrap/scss/variables";
+  @import "bootstrap/scss/variables-dark";
+  @import "bootstrap/scss/maps";
+  @import "bootstrap/scss/mixins";
+  @import "bootstrap/scss/utilities";
+  @import "bootstrap/scss/card";
+  @import "bootstrap/scss/carousel";
+  @import "bootstrap/scss/badge";
+  @import "bootstrap/scss/buttons";
+  @import "bootstrap/scss/forms";
+  @import "bootstrap/scss/containers";
+  @import "bootstrap/scss/grid";
+  @import "bootstrap/scss/helpers";
+  @import "bootstrap/scss/utilities/api";
+}

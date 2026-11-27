@@ -52,9 +52,28 @@ const Notification = mongoose.model('Notification', new mongoose.Schema({
   read: Boolean, createdAt: String,
 }, opts));
 
+const Clinic = mongoose.model('Clinic', new mongoose.Schema({
+  id: { type: String, unique: true, index: true },
+  name: String, city: String, address: String, phone: String, phoneRaw: String, whatsapp: String, email: String,
+  lat: Number, lng: Number, about: String, hours: String, services: [String],
+  prices: { type: mongoose.Schema.Types.Mixed, default: {} },
+  photos: [String], origin: String, sources: [String], notes: String, invited: Boolean,
+  approved: Boolean, verified: Boolean, removed: Boolean, createdAt: String, updatedAt: String,
+}, opts));
+const Procedure = mongoose.model('Procedure', new mongoose.Schema({
+  id: { type: String, unique: true, index: true },
+  slug: String, nameAr: String, descAr: String, icon: String, min: Number, max: Number, order: Number,
+  sources: [{ _id: false, name: String, url: String, note: String }], checkedAt: String,
+}, opts));
+const Appointment = mongoose.model('Appointment', new mongoose.Schema({
+  id: { type: String, unique: true, index: true },
+  clinicId: String, clinicName: String, name: String, phone: String, procedure: String, preferred: String, note: String,
+  status: String, createdAt: String,
+}, opts));
+
 const Counter = mongoose.model('Counter', new mongoose.Schema({ _id: String, value: Number }, opts));
 
-const MODELS = { users: User, technicians: Technician, bookings: Booking, invoices: Invoice, notifications: Notification };
+const MODELS = { users: User, technicians: Technician, bookings: Booking, invoices: Invoice, notifications: Notification, clinics: Clinic, procedures: Procedure, appointments: Appointment };
 
 const strip = (doc) => {
   if (!doc) return null;
@@ -107,4 +126,7 @@ module.exports = {
   bookings: table(MODELS.bookings),
   invoices: table(MODELS.invoices),
   notifications: table(MODELS.notifications),
+  clinics: table(MODELS.clinics),
+  procedures: table(MODELS.procedures),
+  appointments: table(MODELS.appointments),
 };

@@ -1,0 +1,19 @@
+.bs { direction: rtl; text-align: right; font-family: inherit; color: var(--text, #1f2a37); }
+.bs h1 { font-size: 1.6rem; } .bs h2 { font-size: 1.25rem; margin-top: 1.4rem; }
+.bs .card { padding: 0; box-shadow: var(--shadow, none); }
+.bs .carousel-item { transition: none; }
+.bs .dental-ph { height: 180px; background: linear-gradient(135deg,#e8f1fd,#f5f9ff); display:flex; align-items:center; justify-content:center; font-size: 3.2rem; border-radius: .75rem .75rem 0 0; }
+.bs .dental-img { height: 180px; width: 100%; object-fit: cover; display:block; }
+.bs .carousel-inner { border-radius: .75rem .75rem 0 0; }
+.bs .carousel-control-prev-icon, .bs .carousel-control-next-icon { background-color: rgba(0,0,0,.45); border-radius: 50%; background-size: 55%; width: 1.8rem; height: 1.8rem; }
+.bs .dental-price { font-weight: 800; color: #0a6b3d; }
+.bs .btn { border-radius: 10px; font-weight: 700; }
+.bs .alert { border-radius: .75rem; padding: .75rem 1rem; border: 1px solid transparent; }
+.bs .alert-warning { background: #fff8e1; border-color: #ffe08a; color: #6b5200; }
+.bs .alert-success { background: #e8f7ee; border-color: #b7e4c7; color: #14532d; }
+.bs .alert-danger { background: #fdecea; border-color: #f5c2c7; color: #842029; }
+.bs .nav-pills-lite button { margin: 0 0 .4rem .4rem; }
+.bs table { width: 100%; border-collapse: collapse; } .bs th, .bs td { padding: .4rem .5rem; border-bottom: 1px solid var(--border,#e3e8ef); text-align: right; }
+.bs .form-control, .bs .form-select { width: 100%; }
+.bs .form-label { font-weight: 700; margin-bottom: .25rem; }
+.bs a { text-decoration: none; }

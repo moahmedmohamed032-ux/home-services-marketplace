@@ -1,0 +1,682 @@
+[
+ {
+  "id": "cln_seed_1",
+  "name": "Dr Esam Esmat Dental Clinic (د. عصام الدين عصمت)",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "حي الفيروز - أمام باب مستشفى الأقصر الدولي",
+  "phone": "01154164858",
+  "phoneIsMobile": true,
+  "whatsapp": "01050046804",
+  "invited": true,
+  "sources": [
+   "https://www.dentists10.com/EG/Luxor-City/108064485362875/",
+   "https://www.sabalist.com/business/22IBoDciRde2dWtU2IRp"
+  ],
+  "notes": "صفحة فيسبوك نشطة",
+  "phoneRaw": "01154164858"
+ },
+ {
+  "id": "cln_seed_2",
+  "name": "HA Dental Clinic",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "الأقصر",
+  "phone": "",
+  "phoneIsMobile": false,
+  "whatsapp": "",
+  "invited": true,
+  "sources": [
+   "https://www.sabalist.com/business/mtsUQ1y6BWpLlDnTprtJ"
+  ],
+  "notes": "",
+  "phoneRaw": "010509356699"
+ },
+ {
+  "id": "cln_seed_3",
+  "name": "Dr/Ahmed Badry Dental Clinic (د. أحمد بدري)",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "الأقصر",
+  "phone": "01090005657",
+  "phoneIsMobile": true,
+  "whatsapp": "01090005657",
+  "invited": true,
+  "sources": [
+   "https://www.sabalist.com/business/hzw4XZvUn8cMguYnGUN6"
+  ],
+  "notes": "",
+  "phoneRaw": "01090005657"
+ },
+ {
+  "id": "cln_seed_4",
+  "name": "عيادة د. هدرا طلعت",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "الأقصر",
+  "phone": "01278571507",
+  "phoneIsMobile": true,
+  "whatsapp": "01278571507",
+  "invited": true,
+  "sources": [
+   "https://www.sabalist.com/business/7x5guiO4nhpjSPKfnVeL"
+  ],
+  "notes": "",
+  "phoneRaw": "01278571507"
+ },
+ {
+  "id": "cln_seed_5",
+  "name": "مركز سمايل سيركل لتجميل الأسنان",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "الأقصر",
+  "phone": "01022922150",
+  "phoneIsMobile": true,
+  "whatsapp": "01022922150",
+  "invited": true,
+  "sources": [
+   "https://www.sabalist.com/business/3txZbNj3rRPJXcQuSlD6"
+  ],
+  "notes": "",
+  "phoneRaw": "01022922150"
+ },
+ {
+  "id": "cln_seed_6",
+  "name": "3M Dental Clinic (د. مينا ملاك مشرقي)",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "ش نزلة فودافون - المتفرع من ش التليفزيون - بعد حلواني إكلير",
+  "phone": "01015146282",
+  "phoneIsMobile": true,
+  "whatsapp": "01015146282",
+  "invited": false,
+  "sources": [
+   "https://www.dentists10.com/EG/Luxor/390903267431847/"
+  ],
+  "notes": "صفحة نشطة جدًا - تقويم بالتقسيط",
+  "phoneRaw": "01015146282"
+ },
+ {
+  "id": "cln_seed_7",
+  "name": "Smiley Dental Clinic (د. علاء محمد العبودي)",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "ش التليفزيون - أمام فودافون - بجوار سكاي روف",
+  "phone": "01126099298",
+  "phoneIsMobile": true,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "https://www.yellowmega.com/EG/Luxor/103518855505411/"
+  ],
+  "notes": "",
+  "phoneRaw": "01126099298"
+ },
+ {
+  "id": "cln_seed_8",
+  "name": "Luxor Nile Dental Clinic (د. شريف أشرف الحسيني)",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "العوامية - ش الجولي فيل - أعلى صيدلية د. محمد نصر",
+  "phone": "01272205011",
+  "phoneIsMobile": true,
+  "whatsapp": "01272205011",
+  "invited": false,
+  "sources": [
+   "https://www.megabizdir.com/EG/Luxor/922042387662960/"
+  ],
+  "notes": "",
+  "phoneRaw": "01272205011"
+ },
+ {
+  "id": "cln_seed_9",
+  "name": "عيادة دُرَر لطب وتجميل الأسنان (د. مصطفى محمد مصرف)",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "منشأة العماري - ش المطار - بجوار مسجد الهدى - فوق صيدلية د. محمد عبد الله",
+  "phone": "01050308989",
+  "phoneIsMobile": true,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "https://www.dentists10.com/EG/Luxor/106028338760442/"
+  ],
+  "notes": "كشف أولي مجاني + خصم تنظيف جير 50% (أبريل 2025)",
+  "phoneRaw": "01050308989"
+ },
+ {
+  "id": "cln_seed_10",
+  "name": "الأقصر التخصصي لطب وجراحة الفم والأسنان",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "ش التلفزيون - أمام بوابة المستشفى الدولي - عمارة شعيب الدور الثاني",
+  "phone": "01111989892",
+  "phoneIsMobile": true,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "https://www.megabizdir.com/EG/Luxor/1644076389176816/"
+  ],
+  "notes": "",
+  "phoneRaw": "01111989892"
+ },
+ {
+  "id": "cln_seed_11",
+  "name": "عيادات أسنان مستشفى الندى التخصصي",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "ش طريق الكباش الجديد - بجوار بيت الشعر الأقصري",
+  "phone": "",
+  "phoneIsMobile": false,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "https://www.dentists10.com/EG/Luxor-City/100884529370787/"
+  ],
+  "notes": "",
+  "phoneRaw": "010137953710952359394"
+ },
+ {
+  "id": "cln_seed_12",
+  "name": "مركز الحياة لطب الفم والأسنان (د. بلال الأسعد)",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "ش المنشية أمام مسجد صلاح الدين / فرع: ش معبد الكرنك أمام هيلتون",
+  "phone": "",
+  "phoneIsMobile": false,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "https://www.dalilmadina.com/prov_clinic.aspx?drop=اسنان&i=الاقصر",
+   "https://dalil140.com/category/ar/dentist-clinics/luxor/luxor"
+  ],
+  "notes": "",
+  "phoneRaw": "0100910058501011990623"
+ },
+ {
+  "id": "cln_seed_13",
+  "name": "فكري أسنان كلينيك (د. محمد فكري)",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "الأقصر",
+  "phone": "01030290001",
+  "phoneIsMobile": true,
+  "whatsapp": "01030290001",
+  "invited": false,
+  "sources": [
+   "https://www.sabalist.com/business/3ZSvfrrtXf6hEIQ3ZrkM",
+   "https://dr-mohamed-fekry-clinic.business.site/"
+  ],
+  "notes": "ليه موقع",
+  "phoneRaw": "01030290001"
+ },
+ {
+  "id": "cln_seed_14",
+  "name": "عيادة د. حسام منصور",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "الأقصر",
+  "phone": "01018463340",
+  "phoneIsMobile": true,
+  "whatsapp": "01018463340",
+  "invited": false,
+  "sources": [
+   "https://www.sabalist.com/business/55KSzIyttHlB9fyYiBb1"
+  ],
+  "notes": "",
+  "phoneRaw": "01018463340"
+ },
+ {
+  "id": "cln_seed_15",
+  "name": "عيادة د. محمد شيخون",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "الأقصر",
+  "phone": "01019986338",
+  "phoneIsMobile": true,
+  "whatsapp": "01019986338",
+  "invited": false,
+  "sources": [
+   "https://www.sabalist.com/business/7X3dS4yspm231VF6YoBA"
+  ],
+  "notes": "",
+  "phoneRaw": "01019986338"
+ },
+ {
+  "id": "cln_seed_16",
+  "name": "عيادة د. أمونيوس",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "الأقصر",
+  "phone": "01205404888",
+  "phoneIsMobile": true,
+  "whatsapp": "01205404888",
+  "invited": false,
+  "sources": [
+   "https://www.sabalist.com/business/676cer5KF88fmtS077Zt"
+  ],
+  "notes": "",
+  "phoneRaw": "01205404888"
+ },
+ {
+  "id": "cln_seed_17",
+  "name": "Dr Andrew Moris (د. أندرو موريس)",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "الأقصر",
+  "phone": "01115703553",
+  "phoneIsMobile": true,
+  "whatsapp": "01115703553",
+  "invited": false,
+  "sources": [
+   "https://www.sabalist.com/business/IIo2KzkIkwmqJ7SrvP1h"
+  ],
+  "notes": "",
+  "phoneRaw": "01115703553"
+ },
+ {
+  "id": "cln_seed_18",
+  "name": "د. عماد فيكتور",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "ش كليوباترا - أمام معبد الأقصر",
+  "phone": "",
+  "phoneIsMobile": false,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "https://www.dalilmadina.com/prov_clinic.aspx?drop=اسنان&i=الاقصر",
+   "https://dalil140.com/category/ar/dentist-clinics/luxor/luxor"
+  ],
+  "notes": "دليل قديم - يحتاج تحقق",
+  "phoneRaw": "095238235101006174175"
+ },
+ {
+  "id": "cln_seed_19",
+  "name": "د. فوزي هنري",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "ش المحطة - أمام مكتب البريد",
+  "phone": "",
+  "phoneIsMobile": false,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "نفس المصدرين السابقين"
+  ],
+  "notes": "دليل قديم - يحتاج تحقق",
+  "phoneRaw": "0952380863095238183401006780298"
+ },
+ {
+  "id": "cln_seed_20",
+  "name": "د. ألبير إسحق",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "ش ميخائيل بولس",
+  "phone": "",
+  "phoneIsMobile": false,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "نفس المصدرين السابقين"
+  ],
+  "notes": "دليل قديم - يحتاج تحقق",
+  "phoneRaw": "012228139360952379834"
+ },
+ {
+  "id": "cln_seed_21",
+  "name": "د. فارس سليمان",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "ش معبد الكرنك",
+  "phone": "0952359909",
+  "phoneIsMobile": false,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "نفس المصدرين السابقين"
+  ],
+  "notes": "دليل قديم - يحتاج تحقق",
+  "phoneRaw": "0952359909"
+ },
+ {
+  "id": "cln_seed_22",
+  "name": "د. مدحت سعد الله صالح",
+  "city": "Luxor",
+  "cityAr": "الأقصر",
+  "address": "ش مدرسة الصنايع - الدور الأول",
+  "phone": "0952370878",
+  "phoneIsMobile": false,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "نفس المصدرين السابقين"
+  ],
+  "notes": "دليل قديم - يحتاج تحقق",
+  "phoneRaw": "0952370878"
+ },
+ {
+  "id": "cln_seed_23",
+  "name": "مركز الرزيقي التخصصي لطب الفم والأسنان (د. محمد الرزيقي)",
+  "city": "Armant",
+  "cityAr": "أرمنت",
+  "address": "أرمنت الوابورات - ش منير واصف - أمام جمعية رسالة (JG44+PH4)",
+  "phone": "",
+  "phoneIsMobile": false,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "https://www.dentists10.com/EG/Armant-el-Wâbûrât/100103079308341/",
+   "https://goo.gl/maps/SEEVFPyQyUNtYkua9",
+   "https://reviews.birdeye.com/-176975895227937/"
+  ],
+  "notes": "اختيار أحمد الأول - فرع تاني في أسيوط - مواعيد 9ص-9م (الجمعة 5-9م)",
+  "phoneRaw": "011504340490952659960"
+ },
+ {
+  "id": "cln_seed_24",
+  "name": "عيادات أسناني (د. مروة عبدالحميد)",
+  "city": "Armant",
+  "cityAr": "أرمنت",
+  "address": "أرمنت الوابورات - مركز الرحمن الطبي - أمام مسجد الرحمن",
+  "phone": "",
+  "phoneIsMobile": false,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "https://www.dentists10.com/EG/Armant/605865279274580/"
+  ],
+  "notes": "عرض تنظيف جير 300ج (نشط)",
+  "phoneRaw": "0111634094001092004141"
+ },
+ {
+  "id": "cln_seed_25",
+  "name": "مركز إشراقة لطب وجراحة الفم والأسنان",
+  "city": "Armant",
+  "cityAr": "أرمنت",
+  "address": "قرية المحاميد قبلي - مركز أرمنت (بجوار كوبري السعدي)",
+  "phone": "01050704195",
+  "phoneIsMobile": true,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "https://www.dentists10.com/EG/Armant/440739255794024/"
+  ],
+  "notes": "",
+  "phoneRaw": "01050704195"
+ },
+ {
+  "id": "cln_seed_26",
+  "name": "عيادة د. أبوالحسن رفاعي",
+  "city": "Armant",
+  "cityAr": "أرمنت",
+  "address": "أرمنت الحيط - كوبري السيما",
+  "phone": "01101819195",
+  "phoneIsMobile": true,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "https://www.findhealthclinics.org/EG/Armant/567631926427844/"
+  ],
+  "notes": "",
+  "phoneRaw": "01101819195"
+ },
+ {
+  "id": "cln_seed_27",
+  "name": "مركز د/ رجب جودة الطبي",
+  "city": "Esna",
+  "cityAr": "إسنا",
+  "address": "إسنا",
+  "phone": "0100545478",
+  "phoneIsMobile": false,
+  "whatsapp": "",
+  "invited": true,
+  "sources": [
+   "https://www.sabalist.com/business/4FNTnx1GIXQB1clFblnR"
+  ],
+  "notes": "",
+  "phoneRaw": "0100545478"
+ },
+ {
+  "id": "cln_seed_28",
+  "name": "عيادة د/ عبدالرحيم فريد",
+  "city": "Esna",
+  "cityAr": "إسنا",
+  "address": "مركز إسنا",
+  "phone": "01112350608",
+  "phoneIsMobile": true,
+  "whatsapp": "01112350608",
+  "invited": false,
+  "sources": [
+   "https://www.sabalist.com/business/3psMLTPl8tNDNNAkLhkO",
+   "https://www.enbizopedia.com/EG/Esna/107202712471109/"
+  ],
+  "notes": "",
+  "phoneRaw": "01112350608"
+ },
+ {
+  "id": "cln_seed_29",
+  "name": "عيادة د. أحمد حمدي أبورجيلة",
+  "city": "Esna",
+  "cityAr": "إسنا",
+  "address": "إسنا - ش النزهة - بجوار هايبر الزهراء - بحري صيدلية زنط",
+  "phone": "",
+  "phoneIsMobile": false,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "https://www.dentists10.com/EG/Esna/292187667311137/"
+  ],
+  "notes": "الرقم على صفحة الفيسبوك",
+  "phoneRaw": ""
+ },
+ {
+  "id": "cln_seed_30",
+  "name": "عيادة البتول (د. مكاريوس صلاح)",
+  "city": "Esna",
+  "cityAr": "إسنا",
+  "address": "إسنا - ش البحر - بجوار مجلس المدينة وجزارة أولاد عازر",
+  "phone": "01114997808",
+  "phoneIsMobile": true,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "https://www.findhealthclinics.org/EG/Esna/365404373333316/"
+  ],
+  "notes": "يستضيف استشاري تقويم زائر من القاهرة",
+  "phoneRaw": "01114997808"
+ },
+ {
+  "id": "cln_seed_31",
+  "name": "مركز ابتسامة لطب الفم والأسنان",
+  "city": "Esna",
+  "cityAr": "إسنا",
+  "address": "إسنا - بجوار جامع الزهراء",
+  "phone": "01149272550",
+  "phoneIsMobile": true,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "https://www.dentists10.com/EG/Esna/817972224934388/"
+  ],
+  "notes": "",
+  "phoneRaw": "01149272550"
+ },
+ {
+  "id": "cln_seed_32",
+  "name": "Raaha Dental Clinic (د. عبدالرحمن برطوش)",
+  "city": "Esna",
+  "cityAr": "إسنا",
+  "address": "إسنا - ش البحر - أعلى الرضوانية للأشعة",
+  "phone": "01030306752",
+  "phoneIsMobile": true,
+  "whatsapp": "01096661838",
+  "invited": false,
+  "sources": [
+   "https://www.healthandbeauty1.com/EG/Esna/1076428582219372/"
+  ],
+  "notes": "",
+  "phoneRaw": "01030306752"
+ },
+ {
+  "id": "cln_seed_33",
+  "name": "مركز إسنا الكبرى الطبي",
+  "city": "Esna",
+  "cityAr": "إسنا",
+  "address": "مركز إسنا",
+  "phone": "01157026683",
+  "phoneIsMobile": true,
+  "whatsapp": "01157026683",
+  "invited": false,
+  "sources": [
+   "https://www.sabalist.com/business/4vyf3pG150x4xp0tP07L"
+  ],
+  "notes": "",
+  "phoneRaw": "01157026683"
+ },
+ {
+  "id": "cln_seed_34",
+  "name": "عيادة دار الشفاء",
+  "city": "Esna",
+  "cityAr": "إسنا",
+  "address": "إسنا",
+  "phone": "0952600305",
+  "phoneIsMobile": false,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "https://www.sabalist.com/business/Hfw3QeqIIb5dQvNVR6aI"
+  ],
+  "notes": "",
+  "phoneRaw": "0952600305"
+ },
+ {
+  "id": "cln_seed_35",
+  "name": "عيادة إتقان أسنان",
+  "city": "Esna",
+  "cityAr": "إسنا",
+  "address": "ش النزهة - إسنا",
+  "phone": "01159535455",
+  "phoneIsMobile": true,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "https://www.dalilmadina.com/prov_clinic.aspx?drop=اسنان&i=الاقصر",
+   "https://aldoctorz.com/مركز/اتقان-أسنان/"
+  ],
+  "notes": "",
+  "phoneRaw": "01159535455"
+ },
+ {
+  "id": "cln_seed_36",
+  "name": "د. السيد مصطفى الحداد",
+  "city": "Esna",
+  "cityAr": "إسنا",
+  "address": "ش الحدادين - ميدان السيدة زينب",
+  "phone": "0952510559",
+  "phoneIsMobile": false,
+  "whatsapp": "",
+  "invited": false,
+  "sources": [
+   "https://aldoctorz.com/دكتور/السيد-مصطفى-الحداد-أسنان/"
+  ],
+  "notes": "دليل قديم - يحتاج تحقق",
+  "phoneRaw": "0952510559"
+ },
+ {
+  "id": "cln_seed_37",
+  "name": "Saint Mary Dental Clinic",
+  "city": "Qena",
+  "cityAr": "قنا",
+  "address": "قنا",
+  "phone": "01281340624",
+  "phoneIsMobile": true,
+  "whatsapp": "01281340624",
+  "invited": true,
+  "sources": [
+   "https://www.sabalist.com/business/HZfYLg1iMBUh0jBQKVvo"
+  ],
+  "notes": "",
+  "phoneRaw": "01281340624"
+ },
+ {
+  "id": "cln_seed_38",
+  "name": "عيادات الجودي التخصصية",
+  "city": "Qena",
+  "cityAr": "قنا",
+  "address": "قنا",
+  "phone": "01012866867",
+  "phoneIsMobile": true,
+  "whatsapp": "01012866867",
+  "invited": true,
+  "sources": [
+   "https://www.sabalist.com/business/4tidBSGZv7cnxN1XLPRB"
+  ],
+  "notes": "",
+  "phoneRaw": "01012866867"
+ },
+ {
+  "id": "cln_seed_39",
+  "name": "Dr Fady Salah Dental Clinic",
+  "city": "Qena",
+  "cityAr": "قنا",
+  "address": "قنا",
+  "phone": "01111135558",
+  "phoneIsMobile": true,
+  "whatsapp": "01111135558",
+  "invited": false,
+  "sources": [
+   "https://www.sabalist.com/business/7ZVk6TD2lU4xPdKZkXPI"
+  ],
+  "notes": "",
+  "phoneRaw": "01111135558"
+ },
+ {
+  "id": "cln_seed_40",
+  "name": "CuraDent clinic",
+  "city": "Qena",
+  "cityAr": "قنا",
+  "address": "قنا",
+  "phone": "01096072787",
+  "phoneIsMobile": true,
+  "whatsapp": "01096072787",
+  "invited": false,
+  "sources": [
+   "https://www.sabalist.com/business/6tG4P5SVpRd9oPYV3PjA"
+  ],
+  "notes": "",
+  "phoneRaw": "01096072787"
+ },
+ {
+  "id": "cln_seed_41",
+  "name": "Dental Touch",
+  "city": "Qena",
+  "cityAr": "قنا",
+  "address": "قنا",
+  "phone": "01556967965",
+  "phoneIsMobile": true,
+  "whatsapp": "01556967965",
+  "invited": false,
+  "sources": [
+   "https://www.sabalist.com/business/63hqjQWUP4X6XQTE4CsZ"
+  ],
+  "notes": "",
+  "phoneRaw": "01556967965"
+ },
+ {
+  "id": "cln_seed_42",
+  "name": "عيادة د. أحمد جمال الأفيوني",
+  "city": "Qena",
+  "cityAr": "قنا",
+  "address": "قنا",
+  "phone": "01099452248",
+  "phoneIsMobile": true,
+  "whatsapp": "01099452248",
+  "invited": false,
+  "sources": [
+   "https://www.sabalist.com/business/0MOMrGcE7tZqMFBf1phN"
+  ],
+  "notes": "",
+  "phoneRaw": "01099452248"
+ }
+]

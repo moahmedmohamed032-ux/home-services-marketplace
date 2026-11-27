@@ -20,6 +20,7 @@ export default function Navbar() {
         <nav className="nav-links">
           <NavLink to="/" end>{t('home')}</NavLink>
           <NavLink to="/technicians">{t('find')}</NavLink>
+          <NavLink to="/dental">🦷 أسنان</NavLink>
         </nav>
         <div className="nav-actions">
           <button className="icon-btn" onClick={() => dispatch(toggleLang())} aria-label="language">{t('language')}</button>

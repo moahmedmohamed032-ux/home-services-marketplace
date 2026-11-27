@@ -12,6 +12,7 @@ const bookingRoutes = require('./routes/bookings.routes');
 const invoiceRoutes = require('./routes/invoices.routes');
 const adminRoutes = require('./routes/admin.routes');
 const paymobRoutes = require('./routes/paymob.routes');
+const dentalRoutes = require('./routes/dental.routes');
 const notificationRoutes = require('./routes/notifications.routes');
 
 const app = express();
@@ -37,6 +38,8 @@ app.use('/api/professions', professionRoutes);
 app.use('/api/technicians', technicianRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/dental', dentalRoutes.pub);
+app.use('/api/admin/dental', dentalRoutes.admin);
 app.use('/api/admin', adminRoutes);
 app.use('/api/paymob', paymobRoutes);
 app.use('/api/notifications', notificationRoutes);
