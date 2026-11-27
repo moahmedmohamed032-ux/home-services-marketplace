@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { login } from '../features/auth/authSlice';
 import { useT } from '../i18n/useT';
+import GoogleButton from '../components/GoogleButton';
 
 export default function Login() {
   const dispatch = useDispatch();
@@ -23,9 +24,11 @@ export default function Login() {
     }
   };
 
+  const goHome = (user) => navigate(user.role === 'technician' ? '/pro' : user.role === 'admin' ? '/admin' : '/dashboard', { replace: true });
   return (
     <div className="auth card">
       <h1>{t('login')}</h1>
+      <GoogleButton mode="login" onSignedIn={goHome} />
       <form onSubmit={submit} className="form">
         <label>{t('loginId')}<input required dir="ltr" autoComplete="username" value={form.identifier} onChange={(e) => setForm({ ...form, identifier: e.target.value })} /></label>
         <label>{t('password')}<PasswordInput  required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></label>

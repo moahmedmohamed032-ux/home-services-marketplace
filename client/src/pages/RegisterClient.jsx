@@ -7,6 +7,7 @@ import { fetchCities } from '../features/technicians/techniciansSlice';
 import useGeolocation from '../components/useGeolocation';
 import LocationError from '../components/LocationError';
 import { useT } from '../i18n/useT';
+import GoogleButton from '../components/GoogleButton';
 
 export default function RegisterClient() {
   const dispatch = useDispatch();
@@ -30,6 +31,7 @@ export default function RegisterClient() {
     <div className="auth card">
       <h1>👤 {t('clientRegTitle')}</h1>
       <p className="muted">{t('clientRegSub')}</p>
+      <GoogleButton mode="client" onSignedIn={() => navigate('/dashboard', { replace: true })} />
       <form onSubmit={submit} className="form">
         <label>{t('name')}<input required value={form.name} onChange={set('name')} /></label>
         <label>{t('email')}<input type="email" required value={form.email} onChange={set('email')} /></label>

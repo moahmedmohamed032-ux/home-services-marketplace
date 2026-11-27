@@ -5,6 +5,10 @@ const { hashPassword, comparePassword, signToken } = require('../utils/crypto');
 const { requireFields, assertEmail, assertPassword, assertRole } = require('../utils/validators');
 const rateLimiter = require('../middleware/rateLimiter');
 const { authenticate } = require('../middleware/auth');
+const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+const config = require('../core/config');
+const { verifyGoogleIdToken } = require('../utils/google');
 
 const router = express.Router();
 
@@ -12,9 +16,44 @@ function authPayload(user) {
   return { token: signToken(user), user: store.publicUser(user) };
 }
 
+// ---- Sign in / sign up with Google (ID token from Google Identity Services) ----
+const googleClientId = () => process.env.GOOGLE_CLIENT_ID || '';
+const verifyGoogle = (credential) => verifyGoogleIdToken(credential, googleClientId());
+const googleTicket = (g) => jwt.sign({ purpose: 'google-signup', email: g.email, name: g.name }, config.jwtSecret, { expiresIn: '20m' });
+
+router.get('/google/config', (req, res) => res.json({ enabled: !!googleClientId(), clientId: googleClientId() || undefined }));
+
+// POST /api/auth/google { credential, mode: 'login' | 'client' | 'technician' }
+router.post('/google', rateLimiter, async (req, res, next) => {
+  try {
+    const g = await verifyGoogle(req.body.credential);
+    const mode = String(req.body.mode || 'login');
+    const user = await store.findUserByEmail(g.email);
+    if (user) {
+      if (user.active === false) throw ApiError.unauthorized('Account is deactivated');
+      return res.json({ status: 'signed_in', ...authPayload(user) });
+    }
+    if (mode === 'client') {
+      const created = await store.createUser({ name: g.name, email: g.email, passwordHash: await hashPassword(crypto.randomBytes(24).toString('hex')), role: 'client' });
+      return res.status(201).json({ status: 'signed_in', ...authPayload(created) });
+    }
+    if (mode === 'technician') return res.json({ status: 'needs_profile', ticket: googleTicket(g), name: g.name, email: g.email });
+    throw ApiError.notFound('No account for this Google email yet. Sign up first.');
+  } catch (err) {
+    next(err.status === 401 ? ApiError.unauthorized(err.message) : err);
+  }
+});
+
 // POST /api/auth/register — creates a client or a technician (with profile).
 router.post('/register', rateLimiter, async (req, res, next) => {
   try {
+    let google = null;
+    if (req.body.googleTicket) {
+      try { google = jwt.verify(req.body.googleTicket, config.jwtSecret); } catch { throw ApiError.unauthorized('Google sign-up expired, try again'); }
+      if (google.purpose !== 'google-signup') throw ApiError.unauthorized('Invalid Google sign-up');
+      req.body.email = google.email; req.body.name = req.body.name || google.name;
+      req.body.password = crypto.randomBytes(24).toString('hex');
+    }
     requireFields(req.body, ['name', 'password', 'role']);
     const { name, password, role, city, profession, yearsExperience, hourlyRate, bio, lat, lng, phone, phonePublic, address, addressActive } = req.body;
     const email = String(req.body.email || '').trim();

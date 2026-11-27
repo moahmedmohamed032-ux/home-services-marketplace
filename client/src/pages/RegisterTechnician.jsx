@@ -8,6 +8,7 @@ import useGeolocation from '../components/useGeolocation';
 import LocationError from '../components/LocationError';
 import { cityLabel } from '../i18n/translations';
 import { useT } from '../i18n/useT';
+import GoogleButton from '../components/GoogleButton';
 
 export default function RegisterTechnician() {
   const dispatch = useDispatch();
@@ -19,6 +20,7 @@ export default function RegisterTechnician() {
     name: '', email: '', password: '', phone: '', profession: '', city: '', address: '',
     yearsExperience: 1, hourlyRate: 100, bio: '', phonePublic: false, addressActive: true,
   });
+  const [gTicket, setGTicket] = useState('');
   const band = professions.find((p) => p.id === form.profession);
   const [pos, setPos] = useState(null);
   const [locate, locating, geoError, retryLocate] = useGeolocation();
@@ -28,7 +30,7 @@ export default function RegisterTechnician() {
 
   const submit = async (e) => {
     e.preventDefault();
-    const res = await dispatch(register({ ...form, role: 'technician', ...(pos || {}) }));
+    const res = await dispatch(register({ ...form, role: 'technician', ...(gTicket ? { googleTicket: gTicket } : {}), ...(pos || {}) }));
     if (register.fulfilled.match(res)) navigate('/pro', { replace: true });
   };
 
@@ -36,14 +38,17 @@ export default function RegisterTechnician() {
     <div className="auth card wide">
       <h1>🔧 {t('techRegTitle')}</h1>
       <p className="muted">{t('techRegSub')}</p>
+      {gTicket
+        ? <p className="muted">{lang === 'ar' ? `تم التحقق من حساب جوجل (${form.email}). كمّل باقي البيانات وسجّل.` : `Google account verified (${form.email}). Fill in the rest to finish.`}</p>
+        : <GoogleButton mode="technician" onNeedsProfile={(d) => { setGTicket(d.ticket); setForm((f) => ({ ...f, name: d.name, email: d.email })); }} />}
       <form onSubmit={submit} className="form">
         <div className="row">
           <label>{t('name')}<input required value={form.name} onChange={set('name')} /></label>
           <label>{t('phone')}<input type="tel" required dir="ltr" placeholder="01012345678" pattern="^(\+?20|0)?1[0125][0-9]{8}$" value={form.phone} onChange={set('phone')} /></label>
         </div>
         <div className="row">
-          <label>{t('emailOptional')}<input type="email" dir="ltr" value={form.email} onChange={set('email')} /></label>
-          <label>{t('password')}<PasswordInput  minLength={8} required value={form.password} onChange={set('password')} /></label>
+          <label>{t('emailOptional')}<input type="email" dir="ltr" value={form.email} onChange={set('email')} readOnly={!!gTicket} /></label>
+          {!gTicket && <label>{t('password')}<PasswordInput  minLength={8} required value={form.password} onChange={set('password')} /></label>}
         </div>
         <div className="row">
           <label>{t('profession')}

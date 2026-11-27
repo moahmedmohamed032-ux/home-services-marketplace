@@ -25,6 +25,15 @@ export const login = createAsyncThunk('auth/login', async (credentials, { reject
   }
 });
 
+export const googleAuth = createAsyncThunk('auth/google', async (payload, { rejectWithValue }) => {
+  try {
+    const { data } = await api.post('/auth/google', payload);
+    return data;
+  } catch (err) {
+    return rejectWithValue(errorMessage(err, 'Google sign-in failed'));
+  }
+});
+
 export const register = createAsyncThunk('auth/register', async (payload, { rejectWithValue }) => {
   try {
     const { data } = await api.post('/auth/register', payload);
@@ -47,7 +56,7 @@ const authSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    for (const thunk of [login, register]) {
+    for (const thunk of [login, register, googleAuth]) {
       builder
         .addCase(thunk.pending, (state) => {
           state.status = 'loading';
@@ -55,6 +64,7 @@ const authSlice = createSlice({
         })
         .addCase(thunk.fulfilled, (state, action) => {
           state.status = 'succeeded';
+          if (action.payload.status === 'needs_profile') return;
           state.user = action.payload.user;
           state.token = action.payload.token;
           persistSession(action.payload.token, action.payload.user);
