@@ -38,7 +38,7 @@ function DirCard({ c }) {
             {c.specialty && <span className="badge text-bg-light border">{c.specialty}</span>}
           </p>
           {c.address && <p className="card-text small mb-2">📍 {c.address}</p>}
-          {c.phone && <p className="small mb-2" dir="ltr">📞 <a href={`tel:${c.phone}`}>{c.phone}</a></p>}
+          {c.phone && <p className="small mb-2" dir="ltr">📞 {c.phone.split('/').map((x) => x.trim()).filter(Boolean).map((x, i) => <span key={x}>{i > 0 && ' / '}<a href={`tel:${x.replace(/[^\d+]/g, '')}`}>{x}</a></span>)}</p>}
         </div>
         <div className="card-footer bg-transparent small text-muted">المصدر: {c.sources.join(' + ')}</div>
       </article>
@@ -73,7 +73,7 @@ export default function Directory() {
   const base = slug ? `/directory/${slug}` : '/directory';
   const filtered = !!(city || q);
   const suffix = page > 1 ? ` - صفحة ${n(page)}` : '';
-  const title = !known ? 'صفحة غير موجودة | FIX-IT' : slug ? `عيادات ${specAr} في الأقصر وقنا${suffix} | FIX-IT` : `دليل العيادات والمستشفيات في الأقصر وقنا${suffix} | FIX-IT`;
+  const title = !known ? 'صفحة غير موجودة | FIX-IT' : slug ? `${slug === 'hospital' ? 'المستشفيات' : `عيادات ${specAr}`} في الأقصر وقنا${suffix} | FIX-IT` : `دليل العيادات والمستشفيات في الأقصر وقنا${suffix} | FIX-IT`;
   const desc = slug ? `دليل ${slug === 'hospital' ? 'المستشفيات' : `عيادات ${specAr}`} في الأقصر وقنا وإسنا وأرمنت: الاسم والتخصص والعنوان ومصدر كل بيان.` : 'دليل عيادات ومستشفيات الأقصر وقنا وإسنا وأرمنت: الاسم والتخصص والعنوان ومصدر كل بيان، من سجل مديرية الصحة الرسمي وقوائم منشورة.';
   useMeta({ title, desc, path: page > 1 ? `${base}?page=${page}` : base, index: known && !filtered });
   const go = (p) => { const next = new URLSearchParams(sp); if (p > 1) next.set('page', p); else next.delete('page'); setSp(next); window.scrollTo(0, 0); };

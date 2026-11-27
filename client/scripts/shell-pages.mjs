@@ -8,7 +8,7 @@ const PAGES = [{
 }];
 const SPEC = { dental: 'أسنان', 'ob-gyn': 'نساء وتوليد', pediatrics: 'أطفال', 'general-surgery': 'جراحة عامة', 'general-practice': 'ممارس عام', 'internal-medicine': 'باطنة', orthopedics: 'عظام', ophthalmology: 'عيون', cardiology: 'قلب وأوعية دموية', urology: 'مسالك بولية', dermatology: 'جلدية وتناسلية', 'neuro-psych': 'مخ وأعصاب ونفسية', hospital: 'مستشفيات', ent: 'أنف وأذن وحنجرة', chest: 'صدر', other: 'تخصصات أخرى', gastro: 'جهاز هضمي وكبد', 'plastic-surgery': 'جراحة تجميل', radiology: 'أشعة' };
 PAGES.push({ path: '/directory', title: 'دليل العيادات والمستشفيات في الأقصر وقنا | FIX-IT', desc: 'دليل عيادات ومستشفيات الأقصر وقنا وإسنا وأرمنت: الاسم والتخصص والعنوان ومصدر كل بيان، من سجل مديرية الصحة الرسمي وقوائم منشورة.' });
-for (const [k, ar] of Object.entries(SPEC)) PAGES.push({ path: `/directory/${k}`, title: `عيادات ${ar} في الأقصر وقنا | FIX-IT`, desc: `دليل ${k === 'hospital' ? 'المستشفيات' : `عيادات ${ar}`} في الأقصر وقنا وإسنا وأرمنت: الاسم والتخصص والعنوان ومصدر كل بيان.` });
+for (const [k, ar] of Object.entries(SPEC)) PAGES.push({ path: `/directory/${k}`, title: `${k === 'hospital' ? 'المستشفيات' : `عيادات ${ar}`} في الأقصر وقنا | FIX-IT`, desc: `دليل ${k === 'hospital' ? 'المستشفيات' : `عيادات ${ar}`} في الأقصر وقنا وإسنا وأرمنت: الاسم والتخصص والعنوان ومصدر كل بيان.` });
 const base = fs.readFileSync('dist/index.html', 'utf8');
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 for (const p of PAGES) {
