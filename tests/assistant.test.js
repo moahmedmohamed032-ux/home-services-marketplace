@@ -47,3 +47,14 @@ test('technician unpaid-job question gets a real KB answer, no WhatsApp', async 
     assert.doesNotMatch(j.answer, /wa\.me/, q);
   }
 });
+test('vague request asks a clarifying question', async () => {
+  const j = await (await ask('عايز فني')).json();
+  assert.equal(j.source, 'clarify');
+  assert.doesNotMatch(j.answer, /wa\.me/);
+  const k = await (await ask('عايز سباك')).json();
+  assert.notEqual(k.source, 'clarify');
+});
+test('cycle questions are covered by the knowledge base', () => {
+  assert.ok(retrieve('ايه مراحل الطلب من البداية للنهاية؟').some((e) => e.id === 'cycle'));
+  assert.ok(retrieve('اقرب فني بيوصل لمين؟').some((e) => e.id === 'request_nearest'));
+});

@@ -8,7 +8,7 @@ export default function Assistant() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [text, setText] = useState('');
-  const [msgs, setMsgs] = useState([{ from: 'bot', text: 'أهلاً! أنا مساعد FIX-IT. اسألني عن الحجز، الدفع، العمولة، توثيق الفنيين أو الخصوصية. بجاوب من معلومات المنصة بس. متكتبش بيانات خاصة (رقم موبايل أو عنوان).' }]);
+  const [msgs, setMsgs] = useState([{ from: 'bot', text: 'أهلاً! أنا مساعد FIX-IT. اسألني عن الحجز، الدفع، العمولة، توثيق الفنيين أو الخصوصية. بجاوب من معلومات المنصة، ولو السؤال عام بديك معلومة عامة وبوضّح إنها مش من بيانات FIX-IT. متكتبش بيانات خاصة (رقم موبايل أو عنوان).' }]);
   const end = useRef(null);
   useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [msgs, open]);
 
@@ -30,7 +30,7 @@ export default function Assistant() {
     <div className="asst" dir="rtl">
       {open && (
         <div className="asst-panel" role="dialog" aria-label="مساعد FIX-IT">
-          <div className="asst-head"><div className="asst-title"><span className="asst-avatar">🤖</span><div><strong>مساعد FIX-IT</strong><small>بيجاوب من معلومات المنصة بس</small></div></div><button type="button" className="asst-x" aria-label="إغلاق" onClick={() => setOpen(false)}>×</button></div>
+          <div className="asst-head"><div className="asst-title"><span className="asst-avatar">🤖</span><div><strong>مساعد FIX-IT</strong><small>بيجاوب عن المنصة، ولو السؤال عام بيوضّح</small></div></div><button type="button" className="asst-x" aria-label="إغلاق" onClick={() => setOpen(false)}>×</button></div>
           <div className="asst-body">
             {msgs.map((m, i) => <div key={i} className={`asst-msg asst-${m.from}`}>{linkify(m.text)}</div>)}
             {msgs.length === 1 && <div className="asst-sug">{SUGGEST.map((s) => <button type="button" key={s} onClick={() => send(s)}>{s}</button>)}</div>}
