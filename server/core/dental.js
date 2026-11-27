@@ -42,6 +42,16 @@ const publicClinic = (c) => ({
 });
 const isLive = (c) => c.approved && !c.removed;
 
+// The public guide is dark until the first real clinic is approved.
+async function isPublic() {
+  await ensureSeed();
+  const db = await store.getDb();
+  return (await db.clinics.getAll()).some(isLive);
+}
+async function requirePublic() {
+  if (!(await isPublic())) throw ApiError.notFound('Not found');
+}
+
 async function listProcedures() {
   await ensureSeed();
   const db = await store.getDb();
@@ -204,6 +214,6 @@ async function adminUpdateProcedure(id, b) {
 }
 
 module.exports = {
-  DENTAL_CITIES, ensureSeed, listProcedures, listClinics, cityCounts, getClinic, registerClinic, createAppointment,
+  isPublic, requirePublic, DENTAL_CITIES, ensureSeed, listProcedures, listClinics, cityCounts, getClinic, registerClinic, createAppointment,
   adminClinics, adminUpdateClinic, adminAppointments, adminUpdateAppointment, adminUpdateProcedure,
 };

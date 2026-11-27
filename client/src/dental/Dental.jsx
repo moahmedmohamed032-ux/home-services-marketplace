@@ -133,8 +133,36 @@ function CityChips({ active }) {
   );
 }
 
+function ComingSoon() {
+  useEffect(() => {
+    document.title = 'دليل الأسنان قريبًا | FIX-IT';
+    let m = document.querySelector('meta[name="robots"]');
+    const prev = m ? m.getAttribute('content') : null;
+    if (m) m.setAttribute('content', 'noindex, follow');
+    return () => { if (m && prev) m.setAttribute('content', prev); };
+  }, []);
+  return (
+    <div className="bs py-4">
+      <div className="card"><div className="card-body text-center py-5">
+        <div style={{ fontSize: '3rem' }} aria-hidden="true">🦷</div>
+        <span className="badge text-bg-warning mb-2">قريبًا · في الانتظار</span>
+        <h1 className="h4">دليل أسعار وعيادات الأسنان</h1>
+        <p className="text-muted mb-3">بنراجع الدليل مع عيادات حقيقية في الأقصر والجنوب، وهيفتح قريبًا.</p>
+        <Link to="/dental/register" className="btn btn-primary">دكتور أسنان؟ سجّل عيادتك</Link>
+      </div></div>
+    </div>
+  );
+}
+
+export function useDentalEnabled() {
+  const [on, setOn] = useState(null);
+  useEffect(() => { api.get('/dental/status').then((r) => setOn(!!r.data.enabled)).catch(() => setOn(false)); }, []);
+  return on;
+}
+
 export function DentalHome() {
   const { slug } = useParams();
+  const on = useDentalEnabled();
   const d = useDentalData();
   const cityEn = slug ? CITY_SLUG[slug] : null;
   const proc = slug && !cityEn ? d.procedures.find((p) => p.slug === slug) : null;
@@ -147,6 +175,7 @@ export function DentalHome() {
   const path = proc ? `/dental/${slug}` : cityEn ? `/dental/${slug}` : '/dental';
   const faq = proc ? [[`كم سعر ${procName} في مصر؟`, `حسب أسعار منشورة في 2026 بيتراوح من ${fmt(proc.min)} إلى ${fmt(proc.max)} جنيه، والسعر الفعلي بيتحدد بعد الكشف.`], ['ليه الأسعار بتختلف؟', 'بتختلف حسب الخامة والدكتور والمدينة وحالة السن. اسأل العيادة إيه اللي بيشمله السعر قبل ما تبدأ.']] : null;
   useSeo({ title, desc, path, ld: faq ? { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) } : null });
+  if (on === false) return <ComingSoon />;
   if (slug && !cityEn && d.procedures.length && !proc) return <Navigate to="/dental" replace />;
   const clinics = d.clinics && (cityEn ? d.clinics.filter((c) => c.city === cityEn) : d.clinics);
   return (
@@ -178,6 +207,7 @@ export function DentalHome() {
 
 export function ClinicPage() {
   const { id } = useParams();
+  const on = useDentalEnabled();
   const nav = useNavigate();
   const [c, setC] = useState(null);
   const [procs, setProcs] = useState([]);
@@ -190,6 +220,7 @@ export function ClinicPage() {
     api.get('/dental/procedures').then((r) => setProcs(r.data.procedures));
   }, [id, nav]);
   useSeo({ title: c ? `${c.name} - دكتور أسنان في ${c.cityAr} | FIX-IT` : 'عيادة أسنان | FIX-IT', desc: c ? `${c.name} في ${c.cityAr}: ${c.address}. اطلب موعد أو اتصل بالعيادة.` : 'عيادة أسنان', path: `/dental/clinic/${id}` });
+  if (on === false) return <ComingSoon />;
   if (!c) return <div className="bs py-3"><p>جاري التحميل...</p></div>;
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const submit = async (e) => {
@@ -246,7 +277,7 @@ export function ClinicRegister() {
   const [f, setF] = useState({ name: '', contactName: '', city: '', address: '', phone: '', whatsapp: '', email: '', hours: '', about: '', services: [], prices: {}, photos: [], photoConsent: false, confirmOwner: false });
   const [err, setErr] = useState(''); const [done, setDone] = useState(false); const [busy, setBusy] = useState(false);
   useSeo({ title: 'سجّل عيادة أسنان | FIX-IT', desc: 'دكتور أسنان في الأقصر أو إسنا أو قنا أو أرمنت؟ سجّل عيادتك مجانًا وهتظهر للمرضى بعد المراجعة.', path: '/dental/register' });
-  useEffect(() => { api.get('/dental/procedures').then((r) => setProcs(r.data.procedures)); }, []);
+  useEffect(() => { api.get('/dental/register-options').then((r) => setProcs(r.data.procedures)); }, []);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
   const toggle = (id) => setF({ ...f, services: f.services.includes(id) ? f.services.filter((s) => s !== id) : [...f.services, id] });
   const addPhotos = async (e) => {
@@ -259,7 +290,7 @@ export function ClinicRegister() {
     e.preventDefault(); setErr(''); setBusy(true);
     try { await api.post('/dental/clinics', f); setDone(true); window.scrollTo(0, 0); } catch (x) { setErr(errorMessage(x)); } finally { setBusy(false); }
   };
-  if (done) return <div className="bs py-3"><div className="alert alert-success"><h1 className="h5">وصلنا طلب التسجيل ✅</h1><p className="mb-0">هنراجع بيانات العيادة ونتصل بيك للتأكيد، وبعدها بتظهر في الدليل. <Link to="/dental">رجوع للدليل</Link></p></div></div>;
+  if (done) return <div className="bs py-3"><div className="alert alert-success"><h1 className="h5">وصلنا طلب التسجيل ✅</h1><p className="mb-0">هنراجع بيانات العيادة ونتصل بيك للتأكيد، وبعدها بتظهر في الدليل. <Link to="/">الرئيسية</Link></p></div></div>;
   return (
     <div className="bs py-3">
       <h1>سجّل عيادة الأسنان</h1>

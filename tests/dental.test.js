@@ -21,7 +21,10 @@ test('dental: 42 public-listing clinics load hidden; registration needs approval
   assert.equal((await dental.listClinics({ city: 'Luxor' })).length, 0);
   await assert.rejects(() => dental.getClinic(r.id), /not found/i);
 
+  assert.equal(await dental.isPublic(), false); // guide stays dark until a clinic is approved
+  await assert.rejects(() => dental.requirePublic(), /not found/i);
   await dental.adminUpdateClinic(r.id, { approved: true });
+  assert.equal(await dental.isPublic(), true);
   const live = await dental.listClinics({ city: 'Luxor' });
   assert.equal(live.length, 1);
   assert.deepEqual(live[0].services, ['checkup']);

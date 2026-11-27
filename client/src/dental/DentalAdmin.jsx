@@ -12,7 +12,7 @@ export default function DentalAdmin() {
   const [err, setErr] = useState(''); const [q, setQ] = useState('');
   const load = useCallback(async () => {
     try {
-      const [c, a, p] = await Promise.all([api.get('/admin/dental/clinics'), api.get('/admin/dental/appointments'), api.get('/dental/procedures')]);
+      const [c, a, p] = await Promise.all([api.get('/admin/dental/clinics'), api.get('/admin/dental/appointments'), api.get('/admin/dental/procedures')]);
       setClinics(c.data.clinics); setApts(a.data.appointments); setProcs(p.data.procedures);
     } catch (e) { setErr(errorMessage(e)); }
   }, []);
