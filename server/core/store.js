@@ -363,6 +363,9 @@ async function markNotificationsRead(userId, ids) {
 }
 async function notifyPaid(invoice) {
   const inv = invoice;
+  // Paid = completed: payment is the completion indicator for a job.
+  const bk = inv.bookingId ? await findBookingById(inv.bookingId) : null;
+  if (bk && ['accepted', 'in_progress', 'awaiting_confirmation'].includes(bk.status)) await setBookingStatus(bk, 'completed', { completedBy: 'payment' });
   await notify(inv.clientId, { type: 'paid', bookingId: inv.bookingId, invoiceId: inv.id, link: '/dashboard',
     titleAr: 'تم تسجيل الدفع ✅', titleEn: 'Payment recorded ✅',
     bodyAr: `فاتورة ${inv.number} اتدفعت. شكراً لاستخدامك FIX-IT.`, bodyEn: `Invoice ${inv.number} is paid. Thank you for using FIX-IT.` });
@@ -424,11 +427,16 @@ async function bookingsForTechnician(userId) {
 }
 
 async function createInvoiceForBooking(booking) {
-  const existing = await db.invoices.getAll();
-  if (existing.some((i) => i.bookingId === booking.id)) return null;
+  const existing = (await db.invoices.getAll()).find((i) => i.bookingId === booking.id);
   const tech = await findTechnicianById(booking.technicianId);
   const prof = seed.PROFESSIONS.find((p) => p.id === (tech && tech.profession));
   const jobAmount = booking.finalAmount || (tech ? tech.hourlyRate : 0);
+  if (existing) {
+    // Reopened and finished again: refresh the amount while still unpaid. Anything else is left alone.
+    if (existing.status !== 'unpaid') return null;
+    const items = [{ ...(existing.items[0] || {}), amount: jobAmount }, ...existing.items.slice(1)];
+    return db.invoices.update(existing.id, { items, total: jobAmount + seed.SERVICE_FEE_EGP });
+  }
   const id = await db.nextId('inv');
   const num = Number(id.split('_')[1]);
   const invoice = {
@@ -482,14 +490,13 @@ async function sweepNearestExpiry() {
 async function sweepAutoConfirm() {
   await init();
   await sweepNearestExpiry();
-  const now = Date.now();
+  // A job is completed when its invoice is paid (never by timeout). Backfill an invoice for
+  // any finished job that does not have one yet, so the customer always has something to pay.
   const all = await db.bookings.getAll();
+  const have = new Set((await db.invoices.getAll()).map((i) => i.bookingId));
   let n = 0;
   for (const b of all) {
-    if (b.status === 'awaiting_confirmation' && b.awaitingSince && now - Date.parse(b.awaitingSince) >= AUTO_CONFIRM_MS) {
-      await setBookingStatus(b, 'completed', { autoConfirmed: true });
-      n += 1;
-    }
+    if (b.status === 'awaiting_confirmation' && !have.has(b.id)) { await createInvoiceForBooking(b); n += 1; }
   }
   return n;
 }
@@ -544,18 +551,24 @@ async function setBookingStatus(booking, status, extra = {}) {
   if (status === 'completed') patch.completedAt = new Date().toISOString();
   const updated = await db.bookings.update(booking.id, patch);
   if (status === 'cancelled') await withdrawDispatchSiblings(booking, 'العميل لغى الطلب', 'Client cancelled the request', ['pending', 'accepted']);
+  if (status === 'awaiting_confirmation') await createInvoiceForBooking(updated);
   if (status === 'completed') {
     const tech = await findTechnicianById(booking.technicianId);
     if (tech) await db.technicians.update(tech.id, { jobsDone: (tech.jobsDone || 0) + 1 });
     await createInvoiceForBooking(updated);
+    const admins = (await db.users.getAll()).filter((u) => u.role === 'admin');
+    for (const a of admins) {
+      await notify(a.id, { type: 'job_completed', bookingId: booking.id, link: '/admin', titleAr: 'عملية اكتملت ✅', titleEn: 'A job was completed ✅',
+        bodyAr: `الطلب ${booking.id} اتدفع واكتمل.`, bodyEn: `Booking ${booking.id} was paid and completed.` });
+    }
     await adminDigestIfDue();
   }
   const msgs = {
     accepted: ['الفني قبل طلبك ✅', 'Technician accepted your request ✅', 'الفني هيتواصل معاك لتأكيد الميعاد.', 'The technician will contact you to confirm the time.'],
     declined: ['الفني اعتذر عن الطلب', 'Technician declined the request', 'ممكن تختار فني تاني من القايمة.', 'You can pick another technician.'],
     in_progress: ['الفني بدأ الشغل 🔧', 'The technician started the job 🔧', '', ''],
-    awaiting_confirmation: ['الفني أنهى الشغل، أكّد الاستلام', 'Work finished, please confirm', 'راجع المبلغ النهائي وأكّد. لو مفيش رد خلال 48 ساعة هيتأكد تلقائياً.', 'Review the final amount and confirm. It auto-confirms after 48 hours.'],
-    completed: ['الشغل خلص، الفاتورة جاهزة 🧾', 'Job done, invoice ready 🧾', 'افتح لوحة التحكم وادفع واكتب تقييمك.', 'Open your dashboard to pay and leave a review.'],
+    awaiting_confirmation: ['الفني أنهى الشغل، الفاتورة جاهزة للدفع', 'Work finished, your invoice is ready to pay', 'راجع المبلغ النهائي وادفع من لوحة التحكم. الطلب بيكتمل أول ما الدفع يتسجل.', 'Review the final amount and pay from your dashboard. The job completes once payment is recorded.'],
+    completed: ['الخدمة اكتملت ✅', 'Service completed ✅', 'التقييم اختياري، تقدر تقيّم الفني من لوحة التحكم.', 'Rating is optional, you can rate the technician from your dashboard.'],
   };
   if (msgs[status]) {
     const m = msgs[status];
@@ -958,7 +971,7 @@ async function adminCommissions() {
   const users = await db.users.getAll();
   const rows = [];
   const by = new Map();
-  for (const inv of invoices) {
+  for (const inv of invoices.filter((i) => i.status === 'paid')) {
     const tech = techs.find((x) => x.id === inv.technicianId);
     const client = users.find((x) => x.id === inv.clientId);
     const base = commissionBase(inv);

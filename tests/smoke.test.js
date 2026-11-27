@@ -87,7 +87,19 @@ test('full client + technician flow', async () => {
   await patch(`/bookings/${booking.id}/status`, { status: 'in_progress' }, techToken);
   await patch(`/bookings/${booking.id}/status`, { status: 'awaiting_confirmation', finalAmount: 100 }, techToken);
   res = await patch(`/bookings/${booking.id}/status`, { status: 'completed' }, clientToken);
-  assert.equal(res.status, 200);
+  assert.equal(res.status, 400, 'client cannot complete: payment completes the job');
+  // review is blocked until paid; payment (cash confirmed by the technician) completes the job
+  res = await post(`/bookings/${booking.id}/review`, { rating: 5 }, clientToken);
+  assert.equal(res.status, 400);
+  {
+    const { invoices: iv } = await (await fetch(`${base}/invoices/mine`, { headers: { authorization: `Bearer ${clientToken}` } })).json();
+    const first = iv.find((i) => i.bookingId === booking.id);
+    assert.ok(first && first.status === 'unpaid', 'invoice exists as soon as the technician finishes');
+    assert.equal((await post(`/invoices/${first.id}/pay`, { method: 'cash' }, clientToken)).status, 200);
+    assert.equal((await post(`/invoices/${first.id}/confirm`, {}, techToken)).status, 200);
+    const mine = await (await fetch(`${base}/bookings/mine`, { headers: { authorization: `Bearer ${clientToken}` } })).json();
+    assert.equal(mine.bookings.find((x) => x.id === booking.id).status, 'completed', 'paid = completed');
+  }
 
   // invalid transitions are rejected
   res = await patch(`/bookings/${booking.id}/status`, { status: 'accepted' }, techToken);
@@ -152,9 +164,9 @@ test('invoice and simulated payment flow', async () => {
   await patch(`/bookings/${booking.id}/status`, { status: 'in_progress' }, techToken);
   await patch(`/bookings/${booking.id}/status`, { status: 'awaiting_confirmation', finalAmount: 100 }, techToken);
   res = await patch(`/bookings/${booking.id}/status`, { status: 'completed' }, clientToken);
-  assert.equal(res.status, 200);
+  assert.equal(res.status, 400);
 
-  // completion generated an invoice for the client
+  // finishing generated an invoice for the client
   res = await fetch(`${base}/invoices/mine`, { headers: { authorization: `Bearer ${clientToken}` } });
   const { invoices } = await res.json();
   const inv = invoices.find((i) => i.bookingId === booking.id);
@@ -193,7 +205,6 @@ test('invoice and simulated payment flow', async () => {
   await patch(`/bookings/${b2.id}/status`, { status: 'accepted' }, techToken);
   await patch(`/bookings/${b2.id}/status`, { status: 'in_progress' }, techToken);
   await patch(`/bookings/${b2.id}/status`, { status: 'awaiting_confirmation', finalAmount: 100 }, techToken);
-  await patch(`/bookings/${b2.id}/status`, { status: 'completed' }, clientToken);
   const { invoices: inv2 } = await (await fetch(`${base}/invoices/mine`, { headers: { authorization: `Bearer ${clientToken}` } })).json();
   const cashInv = inv2.find((i) => i.bookingId === b2.id);
   res = await post(`/invoices/${cashInv.id}/pay`, { method: 'cash' }, clientToken);

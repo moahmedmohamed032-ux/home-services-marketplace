@@ -77,10 +77,12 @@ export default function ClientDashboard() {
             {b.status === 'awaiting_confirmation' && (
               <div className="confirm-box">
                 <p><strong>{t('finalAmountLabel')}: {b.finalAmount} EGP</strong></p>
-                <p className="muted"><small>{t('autoConfirmNote')}</small></p>
+                <p className="muted"><small>{t('payToComplete')}</small></p>
+                {invoices.filter((i) => i.bookingId === b.id).map((i) => (
+                  <InvoiceCard key={i.id} invoice={i} onChange={loadInvoices} />
+                ))}
                 <div className="btn-row">
-                  <button className="btn btn-primary btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'completed' })).then(() => loadInvoices())}>{t('confirmDone')}</button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'in_progress' }))}>{t('notDone')}</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'in_progress' })).then(() => loadInvoices())}>{t('notDone')}</button>
                 </div>
               </div>
             )}

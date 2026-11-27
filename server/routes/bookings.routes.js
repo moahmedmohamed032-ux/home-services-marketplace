@@ -61,7 +61,7 @@ router.get('/incoming', authenticate, requireRole('technician'), async (req, res
 // PATCH /api/bookings/:id/status — state machine:
 //   client: pending|accepted -> cancelled
 //   technician: pending -> accepted|declined, accepted -> in_progress -> awaiting_confirmation (+finalAmount)
-//   client: awaiting_confirmation -> completed (confirm) | in_progress (reopen); auto-confirm after 48h
+//   client: awaiting_confirmation -> in_progress (reopen). completed happens when the invoice is paid (cash confirmed by the technician, or online).
 router.patch('/:id/status', authenticate, async (req, res, next) => {
   try {
     const { status } = req.body;
@@ -72,7 +72,7 @@ router.patch('/:id/status', authenticate, async (req, res, next) => {
     if (req.user.role === 'client') {
       if (booking.clientId !== req.user.id) throw ApiError.forbidden('Not your booking');
       if (status === 'completed') {
-        if (booking.status !== 'awaiting_confirmation') throw ApiError.badRequest(`Cannot confirm a ${booking.status} booking`);
+        throw ApiError.badRequest('A job completes when its invoice is paid');
       } else if (status === 'in_progress') {
         if (booking.status !== 'awaiting_confirmation') throw ApiError.badRequest(`Cannot reopen a ${booking.status} booking`);
       } else {
