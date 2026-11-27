@@ -17,3 +17,6 @@
 .bs .form-control, .bs .form-select { width: 100%; }
 .bs .form-label { font-weight: 700; margin-bottom: .25rem; }
 .bs a { text-decoration: none; }
+/* the site's own .row is a 2-column grid; inside .bs it must behave like Bootstrap's flex row */
+.bs .row { display: flex; flex-wrap: wrap; grid-template-columns: none; gap: 0; }
+.bs .row.g-3 { --bs-gutter-x: 1rem; --bs-gutter-y: 1rem; }
