@@ -1,0 +1,925 @@
+{
+ "professions": [
+  {
+   "id": "plumber",
+   "priceMin": 80,
+   "priceMax": 200,
+   "name": "Plumber",
+   "nameAr": "سباك",
+   "icon": "🔧"
+  },
+  {
+   "id": "electrician",
+   "priceMin": 80,
+   "priceMax": 220,
+   "name": "Electrician",
+   "nameAr": "كهربائي",
+   "icon": "⚡"
+  },
+  {
+   "id": "painter",
+   "priceMin": 70,
+   "priceMax": 180,
+   "name": "Painter",
+   "nameAr": "نقاش",
+   "icon": "🎨"
+  },
+  {
+   "id": "carpenter",
+   "priceMin": 80,
+   "priceMax": 200,
+   "name": "Carpenter",
+   "nameAr": "نجار",
+   "icon": "🪚"
+  },
+  {
+   "id": "ac-technician",
+   "priceMin": 100,
+   "priceMax": 250,
+   "name": "AC Technician",
+   "nameAr": "فني تكييف",
+   "icon": "❄️"
+  },
+  {
+   "id": "cleaner",
+   "priceMin": 50,
+   "priceMax": 130,
+   "name": "Cleaner",
+   "nameAr": "عامل نظافة",
+   "icon": "🧹"
+  },
+  {
+   "id": "appliance-repair",
+   "priceMin": 80,
+   "priceMax": 200,
+   "name": "Appliance Repair",
+   "nameAr": "صيانة أجهزة",
+   "icon": "🛠️"
+  },
+  {
+   "id": "tiler",
+   "priceMin": 70,
+   "priceMax": 180,
+   "name": "Tiler",
+   "nameAr": "بلاط",
+   "icon": "🧱"
+  }
+ ],
+ "users": [
+  {
+   "id": "usr_1",
+   "name": "Ahmed Mohamed",
+   "email": "client@demo.com",
+   "role": "client",
+   "city": "Luxor",
+   "lat": 25.6872,
+   "lng": 32.6396,
+   "createdAt": "2026-01-15T10:00:00.000Z"
+  },
+  {
+   "id": "usr_2",
+   "name": "Mostafa Kamel",
+   "email": "tech@demo.com",
+   "role": "technician",
+   "city": "Luxor",
+   "createdAt": "2026-01-15T10:00:00.000Z"
+  },
+  {
+   "id": "usr_3",
+   "name": "Ahmed Mohamed",
+   "email": "admin@demo.com",
+   "role": "admin",
+   "city": "Luxor",
+   "createdAt": "2026-01-15T10:00:00.000Z"
+  }
+ ],
+ "technicians": [
+  {
+   "id": "tec_4",
+   "userId": "usr_2",
+   "name": "Mostafa Kamel",
+   "profession": "electrician",
+   "city": "Luxor",
+   "district": "Karnak",
+   "yearsExperience": 5,
+   "hourlyRate": 140,
+   "rating": 4.5,
+   "jobsDone": 96,
+   "bio": "Electrician for homes and shops in Karnak and East Luxor. Maintenance, wiring and intercom systems.",
+   "bioAr": "كهربائي للبيوت والمحلات في الكرنك وشرق الأقصر. صيانة وتأسيس وأنظمة إنتركم.",
+   "phone": "+20 100 455 8213",
+   "phonePublic": false,
+   "addressActive": true,
+   "address": "Karnak, Luxor",
+   "reviews": [
+    {
+     "clientName": "Ahmed M.",
+     "rating": 5,
+     "comment": "Fixed the intercom and changed the flat switches, good price.",
+     "commentAr": "ظبط الإنتركم وغير مفاتيح الشقة، سعر كويس.",
+     "createdAt": "2026-08-16T12:00:00.000Z"
+    },
+    {
+     "clientName": "Salma",
+     "rating": 4,
+     "comment": "Fast and polite.",
+     "commentAr": "سريع ومحترم.",
+     "createdAt": "2026-10-11T12:00:00.000Z"
+    }
+   ],
+   "lat": 25.68130105021681,
+   "lng": 32.645003923709254
+  },
+  {
+   "id": "tec_5",
+   "userId": null,
+   "name": "Mahmoud Abdallah",
+   "profession": "plumber",
+   "city": "Cairo",
+   "district": "Nasr City",
+   "yearsExperience": 12,
+   "hourlyRate": 180,
+   "rating": 4.6,
+   "jobsDone": 342,
+   "bio": "Bathroom and kitchen plumbing, leak detection and full repiping across Nasr City and New Cairo.",
+   "bioAr": "سباكة حمامات ومطابخ، كشف تسريبات وتأسيس كامل في مدينة نصر والتجمع.",
+   "phone": "+20 100 234 8765",
+   "phonePublic": true,
+   "addressActive": true,
+   "address": "Nasr City, Cairo",
+   "reviews": [
+    {
+     "clientName": "Ahmed Samy",
+     "rating": 5,
+     "comment": "Found the bathroom leak and fixed it within the hour, clean work and the agreed price.",
+     "commentAr": "رجل محترم، كشف التسريب في الحمام وظبطه في ساعة. شغل نضيف والسعر زي ما اتفقنا.",
+     "createdAt": "2026-02-14T12:00:00.000Z"
+    },
+    {
+     "clientName": "Dina M.",
+     "rating": 5,
+     "comment": "Changed all the bathroom mixers, very clean work and right on time.",
+     "commentAr": "غير كل خلاطات الحمام، شغل نضيف جداً وجا في الميعاد بالظبط.",
+     "createdAt": "2026-04-02T12:00:00.000Z"
+    },
+    {
+     "clientName": "Mahmoud H.",
+     "rating": 4,
+     "comment": "Arrived a bit late but the work is solid and the leak never came back.",
+     "commentAr": "جا متأخر شوية بس الشغل كويس والتسريبة معدتش.",
+     "createdAt": "2026-06-19T12:00:00.000Z"
+    },
+    {
+     "clientName": "Mona A.",
+     "rating": 5,
+     "comment": "Did the full plumbing of my flat from scratch, followed up day by day. Highly recommended.",
+     "commentAr": "أسس سباكة الشقة كلها من الصفر، متابعة يوم بيوم. أنصح بيه جداً.",
+     "createdAt": "2026-08-07T12:00:00.000Z"
+    },
+    {
+     "clientName": "Karim",
+     "rating": 4,
+     "comment": "Fair pricing, fixed the kitchen drain the same day.",
+     "commentAr": "سعر عادل، وسلك صرف المطبخ في نفس اليوم.",
+     "createdAt": "2026-10-25T12:00:00.000Z"
+    }
+   ],
+   "lat": 30.046323355874414,
+   "lng": 31.213784236217272
+  },
+  {
+   "id": "tec_6",
+   "userId": null,
+   "name": "Ahmed El-Sayed",
+   "profession": "electrician",
+   "city": "Cairo",
+   "district": "Heliopolis",
+   "yearsExperience": 9,
+   "hourlyRate": 200,
+   "rating": 4.8,
+   "jobsDone": 287,
+   "bio": "Certified electrician: wiring, breaker panels, lighting and fault tracing for homes and offices.",
+   "bioAr": "كهربائي معتمد: تأسيس وتشطيب كهربا، لوحات توزيع، إضاءة وكشف أعطال للشقق والمكاتب.",
+   "phone": "+20 111 540 2231",
+   "phonePublic": false,
+   "addressActive": true,
+   "address": "Heliopolis, Cairo",
+   "reviews": [
+    {
+     "clientName": "Amr Saber",
+     "rating": 5,
+     "comment": "Replaced the old breaker panel and balanced the loads, no more tripping at home.",
+     "commentAr": "غير لوحة الكهربا القديمة وظبط الأحمال، بيتي بقى مافيهوش فصل تاني.",
+     "createdAt": "2026-01-22T12:00:00.000Z"
+    },
+    {
+     "clientName": "Noha",
+     "rating": 5,
+     "comment": "Very professional, installed all the lighting in my flat.",
+     "commentAr": "محترف جداً، ركب إضاءة الشقة كلها.",
+     "createdAt": "2026-05-11T12:00:00.000Z"
+    },
+    {
+     "clientName": "Islam M.",
+     "rating": 4,
+     "comment": "Good work, just a bit pricier than others.",
+     "commentAr": "شغل كويس بس سعره غالي شوية عن غيره.",
+     "createdAt": "2026-07-30T12:00:00.000Z"
+    },
+    {
+     "clientName": "Heba Rizk",
+     "rating": 5,
+     "comment": "Found a wiring fault that was inflating my bills for months. God bless him.",
+     "commentAr": "لقى عطل في التأسيس كان مكلفني فواتير عالية، ربنا يباركله.",
+     "createdAt": "2026-10-08T12:00:00.000Z"
+    }
+   ],
+   "lat": 30.066303818685018,
+   "lng": 31.264269611950706
+  },
+  {
+   "id": "tec_7",
+   "userId": null,
+   "name": "Youssef Ramadan",
+   "profession": "painter",
+   "city": "Cairo",
+   "district": "Maadi",
+   "yearsExperience": 15,
+   "hourlyRate": 150,
+   "rating": 4.6,
+   "jobsDone": 410,
+   "bio": "Interior and exterior painting, decorative finishes and waterproof coatings. Maadi and surrounding areas.",
+   "bioAr": "دهانات داخلية وخارجية، تشطيبات ديكورية وعزل مائي. المعادي والمناطق المجاورة.",
+   "phone": "+20 122 873 0456",
+   "phonePublic": true,
+   "addressActive": true,
+   "address": "Maadi, Cairo",
+   "reviews": [
+    {
+     "clientName": "Mr. Hamdy",
+     "rating": 5,
+     "comment": "Painted a 150 sqm flat, skim coat and finish at the highest level.",
+     "commentAr": "دهان شقة ١٥٠ متر، معجون وتشطيب على أعلى مستوى.",
+     "createdAt": "2026-02-03T12:00:00.000Z"
+    },
+    {
+     "clientName": "Sally A.",
+     "rating": 5,
+     "comment": "The colors came out exactly like the catalogue, and he cleaned up before leaving.",
+     "commentAr": "الألوان طلعت زي الكتالوج بالظبط، ونضف مكانه قبل ما يمشي.",
+     "createdAt": "2026-04-27T12:00:00.000Z"
+    },
+    {
+     "clientName": "Mona",
+     "rating": 4,
+     "comment": "Good work but took an extra day to finish.",
+     "commentAr": "شغل كويس بس خد يوم زيادة عن المتفق عليه.",
+     "createdAt": "2026-06-15T12:00:00.000Z"
+    },
+    {
+     "clientName": "Tarek Fouad",
+     "rating": 4,
+     "comment": "Painted the reception only; nice work, the skim coat needed a firmer hand though.",
+     "commentAr": "دهن الريسبشن بس، الشغل حلو بس المعجون محتاج يد أقوى شوية.",
+     "createdAt": "2026-09-05T12:00:00.000Z"
+    },
+    {
+     "clientName": "Hend",
+     "rating": 5,
+     "comment": "A tasteful, honest man. Left the flat furnished while he worked and nothing was touched.",
+     "commentAr": "راجل ذوق وأمين، ساب الشقة متفرشة وهو بيشتغل ومحدش قرب من حاجة.",
+     "createdAt": "2026-11-01T12:00:00.000Z"
+    }
+   ],
+   "lat": 29.995164317731334,
+   "lng": 31.22699094772442
+  },
+  {
+   "id": "tec_8",
+   "userId": null,
+   "name": "Mohamed El-Gendy",
+   "profession": "carpenter",
+   "city": "Cairo",
+   "district": "Shubra",
+   "yearsExperience": 18,
+   "hourlyRate": 170,
+   "rating": 4.7,
+   "jobsDone": 520,
+   "bio": "Custom kitchens, wardrobes, doors and full woodwork restoration. Own workshop in Shubra.",
+   "bioAr": "مطابخ ودواليب وأبواب تفصيل، وترميم أثاث كامل. ورشة خاصة في شبرا.",
+   "phone": "+20 100 918 3347",
+   "phonePublic": false,
+   "addressActive": true,
+   "address": "Shubra, Cairo",
+   "reviews": [
+    {
+     "clientName": "Karim Salah",
+     "rating": 5,
+     "comment": "A true artist, built me a full kitchen better than the ready-made ones.",
+     "commentAr": "أسطى محمد راجل فنان، عملي مطبخ كامل أحسن من الجاهز.",
+     "createdAt": "2026-03-12T12:00:00.000Z"
+    },
+    {
+     "clientName": "Rania",
+     "rating": 5,
+     "comment": "Repaired my bedroom door and wardrobe, like new.",
+     "commentAr": "صلح باب الأوضة والدولاب، رجعوا زي الجديد.",
+     "createdAt": "2026-07-21T12:00:00.000Z"
+    },
+    {
+     "clientName": "Mahmoud Rizk",
+     "rating": 4,
+     "comment": "Excellent work but appointments slip a day or two.",
+     "commentAr": "الشغل ممتاز بس المواعيد بتتأخر يوم يومين.",
+     "createdAt": "2026-10-16T12:00:00.000Z"
+    }
+   ],
+   "lat": 30.098400299411377,
+   "lng": 31.201349342604814
+  },
+  {
+   "id": "tec_9",
+   "userId": null,
+   "name": "Tarek Mostafa",
+   "profession": "tiler",
+   "city": "Cairo",
+   "district": "Helwan",
+   "yearsExperience": 14,
+   "hourlyRate": 160,
+   "rating": 4.7,
+   "jobsDone": 265,
+   "bio": "Ceramic, porcelain and marble tiling with precise leveling and finishing. Bathrooms and full flats.",
+   "bioAr": "تركيب سيراميك وبورسلين ورخام بميزان مظبوط وتشطيب نضيف. حمامات وشقق كاملة.",
+   "phone": "+20 115 602 7789",
+   "phonePublic": true,
+   "addressActive": true,
+   "address": "Helwan, Cairo",
+   "reviews": [
+    {
+     "clientName": "Abu Mazen",
+     "rating": 5,
+     "comment": "Tiled the whole flat, perfect leveling and even grout lines.",
+     "commentAr": "ركب سيراميك الشقة كلها، ميزان مظبوط وفواصل متساوية.",
+     "createdAt": "2026-02-24T12:00:00.000Z"
+    },
+    {
+     "clientName": "Heba",
+     "rating": 4,
+     "comment": "Bathroom tiling, neat finishing.",
+     "commentAr": "بلاط الحمام، تشطيب نضيف.",
+     "createdAt": "2026-06-09T12:00:00.000Z"
+    },
+    {
+     "clientName": "Sameh",
+     "rating": 5,
+     "comment": "Worked under time pressure and still delivered on schedule.",
+     "commentAr": "اشتغل تحت ضغط وقت وسلم في الميعاد.",
+     "createdAt": "2026-10-29T12:00:00.000Z"
+    }
+   ],
+   "lat": 30.042323176209706,
+   "lng": 31.24342572345765
+  },
+  {
+   "id": "tec_10",
+   "userId": null,
+   "name": "Hassan Ibrahim",
+   "profession": "plumber",
+   "city": "Cairo",
+   "district": "Dokki",
+   "yearsExperience": 7,
+   "hourlyRate": 150,
+   "rating": 4,
+   "jobsDone": 178,
+   "bio": "Fast response for emergency leaks, water heater installs and drainage work around Dokki and Agouza.",
+   "bioAr": "استجابة سريعة للتسريبات الطارئة، تركيب سخانات وأعمال صرف في الدقي والعجوزة.",
+   "phone": "+20 101 447 9023",
+   "phonePublic": false,
+   "addressActive": true,
+   "address": "Dokki, Cairo",
+   "reviews": [
+    {
+     "clientName": "Ahmed Fathy",
+     "rating": 4,
+     "comment": "Came the same day and fixed the heater. The drip came back a week later and he returned and fixed it for free.",
+     "commentAr": "جا في نفس اليوم وصلح السخان، التنقيط رجع بعد أسبوع فجا تاني وظبطه من غير فلوس.",
+     "createdAt": "2026-03-18T12:00:00.000Z"
+    },
+    {
+     "clientName": "Dalia",
+     "rating": 3,
+     "comment": "OK work, a bit slow.",
+     "commentAr": "شغل مقبول، بس بطيء شوية.",
+     "createdAt": "2026-05-26T12:00:00.000Z"
+    },
+    {
+     "clientName": "Mostafa",
+     "rating": 5,
+     "comment": "Reasonable price and respectful manners.",
+     "commentAr": "سعر معقول وتعامل محترم.",
+     "createdAt": "2026-09-13T12:00:00.000Z"
+    }
+   ],
+   "lat": 30.034260014059978,
+   "lng": 31.216176150862697
+  },
+  {
+   "id": "tec_11",
+   "userId": null,
+   "name": "Nadia Fouad",
+   "profession": "cleaner",
+   "city": "Cairo",
+   "district": "Zamalek",
+   "yearsExperience": 6,
+   "hourlyRate": 120,
+   "rating": 4.8,
+   "jobsDone": 433,
+   "bio": "Deep cleaning for homes and offices, post-renovation and move-in packages. Zamalek, Mohandessin and Downtown.",
+   "bioAr": "تنظيف عميق للشقق والمكاتب، تنظيف بعد التشطيب وقبل السكن. الزمالك والمهندسين ووسط البلد.",
+   "phone": "+20 120 335 6618",
+   "phonePublic": true,
+   "addressActive": true,
+   "address": "Zamalek, Cairo",
+   "reviews": [
+    {
+     "clientName": "Madam Sawsan",
+     "rating": 5,
+     "comment": "Deep clean after renovation, the flat came back brand new.",
+     "commentAr": "تنظيف عميق بعد التشطيب، الشقة رجعت جديدة.",
+     "createdAt": "2026-01-09T12:00:00.000Z"
+    },
+    {
+     "clientName": "Sara",
+     "rating": 5,
+     "comment": "Weekly cleaning, always on time and thorough.",
+     "commentAr": "تنظيف أسبوعي، دايماً في الميعاد وبضمير.",
+     "createdAt": "2026-04-17T12:00:00.000Z"
+    },
+    {
+     "clientName": "Reem",
+     "rating": 5,
+     "comment": "Very clean work and polite manners.",
+     "commentAr": "بنظافة شديدة وذوق في التعامل.",
+     "createdAt": "2026-08-22T12:00:00.000Z"
+    },
+    {
+     "clientName": "Amani",
+     "rating": 4,
+     "comment": "Cleaned the upholstery and carpets with good products.",
+     "commentAr": "عملت تنظيف الفرش والسجاد بخامات كويسة.",
+     "createdAt": "2026-10-19T12:00:00.000Z"
+    }
+   ],
+   "lat": 30.078215589363683,
+   "lng": 31.24804932856421
+  },
+  {
+   "id": "tec_12",
+   "userId": null,
+   "name": "Sameh Adly",
+   "profession": "appliance-repair",
+   "city": "Cairo",
+   "district": "Nasr City",
+   "yearsExperience": 11,
+   "hourlyRate": 190,
+   "rating": 4.7,
+   "jobsDone": 310,
+   "bio": "Washers, fridges, ovens and dishwashers. Genuine parts with a 3-month warranty, home visits in Nasr City.",
+   "bioAr": "صيانة غسالات وثلاجات وبوتاجازات. قطع غيار أصلية بضمان ٣ شهور، زيارات منزلية في مدينة نصر.",
+   "phone": "+20 111 209 8453",
+   "phonePublic": true,
+   "addressActive": true,
+   "address": "Nasr City, Cairo",
+   "reviews": [
+    {
+     "clientName": "Hatem",
+     "rating": 5,
+     "comment": "Fixed the washer at home and replaced the pump with a 3-month warranty.",
+     "commentAr": "صلح الغسالة في البيت وغير الطرمبة بضمان ٣ شهور.",
+     "createdAt": "2026-02-08T12:00:00.000Z"
+    },
+    {
+     "clientName": "Nesma",
+     "rating": 4,
+     "comment": "Fridge fixed the same day, genuine parts.",
+     "commentAr": "الثلاجة اتصلحت في نفس اليوم، قطع غيار أصلية.",
+     "createdAt": "2026-06-27T12:00:00.000Z"
+    },
+    {
+     "clientName": "Amr",
+     "rating": 5,
+     "comment": "Clear expertise, diagnosed the fault in minutes.",
+     "commentAr": "خبرة واضحة، شخص العطل في دقايق.",
+     "createdAt": "2026-09-30T12:00:00.000Z"
+    }
+   ],
+   "lat": 29.998182761637707,
+   "lng": 31.254777915980604
+  },
+  {
+   "id": "tec_13",
+   "userId": null,
+   "name": "Ahmed Samy",
+   "profession": "electrician",
+   "city": "Luxor",
+   "district": "Karnak",
+   "yearsExperience": 10,
+   "hourlyRate": 150,
+   "rating": 4.7,
+   "jobsDone": 375,
+   "bio": "Full wiring and finishing for houses and shops in Karnak and East Luxor. Safety inspections included.",
+   "bioAr": "تأسيس وتشطيب كهربا للبيوت والمحلات في الكرنك وشرق الأقصر، مع فحص أمان كامل.",
+   "phone": "+20 100 764 2281",
+   "phonePublic": true,
+   "addressActive": true,
+   "address": "Karnak, Luxor",
+   "reviews": [
+    {
+     "clientName": "Haj Abdel-Rahim",
+     "rating": 5,
+     "comment": "Wired a whole floor of our house in Karnak, meticulous work.",
+     "commentAr": "أسس كهربا دور كامل في بيتنا بالكرنك، شغل متقن.",
+     "createdAt": "2026-01-15T12:00:00.000Z"
+    },
+    {
+     "clientName": "Mahmoud",
+     "rating": 5,
+     "comment": "Found a wiring fault that two other electricians could not.",
+     "commentAr": "لقى عطل في التأسيس عجز عنه اتنين قبله.",
+     "createdAt": "2026-05-20T12:00:00.000Z"
+    },
+    {
+     "clientName": "Asmaa",
+     "rating": 4,
+     "comment": "Respectful and committed to the appointment.",
+     "commentAr": "محترم وبيلتزم بالميعاد.",
+     "createdAt": "2026-08-11T12:00:00.000Z"
+    }
+   ],
+   "lat": 25.714326010516203,
+   "lng": 32.58163294424007
+  },
+  {
+   "id": "tec_14",
+   "userId": null,
+   "name": "Salah Orabi",
+   "profession": "appliance-repair",
+   "city": "Luxor",
+   "district": "Al Awameya",
+   "yearsExperience": 9,
+   "hourlyRate": 140,
+   "rating": 4.3,
+   "jobsDone": 246,
+   "bio": "Home appliance repair in Al Awameya and Al Bayadeya: fridges, washers, water heaters and fans.",
+   "bioAr": "صيانة أجهزة منزلية في العوامية والبياضية: ثلاجات وغسالات وسخانات ومراوح.",
+   "phone": "+20 122 590 1374",
+   "phonePublic": false,
+   "addressActive": true,
+   "address": "Al Awameya, Luxor",
+   "reviews": [
+    {
+     "clientName": "Mohamed Awad",
+     "rating": 5,
+     "comment": "The fridge stopped cooling, he came the same afternoon and fixed it.",
+     "commentAr": "الثلاجة بطلت تبرد، جا عصر نفس اليوم وظبطها.",
+     "createdAt": "2026-03-05T12:00:00.000Z"
+    },
+    {
+     "clientName": "Wael",
+     "rating": 4,
+     "comment": "Honest pricing, fixed my washer.",
+     "commentAr": "أسعار أمينة، صلح الغسالة.",
+     "createdAt": "2026-06-23T12:00:00.000Z"
+    },
+    {
+     "clientName": "Hamada",
+     "rating": 4,
+     "comment": "Original spare parts and he understands modern appliances.",
+     "commentAr": "قطع غيار أصلية وبيفهم في الأجهزة الحديثة.",
+     "createdAt": "2026-09-17T12:00:00.000Z"
+    }
+   ],
+   "lat": 25.68959429020505,
+   "lng": 32.64723330691208
+  },
+  {
+   "id": "tec_15",
+   "userId": null,
+   "name": "Amr Khaled",
+   "profession": "painter",
+   "city": "Luxor",
+   "district": "Al Bayadeya",
+   "yearsExperience": 6,
+   "hourlyRate": 100,
+   "rating": 4,
+   "jobsDone": 132,
+   "bio": "Apartment and villa painting in Luxor, quick turnaround and clean delivery.",
+   "bioAr": "دهان شقق وفلل في الأقصر، تسليم سريع ونضيف.",
+   "phone": "+20 101 883 5540",
+   "phonePublic": true,
+   "addressActive": true,
+   "address": "Al Bayadeya, Luxor",
+   "reviews": [
+    {
+     "clientName": "Ibrahim",
+     "rating": 4,
+     "comment": "Painted my flat before Eid, fast and clean delivery.",
+     "commentAr": "دهن شقتي قبل العيد، سرعة وتسليم نضيف.",
+     "createdAt": "2026-02-19T12:00:00.000Z"
+    },
+    {
+     "clientName": "Alaa",
+     "rating": 4,
+     "comment": "Good for the price.",
+     "commentAr": "كويس بالنسبة لسعره.",
+     "createdAt": "2026-06-06T12:00:00.000Z"
+    },
+    {
+     "clientName": "Sayed",
+     "rating": 4,
+     "comment": "Needs to polish his finishing a bit, but an honest man.",
+     "commentAr": "محتاج يحسن التشطيب شوية لكن راجل أمين.",
+     "createdAt": "2026-09-25T12:00:00.000Z"
+    }
+   ],
+   "lat": 25.668165322975952,
+   "lng": 32.62856908568657
+  },
+  {
+   "id": "tec_16",
+   "userId": null,
+   "name": "Karim Fathy",
+   "profession": "ac-technician",
+   "city": "Luxor",
+   "district": "Al Mahatta",
+   "yearsExperience": 8,
+   "hourlyRate": 170,
+   "rating": 4.8,
+   "jobsDone": 229,
+   "bio": "Split and central AC installation, maintenance and Freon refill for all brands. Downtown Luxor and nearby.",
+   "bioAr": "تركيب وصيانة تكييفات اسبليت ومركزي وشحن فريون لكل الماركات. وسط الأقصر والمناطق المجاورة.",
+   "phone": "+20 115 374 9906",
+   "phonePublic": false,
+   "addressActive": true,
+   "address": "Al Mahatta, Luxor",
+   "reviews": [
+    {
+     "clientName": "Mahmoud Abdel-Naby",
+     "rating": 5,
+     "comment": "Installed two split units and refilled Freon, precise work.",
+     "commentAr": "ركب تكييفين اسبليت وشحن فريون، شغل مظبوط.",
+     "createdAt": "2026-03-28T12:00:00.000Z"
+    },
+    {
+     "clientName": "Mostafa",
+     "rating": 5,
+     "comment": "AC cooling like new after the maintenance.",
+     "commentAr": "التكييف رجع يبرد زي الجديد بعد الصيانة.",
+     "createdAt": "2026-05-14T12:00:00.000Z"
+    },
+    {
+     "clientName": "Hesham",
+     "rating": 4,
+     "comment": "An hour late to the appointment but excellent work.",
+     "commentAr": "اتأخر عن الميعاد ساعة لكن الشغل ممتاز.",
+     "createdAt": "2026-07-09T12:00:00.000Z"
+    },
+    {
+     "clientName": "Wafaa",
+     "rating": 5,
+     "comment": "Cleaned and sanitized the indoor unit, made a real difference for us.",
+     "commentAr": "نضافة وتعقيم الوحدة الداخلية، فرق معايا جداً.",
+     "createdAt": "2026-10-21T12:00:00.000Z"
+    }
+   ],
+   "lat": 25.722360304765328,
+   "lng": 32.6318699955492
+  },
+  {
+   "id": "tec_17",
+   "userId": null,
+   "name": "Hassan Ali Omar",
+   "profession": "plumber",
+   "city": "Luxor",
+   "district": "Al Qarna",
+   "yearsExperience": 8,
+   "hourlyRate": 130,
+   "rating": 4.5,
+   "jobsDone": 164,
+   "bio": "Plumbing and drainage for the West Bank villages: Al Qarna, Al Gezira and nearby. Emergency calls welcome.",
+   "bioAr": "سباكة وصرف لقرى البر الغربي: القرنة والجزيرة وما حولها. نجدة طوارئ في أي وقت.",
+   "phone": "+20 120 618 4427",
+   "phonePublic": true,
+   "addressActive": true,
+   "address": "Al Qarna, Luxor",
+   "reviews": [
+    {
+     "clientName": "Abdallah",
+     "rating": 5,
+     "comment": "Unblocked the drains and solved a problem we had lived with for months.",
+     "commentAr": "سلك المجاري وحل مشكلة كانت قاعدة معانا شهور.",
+     "createdAt": "2026-04-12T12:00:00.000Z"
+    },
+    {
+     "clientName": "Khaled",
+     "rating": 4,
+     "comment": "Quick response in the West Bank area.",
+     "commentAr": "استجابة سريعة في منطقة البر الغربي.",
+     "createdAt": "2026-08-03T12:00:00.000Z"
+    }
+   ],
+   "lat": 25.658443660095827,
+   "lng": 32.68050321399738
+  },
+  {
+   "id": "tec_18",
+   "userId": null,
+   "name": "Omar Nasser",
+   "profession": "carpenter",
+   "city": "Luxor",
+   "district": "Karnak",
+   "yearsExperience": 13,
+   "hourlyRate": 160,
+   "rating": 4.7,
+   "jobsDone": 298,
+   "bio": "Custom furniture in beech and oak: bedrooms, kitchens and doors. Workshop in Karnak, delivery across Luxor.",
+   "bioAr": "تفصيل أثاث زان وبلوط: غرف نوم ومطابخ وأبواب. ورشة في الكرنك وتسليم لكل الأقصر.",
+   "phone": "+20 111 726 3095",
+   "phonePublic": false,
+   "addressActive": true,
+   "address": "Karnak, Luxor",
+   "reviews": [
+    {
+     "clientName": "Nagm",
+     "rating": 5,
+     "comment": "Built a full beech bedroom set, work you can brag about.",
+     "commentAr": "عمل غرفة نوم كاملة خشب زان، شغل يتقال عليه.",
+     "createdAt": "2026-02-27T12:00:00.000Z"
+    },
+    {
+     "clientName": "Fatma",
+     "rating": 5,
+     "comment": "Beautiful custom kitchen, delivered on time.",
+     "commentAr": "مطبخ تفصيل جميل، واتسلم في الميعاد.",
+     "createdAt": "2026-06-18T12:00:00.000Z"
+    },
+    {
+     "clientName": "Saber",
+     "rating": 4,
+     "comment": "Slightly above market price but the quality is worth it.",
+     "commentAr": "سعر أعلى من السوق شوية بس الجودة تستاهل.",
+     "createdAt": "2026-10-07T12:00:00.000Z"
+    }
+   ],
+   "lat": 25.678975097142093,
+   "lng": 32.57613070842543
+  }
+ ],
+ "bookings": [
+  {
+   "id": "bkg_19",
+   "clientId": "usr_1",
+   "technicianId": "tec_16",
+   "date": "2026-10-12",
+   "description": "Install a new split AC in the bedroom and refill Freon.",
+   "descriptionAr": "تركيب تكييف اسبليت جديد في أوضة النوم وشحن فريون.",
+   "address": "St. 10, Nasr City, Cairo",
+   "status": "completed",
+   "createdAt": "2026-10-12T10:00:00.000Z",
+   "review": {
+    "rating": 5,
+    "comment": "Installed the AC and fixed the cooling, very clean work.",
+    "commentAr": "ركب التكييف وظبط التبريد، شغل نضيف جداً.",
+    "createdAt": "2026-10-13T12:00:00.000Z"
+   }
+  },
+  {
+   "id": "bkg_21",
+   "clientId": "usr_1",
+   "technicianId": "tec_13",
+   "date": "2026-11-02",
+   "description": "Fix a power trip in the kitchen circuit.",
+   "descriptionAr": "حل مشكلة فصل الكهربا في دايرة المطبخ.",
+   "address": "Corniche St., Luxor",
+   "status": "completed",
+   "createdAt": "2026-11-02T10:00:00.000Z",
+   "review": {
+    "rating": 5,
+    "comment": "Found the fault fast and explained everything.",
+    "commentAr": "لقى العطل بسرعة وشرحلي كل حاجة.",
+    "createdAt": "2026-11-03T12:00:00.000Z"
+   }
+  },
+  {
+   "id": "bkg_23",
+   "clientId": "usr_1",
+   "technicianId": "tec_5",
+   "date": "2026-11-18",
+   "description": "Fix a leak under the kitchen sink.",
+   "descriptionAr": "إصلاح تسريب تحت حوض المطبخ.",
+   "address": "Al Awameya, Luxor",
+   "status": "completed",
+   "createdAt": "2026-11-18T10:00:00.000Z",
+   "review": null
+  },
+  {
+   "id": "bkg_25",
+   "clientId": "usr_1",
+   "technicianId": "tec_11",
+   "date": "2026-11-28",
+   "description": "Deep cleaning for a 3-bedroom flat before moving in.",
+   "descriptionAr": "تنظيف عميق لشقة ٣ أوض قبل السكن.",
+   "address": "Al Mahatta St., Luxor",
+   "status": "accepted",
+   "createdAt": "2026-11-28T10:00:00.000Z",
+   "review": null
+  }
+ ],
+ "invoices": [
+  {
+   "id": "inv_20",
+   "number": "INV-2026-0021",
+   "bookingId": "bkg_19",
+   "clientId": "usr_1",
+   "technicianId": "tec_16",
+   "items": [
+    {
+     "label": "AC Technician visit",
+     "labelAr": "زيارة فني تكييف",
+     "amount": 170
+    },
+    {
+     "label": "FIX-IT service fee",
+     "labelAr": "رسوم خدمة FIX-IT",
+     "amount": 25
+    }
+   ],
+   "total": 195,
+   "method": "visa",
+   "status": "paid",
+   "cardLast4": "4242",
+   "mobileNumber": null,
+   "confirmationCode": "FX-10287",
+   "verificationCode": null,
+   "paidAt": "2026-10-13T12:00:00.000Z",
+   "createdAt": "2026-10-12T18:00:00.000Z"
+  },
+  {
+   "id": "inv_22",
+   "number": "INV-2026-0023",
+   "bookingId": "bkg_21",
+   "clientId": "usr_1",
+   "technicianId": "tec_13",
+   "items": [
+    {
+     "label": "Electrician visit",
+     "labelAr": "زيارة كهربائي",
+     "amount": 150
+    },
+    {
+     "label": "FIX-IT service fee",
+     "labelAr": "رسوم خدمة FIX-IT",
+     "amount": 25
+    }
+   ],
+   "total": 175,
+   "method": "vodafone-cash",
+   "status": "paid",
+   "cardLast4": null,
+   "mobileNumber": "01092245837",
+   "confirmationCode": "FX-10315",
+   "verificationCode": null,
+   "paidAt": "2026-11-03T12:00:00.000Z",
+   "createdAt": "2026-11-02T18:00:00.000Z"
+  },
+  {
+   "id": "inv_24",
+   "number": "INV-2026-0025",
+   "bookingId": "bkg_23",
+   "clientId": "usr_1",
+   "technicianId": "tec_5",
+   "items": [
+    {
+     "label": "Plumber visit",
+     "labelAr": "زيارة سباك",
+     "amount": 180
+    },
+    {
+     "label": "FIX-IT service fee",
+     "labelAr": "رسوم خدمة FIX-IT",
+     "amount": 25
+    }
+   ],
+   "total": 205,
+   "method": "cash",
+   "status": "pending_cash",
+   "cardLast4": null,
+   "mobileNumber": null,
+   "confirmationCode": null,
+   "verificationCode": null,
+   "paidAt": null,
+   "createdAt": "2026-11-18T18:00:00.000Z"
+  }
+ ],
+ "seq": 26
+}

@@ -92,7 +92,7 @@ const Receivable = mongoose.model('Receivable', new mongoose.Schema({
   settledAt: String, settledBy: String,
 }, opts));
 
-const Counter = mongoose.model('Counter', new mongoose.Schema({ _id: String, value: Number }, opts));
+const Counter = mongoose.model('Counter', new mongoose.Schema({ _id: String, value: Number, summary: String }, opts));
 
 const MODELS = { users: User, technicians: Technician, bookings: Booking, invoices: Invoice, notifications: Notification, clinics: Clinic, procedures: Procedure, appointments: Appointment, providers: Provider, idDocs: IdDoc, receivables: Receivable };
 
@@ -103,6 +103,56 @@ const strip = (doc) => {
   return rest;
 };
 
+
+// One-time removal of the seeded demo records (owner order, 2026-11-27). Runs once, guarded by a Counter marker.
+// Seeded ids are deterministic (the seed ran on an empty cluster, real records start after it), and every id is
+// double-checked against the seed's own name/email so a real record can never match by id alone.
+// Admin accounts are never touched. Everything removed is first copied to the private demo_archive collection
+// (never served by any route) so it can be restored.
+async function purgeDemoData() {
+  if (process.env.DEMO_PURGE === '0') return;
+  if (await Counter.findOne({ _id: 'demoPurgeDone' }).lean()) return;
+  const seeded = buildDataset();
+  const demoUsers = [];
+  for (const u of seeded.users) {
+    if (u.role === 'admin') continue;
+    const row = await User.findOne({ id: u.id, email: u.email, role: u.role }).lean();
+    if (row) demoUsers.push(row);
+  }
+  const demoTechs = [];
+  for (const t of seeded.technicians) {
+    const row = await Technician.findOne({ id: t.id, name: t.name, phone: t.phone }).lean();
+    if (row) demoTechs.push(row);
+  }
+  const uIds = demoUsers.map((u) => u.id);
+  const tIds = demoTechs.map((t) => t.id);
+  const bookings = await Booking.find({ $or: [{ clientId: { $in: uIds } }, { technicianId: { $in: tIds } }] }).lean();
+  const bIds = bookings.map((b) => b.id);
+  const invoices = await Invoice.find({ $or: [{ bookingId: { $in: bIds } }, { clientId: { $in: uIds } }, { technicianId: { $in: tIds } }] }).lean();
+  const iIds = invoices.map((i) => i.id);
+  const receivables = await Receivable.find({ $or: [{ invoiceId: { $in: iIds } }, { technicianId: { $in: tIds } }] }).lean();
+  const notifications = await Notification.find({ $or: [{ userId: { $in: uIds } }, { bookingId: { $in: bIds } }, { invoiceId: { $in: iIds } }] }).lean();
+  const idDocs = await IdDoc.find({ id: { $in: tIds } }).lean();
+  const strip2 = (rows) => rows.map(({ passwordHash, ...r }) => r);
+  const summary = {
+    users: demoUsers.length, technicians: demoTechs.length, bookings: bookings.length, invoices: invoices.length,
+    receivables: receivables.length, notifications: notifications.length, idDocs: idDocs.length,
+  };
+  await mongoose.connection.collection('demo_archive').insertOne({
+    removedAt: new Date().toISOString(), summary,
+    users: strip2(demoUsers), technicians: demoTechs, bookings, invoices, receivables, notifications, idDocs,
+  });
+  await Receivable.deleteMany({ id: { $in: receivables.map((r) => r.id) } });
+  await Notification.deleteMany({ id: { $in: notifications.map((n) => n.id) } });
+  await Invoice.deleteMany({ id: { $in: iIds } });
+  await Booking.deleteMany({ id: { $in: bIds } });
+  await IdDoc.deleteMany({ id: { $in: idDocs.map((d) => d.id) } });
+  await Technician.deleteMany({ id: { $in: tIds } });
+  await User.deleteMany({ id: { $in: uIds }, role: { $ne: 'admin' } });
+  await Counter.updateOne({ _id: 'demoPurgeDone' }, { $set: { value: 1, summary: JSON.stringify(summary) } }, { upsert: true });
+  console.log('FIX-IT: demo data purged', JSON.stringify(summary));
+}
+
 async function init() {
   if (!global._fixitMongo) {
     global._fixitMongo = mongoose.connect(process.env.MONGODB_URI, {
@@ -112,16 +162,17 @@ async function init() {
       writeConcern: { w: 'majority' },
       bufferCommands: false,
     }).then(async () => {
-      // First boot on an empty cluster: load the seed dataset.
-      if ((await User.countDocuments()) === 0) {
+      // Demo data never loads in production. Seeding an empty cluster is a dev-only action (DEMO_SEED=1).
+      if ((await User.countDocuments()) === 0 && process.env.DEMO_SEED === '1') {
         const data = buildDataset();
         await User.insertMany(data.users);
         await Technician.insertMany(data.technicians);
         await Booking.insertMany(data.bookings);
         await Invoice.insertMany(data.invoices);
         await Counter.updateOne({ _id: 'seq' }, { $set: { value: data.seq } }, { upsert: true });
-        console.log('FIX-IT: MongoDB seeded');
+        console.log('FIX-IT: MongoDB seeded (DEMO_SEED=1)');
       }
+      await purgeDemoData().catch((e) => console.error("FIX-IT: demo purge failed", e.message));
       return mongoose;
     });
   }
@@ -136,8 +187,14 @@ const table = (Model) => ({
   remove: async (id) => (await Model.deleteOne({ id })).deletedCount > 0,
 });
 
+async function demoPurgeStatus() {
+  const d = await Counter.findOne({ _id: 'demoPurgeDone' }).lean();
+  return d ? { done: true, removed: d.summary ? JSON.parse(d.summary) : null } : { done: false };
+}
+
 module.exports = {
   init,
+  demoPurgeStatus,
   nextId: async (prefix) => {
     const c = await Counter.findOneAndUpdate({ _id: 'seq' }, { $inc: { value: 1 } }, { new: true, upsert: true }).lean();
     return `${prefix}_${c.value}`;

@@ -125,3 +125,6 @@ and outstanding totals and every invoice with its confirmation code.
 ## Copyright
 
 © 2026 Ahmed Mohamed. All rights reserved. See [LICENSE](LICENSE).
+
+## Demo data
+Demo records (seeded technicians, demo client/technician, demo bookings and invoices) are never loaded in production. Seeding an empty MongoDB cluster only happens with `DEMO_SEED=1` (dev). A copy of the old seed is kept as a dev fixture in `tests/fixtures/demo-dataset.json` (not served). The one-time production purge archives what it removes to the private `demo_archive` collection.

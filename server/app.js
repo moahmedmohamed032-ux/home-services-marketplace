@@ -33,7 +33,11 @@ app.use(async (req, res, next) => {
   }
 });
 
-app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'fixit-api' }));
+app.get('/api/health', async (req, res) => {
+  const out = { status: 'ok', service: 'fixit-api' };
+  try { const p = require('./core/persist-mongo'); if (process.env.MONGODB_URI) out.demoPurge = await p.demoPurgeStatus(); } catch { /* optional */ }
+  res.json(out);
+});
 app.use('/api/auth', authRoutes);
 app.use('/api/professions', professionRoutes);
 app.use('/api/technicians', technicianRoutes);
