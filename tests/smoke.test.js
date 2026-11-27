@@ -322,3 +322,19 @@ test('phone-only technician signup, photo upload, verified badge and 6% commissi
     assert.equal(c.commissions.rate, 0.06);
   }
 });
+
+test('usernames: unique, validated, login by username, auto-suggested when omitted', async () => {
+  const a = await post('/auth/register', { name: 'Una', username: 'Una.Test', email: 'una@example.com', password: 'secret123', role: 'client' });
+  assert.equal(a.status, 201);
+  assert.equal((await a.json()).user.username, 'una.test');
+  const dup = await post('/auth/register', { name: 'Two', username: 'una.test', email: 'two@example.com', password: 'secret123', role: 'client' });
+  assert.equal(dup.status, 409);
+  const bad = await post('/auth/register', { name: 'Bad', username: 'a b', email: 'bad@example.com', password: 'secret123', role: 'client' });
+  assert.equal(bad.status, 400);
+  const auto = await post('/auth/register', { name: 'Auto', email: 'una@other.com', password: 'secret123', role: 'client' });
+  assert.equal((await auto.json()).user.username, 'una2');
+  const login = await post('/auth/login', { identifier: 'una.test', password: 'secret123' });
+  assert.equal(login.status, 200);
+  const chk = await (await fetch(`${base}/auth/username-available?u=una.test`)).json();
+  assert.deepEqual(chk, { valid: true, available: false });
+});

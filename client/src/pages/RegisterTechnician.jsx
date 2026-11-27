@@ -10,6 +10,7 @@ import { cityLabel } from '../i18n/translations';
 import { useT } from '../i18n/useT';
 import { resizeImage } from '../utils/image';
 import GoogleButton from '../components/GoogleButton';
+import UsernameField from '../components/UsernameField';
 
 export default function RegisterTechnician() {
   const dispatch = useDispatch();
@@ -18,7 +19,7 @@ export default function RegisterTechnician() {
   const { status, error } = useSelector((s) => s.auth);
   const { professions, cities } = useSelector((s) => s.technicians);
   const [form, setForm] = useState({
-    name: '', email: '', password: '', phone: '', profession: '', city: '', address: '',
+    name: '', username: '', email: '', password: '', phone: '', profession: '', city: '', address: '',
     yearsExperience: 1, hourlyRate: 100, bio: '', phonePublic: false, addressActive: true,
   });
   const [gTicket, setGTicket] = useState('');
@@ -50,12 +51,13 @@ export default function RegisterTechnician() {
       <p className="muted">{t('techRegSub')}</p>
       {gTicket
         ? <p className="muted">{lang === 'ar' ? `تم التحقق من حساب جوجل (${form.email}). كمّل باقي البيانات وسجّل.` : `Google account verified (${form.email}). Fill in the rest to finish.`}</p>
-        : <GoogleButton mode="technician" onNeedsProfile={(d) => { setGTicket(d.ticket); setForm((f) => ({ ...f, name: d.name, email: d.email })); }} />}
+        : <GoogleButton mode="technician" onNeedsProfile={(d) => { setGTicket(d.ticket); setForm((f) => ({ ...f, name: d.name, email: d.email, username: d.suggestedUsername || '' })); }} />}
       <form onSubmit={submit} className="form">
         <div className="row">
           <label>{t('name')}<input required value={form.name} onChange={set('name')} /></label>
           <label>{t('phone')}<input type="tel" required dir="ltr" placeholder="01012345678" pattern="^(\+?20|0)?1[0125][0-9]{8}$" value={form.phone} onChange={set('phone')} /></label>
         </div>
+        <UsernameField value={form.username} onChange={(v) => setForm((f) => ({ ...f, username: v }))} />
         <div className="row">
           <label>{t('emailOptional')}<input type="email" dir="ltr" value={form.email} onChange={set('email')} readOnly={!!gTicket} /></label>
           {!gTicket && <label>{t('password')}<PasswordInput  minLength={8} required value={form.password} onChange={set('password')} /></label>}

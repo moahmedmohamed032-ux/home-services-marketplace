@@ -54,6 +54,30 @@ async function findUserByEmail(email) {
   const all = await db.users.getAll();
   return all.find((u) => u.email && u.email.toLowerCase() === e) || null;
 }
+// ---- usernames: 3-24 chars, lowercase letters, digits, dot, underscore; unique ----
+const USERNAME_RE = /^[a-z0-9][a-z0-9._]{2,23}$/;
+const RESERVED_USERNAMES = ['admin', 'administrator', 'support', 'fixit', 'fix-it', 'root', 'system', 'moderator'];
+function normalizeUsername(u) { return String(u || '').trim().toLowerCase().replace(/^@/, ''); }
+function validUsername(u) { return USERNAME_RE.test(u) && !RESERVED_USERNAMES.includes(u); }
+async function findUserByUsername(u) {
+  await init();
+  const n = normalizeUsername(u);
+  if (!n) return null;
+  return (await db.users.getAll()).find((x) => x.username && x.username === n) || null;
+}
+// Free username built from a Gmail/email local part (or the name): "ahmed.m@gmail.com" -> ahmed.m, then ahmed.m2, ahmed.m3...
+async function suggestUsername(email, name) {
+  await init();
+  let base = String(email || '').split('@')[0].toLowerCase().replace(/\+.*$/, '').replace(/[^a-z0-9._]/g, '');
+  if (base.length < 3) base = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (base.length < 3) base = `user${Math.floor(1000 + Math.random() * 9000)}`;
+  base = base.replace(/^[._]+/, '').slice(0, 20);
+  if (base.length < 3) base = `user${Math.floor(1000 + Math.random() * 9000)}`;
+  const taken = new Set((await db.users.getAll()).map((x) => x.username).filter(Boolean));
+  let cand = base; let i = 1;
+  while (taken.has(cand) || !validUsername(cand)) { i += 1; cand = `${base}${i}`.slice(0, 24); if (i > 500) { cand = `user${Date.now() % 1e8}`; break; } }
+  return cand;
+}
 async function findUserByPhone(phone) {
   await init();
   const p = normalizePhone(phone);
@@ -64,8 +88,8 @@ async function findUserByPhone(phone) {
 // Login identifier: an email address, or an Egyptian mobile number.
 async function findUserByLogin(identifier) {
   const id = String(identifier || '').trim();
-  if (id.includes('@')) return findUserByEmail(id);
-  return (await findUserByPhone(id)) || findUserByEmail(id);
+  if (id.includes('@') && !id.startsWith('@')) return findUserByEmail(id);
+  return (await findUserByPhone(id)) || (await findUserByUsername(id)) || findUserByEmail(id);
 }
 async function setUserPassword(id, passwordHash) {
   await init();
@@ -80,10 +104,10 @@ function publicUser(u) {
   const { passwordHash, ...rest } = u;
   return rest;
 }
-async function createUser({ name, email, phone, passwordHash, role, city, lat, lng }) {
+async function createUser({ name, username, email, phone, passwordHash, role, city, lat, lng }) {
   await init();
   const user = {
-    id: await db.nextId('usr'), name, email: email || '', ...(phone ? { phone: normalizePhone(phone) } : {}), passwordHash, role, city: city || '',
+    id: await db.nextId('usr'), name, ...(username ? { username: normalizeUsername(username) } : {}), email: email || '', ...(phone ? { phone: normalizePhone(phone) } : {}), passwordHash, role, city: city || '',
     ...(lat !== undefined && lng !== undefined ? { lat: Number(lat), lng: Number(lng) } : {}),
     createdAt: new Date().toISOString(),
   };
@@ -1340,7 +1364,7 @@ module.exports = {
   startPaymobPayment, applyPaymobTransaction,
   notify, notificationsFor, markNotificationsRead,
   cleanIdentity, saveIdentity, adminGetIdentity, adminDecideIdentity,
-  listUsersAdmin, adminOverview, adminCommissions, syncReceivables, COMMISSION_RATE, commissionStatusFor, isTechnicianBlocked, idVerified, openDispute, disputesForBooking, adminListDisputes, adminResolveDispute, submitSettlementClaim, adminSettleTechnician,
+  listUsersAdmin, adminOverview, adminCommissions, syncReceivables, COMMISSION_RATE, commissionStatusFor, isTechnicianBlocked, idVerified, normalizeUsername, validUsername, findUserByUsername, suggestUsername, openDispute, disputesForBooking, adminListDisputes, adminResolveDispute, submitSettlementClaim, adminSettleTechnician,
   adminListTechnicians, adminCreateTechnician, adminUpdateTechnician, adminDeleteTechnician,
   adminUpdateUser, adminDeleteUser, adminListBookings, adminSetBookingStatus, adminDeleteBooking,
   adminUpdateInvoice, adminDeleteInvoice,

@@ -20,6 +20,20 @@ function authPayload(user) {
 const googleClientId = () => process.env.GOOGLE_CLIENT_ID || '';
 const verifyGoogle = (credential) => verifyGoogleIdToken(credential, googleClientId());
 const googleTicket = (g) => jwt.sign({ purpose: 'google-signup', email: g.email, name: g.name }, config.jwtSecret, { expiresIn: '20m' });
+const USERNAME_MSG = 'Username must be 3 to 24 characters: lowercase letters, digits, dot or underscore';
+async function assertFreeUsername(u) {
+  if (!store.validUsername(u)) throw ApiError.badRequest(USERNAME_MSG);
+  if (await store.findUserByUsername(u)) throw ApiError.conflict('Username is already taken');
+}
+
+// GET /api/auth/username-available?u=name — live check while typing on the sign-up form.
+router.get('/username-available', rateLimiter, async (req, res, next) => {
+  try {
+    const u = store.normalizeUsername(req.query.u);
+    if (!store.validUsername(u)) return res.json({ valid: false, available: false });
+    res.json({ valid: true, available: !(await store.findUserByUsername(u)) });
+  } catch (err) { next(err); }
+});
 
 router.get('/google/config', (req, res) => res.json({ enabled: !!googleClientId(), clientId: googleClientId() || undefined }));
 
@@ -33,11 +47,10 @@ router.post('/google', rateLimiter, async (req, res, next) => {
       if (user.active === false) throw ApiError.unauthorized('Account is deactivated');
       return res.json({ status: 'signed_in', ...authPayload(user) });
     }
-    if (mode === 'client') {
-      const created = await store.createUser({ name: g.name, email: g.email, passwordHash: await hashPassword(crypto.randomBytes(24).toString('hex')), role: 'client' });
-      return res.status(201).json({ status: 'signed_in', ...authPayload(created) });
+    // Sign-up (client or technician): the verified Google email prefills name + username, the user confirms on the form.
+    if (mode === 'client' || mode === 'technician') {
+      return res.json({ status: 'needs_profile', ticket: googleTicket(g), name: g.name, email: g.email, suggestedUsername: await store.suggestUsername(g.email, g.name) });
     }
-    if (mode === 'technician') return res.json({ status: 'needs_profile', ticket: googleTicket(g), name: g.name, email: g.email });
     throw ApiError.notFound('No account for this Google email yet. Sign up first.');
   } catch (err) {
     next(err.status === 401 ? ApiError.unauthorized(err.message) : err);
@@ -57,6 +70,8 @@ router.post('/register', rateLimiter, async (req, res, next) => {
     requireFields(req.body, ['name', 'password', 'role']);
     const { name, password, role, city, profession, yearsExperience, hourlyRate, bio, lat, lng, phone, phonePublic, address, addressActive } = req.body;
     const email = String(req.body.email || '').trim();
+    const username = String(req.body.username || '').trim() ? store.normalizeUsername(req.body.username) : await store.suggestUsername(email, name);
+    await assertFreeUsername(username);
     assertPassword(password);
     assertRole(role);
     // Email is optional: a valid Egyptian mobile number is enough to register and log in.
@@ -79,7 +94,7 @@ router.post('/register', rateLimiter, async (req, res, next) => {
     }
 
     const user = await store.createUser({
-      name: String(name).trim(), email, phone: String(phone || '').trim() ? phone : undefined,
+      name: String(name).trim(), username, email, phone: String(phone || '').trim() ? phone : undefined,
       passwordHash: await hashPassword(password), role, city, lat, lng,
     });
     if (role === 'technician') {

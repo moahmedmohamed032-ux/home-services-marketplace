@@ -12,7 +12,7 @@ const reviewSchema = new mongoose.Schema(
 
 const User = mongoose.model('User', new mongoose.Schema({
   id: { type: String, unique: true, index: true },
-  name: String, email: { type: String, index: true }, phone: { type: String, index: true }, passwordHash: String,
+  name: String, username: { type: String, index: true }, email: { type: String, index: true }, phone: { type: String, index: true }, passwordHash: String,
   role: String, city: String, active: Boolean, lat: Number, lng: Number, createdAt: String,
 }, opts));
 
