@@ -170,10 +170,10 @@ export function DentalHome() {
   const procName = proc ? proc.nameAr : null;
   const title = proc ? `سعر ${procName} في مصر وفي الأقصر 2026 | FIX-IT`
     : cityAr ? `دكتور أسنان في ${cityAr} وأسعار الكشف والعلاج | FIX-IT` : 'أسعار علاج الأسنان في الأقصر وإسنا وقنا وأرمنت | دليل أسنان FIX-IT';
-  const desc = proc ? `سعر ${procName} في مصر من ${fmt(proc.min)} إلى ${fmt(proc.max)} جنيه حسب المنشور في عيادات مصرية، مع المصادر وتاريخ التحديث. اعرف المتوسط قبل ما تحجز.`
+  const desc = proc ? `أسعار ${procName} المنشورة في مصر: من ${fmt(proc.min)} إلى ${fmt(proc.max)} جنيه، مع المصادر وتاريخ المراجعة.`
     : cityAr ? `دليل عيادات الأسنان في ${cityAr} مع أسعار الكشف والحشو والتنظيف والعلاج. اطلب موعد من عيادة معتمدة.` : 'دليل أسعار الأسنان: كشف، تنظيف جير، حشو، علاج عصب، خلع، تلبيس وتبييض، مع عيادات الأسنان في الأقصر وإسنا وقنا وأرمنت.';
   const path = proc ? `/dental/${slug}` : cityEn ? `/dental/${slug}` : '/dental';
-  const faq = proc ? [[`كم سعر ${procName} في مصر؟`, `حسب أسعار منشورة في 2026 بيتراوح من ${fmt(proc.min)} إلى ${fmt(proc.max)} جنيه، والسعر الفعلي بيتحدد بعد الكشف.`], ['ليه الأسعار بتختلف؟', 'بتختلف حسب الخامة والدكتور والمدينة وحالة السن. اسأل العيادة إيه اللي بيشمله السعر قبل ما تبدأ.']] : null;
+  const faq = proc ? [[`كم سعر ${procName} في مصر؟`, `أقل رقم منشور في المصادر ${fmt(proc.min)} جنيه وأعلى رقم ${fmt(proc.max)} جنيه (المصادر مذكورة في الصفحة).`]] : null;
   useSeo({ title, desc, path, ld: faq ? { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) } : null });
   if (on === false) return <ComingSoon />;
   if (slug && !cityEn && d.procedures.length && !proc) return <Navigate to="/dental" replace />;
@@ -186,7 +186,7 @@ export function DentalHome() {
       {proc ? (
         <div className="card mb-3"><div className="card-body">
           <p className="dental-price fs-4 mb-1">{fmt(proc.min)} - {fmt(proc.max)} جنيه</p>
-          <p>{proc.descAr}</p>
+          {proc.descAr && <p>{proc.descAr}</p>}
           <h2 className="h6">المصادر (أسعار منشورة)</h2>
           <ul className="small">{proc.sources.map((s) => <li key={s.name}>{s.url ? <a href={s.url} target="_blank" rel="noopener noreferrer nofollow">{s.name}</a> : s.name}</li>)}</ul>
           <p className="small text-muted mb-0">آخر مراجعة: {proc.checkedAt}. النطاق = أقل وأعلى رقم لقيناه منشور.</p>
@@ -304,7 +304,7 @@ export function ClinicRegister() {
           <div className="col-md-6"><label className="form-label">تليفون العيادة<input className="form-control" required dir="ltr" type="tel" value={f.phone} onChange={set('phone')} /></label></div>
           <div className="col-md-6"><label className="form-label">واتساب (اختياري)<input className="form-control" dir="ltr" type="tel" value={f.whatsapp} onChange={set('whatsapp')} /></label></div>
           <div className="col-md-6"><label className="form-label">إيميل (اختياري، مش بيظهر للعامة)<input className="form-control" dir="ltr" type="email" value={f.email} onChange={set('email')} /></label></div>
-          <div className="col-md-6"><label className="form-label">مواعيد العمل<input className="form-control" placeholder="يوميًا 9ص-9م، الجمعة 5-9م" value={f.hours} onChange={set('hours')} /></label></div>
+          <div className="col-md-6"><label className="form-label">مواعيد العمل<input className="form-control" placeholder="اكتب مواعيد العمل" value={f.hours} onChange={set('hours')} /></label></div>
           <div className="col-12"><label className="form-label">نبذة عن العيادة<textarea className="form-control" rows={2} maxLength={600} value={f.about} onChange={set('about')} /></label></div>
         </div>
         <h2 className="h6 mt-4">الخدمات وأسعارك (اختياري)</h2>

@@ -17,7 +17,10 @@ async function ensureSeed() {
       const db = await store.getDb();
       const procs = await db.procedures.getAll();
       for (const p of PROCEDURES) {
-        if (!procs.find((x) => x.id === p.id)) await db.procedures.insert({ ...p, checkedAt: UPDATED });
+        const ex = procs.find((x) => x.id === p.id);
+        if (!ex) await db.procedures.insert({ ...p, checkedAt: UPDATED });
+        // Seed text/sources corrected after launch: refresh only procedures an admin has not edited.
+        else if (ex.checkedAt === UPDATED && (ex.descAr !== p.descAr || JSON.stringify(ex.sources) !== JSON.stringify(p.sources))) await db.procedures.update(p.id, { descAr: p.descAr, sources: p.sources });
       }
       const clinics = await db.clinics.getAll();
       const now = new Date().toISOString();
