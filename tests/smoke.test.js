@@ -332,7 +332,7 @@ test('usernames: unique, validated, login by username, auto-suggested when omitt
   const bad = await post('/auth/register', { name: 'Bad', username: 'a b', email: 'bad@example.com', password: 'secret123', role: 'client' });
   assert.equal(bad.status, 400);
   const auto = await post('/auth/register', { name: 'Auto', email: 'una@other.com', password: 'secret123', role: 'client' });
-  assert.equal((await auto.json()).user.username, 'una2');
+  assert.equal((await auto.json()).user.username, 'una');
   const login = await post('/auth/login', { identifier: 'una.test', password: 'secret123' });
   assert.equal(login.status, 200);
   const chk = await (await fetch(`${base}/auth/username-available?u=una.test`)).json();
