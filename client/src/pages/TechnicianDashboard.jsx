@@ -15,6 +15,7 @@ export default function TechnicianDashboard() {
   const { t, lang } = useT();
   const ar = lang === 'ar';
   const [comm, setComm] = useState(null);
+  const [payOpen, setPayOpen] = useState(false);
   const [claimForm, setClaimForm] = useState({ method: 'vodafone-cash', reference: '' });
   const [idForm, setIdForm] = useState({ idFront: '', idBack: '', idSelfie: '' });
   const [idMsg, setIdMsg] = useState('');
@@ -106,18 +107,35 @@ export default function TechnicianDashboard() {
         </section>
       )}
       {tech.idStatus === 'submitted' && <p className="notice">🪪 {ar ? 'صور الهوية اتبعتت وبتتراجع.' : 'Your ID photos were submitted and are under review.'}</p>}
-      {comm && comm.active && (comm.outstanding > 0 || comm.blocked) && (
-        <section className={`card ${comm.blocked ? 'notice' : ''}`}>
-          <h3>💰 {ar ? 'عمولة المنصة المستحقة' : 'Platform commission due'}: {comm.outstanding} EGP</h3>
-          <p className="muted"><small>{ar ? `عمولة ${Math.round(comm.rate * 100)}% على كل شغل اتدفع كاش. سدّدها خلال ${comm.overdueDays} أيام من أقدم شغلانة.` : `${Math.round(comm.rate * 100)}% on every cash job. Settle within ${comm.overdueDays} days of the oldest one.`} {comm.dueBy ? (ar ? 'آخر موعد: ' : 'Due by: ') + new Date(comm.dueBy).toLocaleDateString(ar ? 'ar-EG' : 'en-GB') : ''}</small></p>
-          {comm.blocked && <p className="error">{ar ? 'مؤقتًا مش بتستقبل طلبات جديدة لحد ما تسدّد العمولة ونأكد الاستلام.' : 'You are not receiving new requests until the commission is settled and confirmed.'}</p>}
-          <p>{ar ? 'التحويل على: ' : 'Send to: '}{(comm.collection && (comm.collection.vodafoneCash || comm.collection.instapay)) ? <>{comm.collection.vodafoneCash && <span dir="ltr">Vodafone Cash {comm.collection.vodafoneCash} </span>}{comm.collection.instapay && <span dir="ltr">InstaPay {comm.collection.instapay}</span>}</> : (ar ? 'هيتم الإعلان عن رقم التحويل قريبًا' : 'collection details will be announced soon')}</p>
-          {comm.claim ? <p className="muted">⏳ {ar ? `بلّغت بتحويل ${comm.claim.amount} جنيه، في انتظار تأكيد الإدارة.` : `You reported ${comm.claim.amount} EGP, waiting for admin confirmation.`}</p> : (
-            <div className="row">
-              <select value={claimForm.method} onChange={(e) => setClaimForm({ ...claimForm, method: e.target.value })}><option value="vodafone-cash">Vodafone Cash</option><option value="instapay">InstaPay</option></select>
-              <input placeholder={ar ? 'رقم العملية / المرجع' : 'Transfer reference'} value={claimForm.reference} onChange={(e) => setClaimForm({ ...claimForm, reference: e.target.value })} />
-              <button className="btn btn-primary btn-sm" onClick={sendClaim}>{ar ? 'أنا دفعت' : 'I paid'}</button>
-            </div>)}
+      {comm && comm.active && (
+        <section className={`card ${comm.blocked ? 'notice' : ''}`} style={{ border: comm.outstanding > 0 ? '2px solid var(--accent, #e67e22)' : undefined }}>
+          <h2 style={{ margin: 0 }}>💰 {ar ? 'مستحقات المنصة عليك' : 'Commission you owe'}: <strong style={{ fontSize: '1.6em' }}>{comm.outstanding} EGP</strong></h2>
+          <p className="muted"><small>{ar ? `عمولة ${Math.round(comm.rate * 100)}% على كل شغل اتدفع كاش. لازم تتسدد خلال ${comm.overdueDays} أيام من أقدم شغلانة.` : `${Math.round(comm.rate * 100)}% on every cash job, due within ${comm.overdueDays} days of the oldest one.`} {comm.dueBy && comm.outstanding > 0 ? (ar ? 'آخر موعد: ' : 'Due by: ') + new Date(comm.dueBy).toLocaleDateString(ar ? 'ar-EG' : 'en-GB') : ''}</small></p>
+          {comm.blocked && <p className="error">{ar ? 'مؤقتًا مش بتستقبل طلبات جديدة لحد ما تسدّد ونأكد الاستلام.' : 'You are not receiving new requests until you settle and we confirm.'}</p>}
+          {comm.outstanding > 0 && !comm.claim && (
+            <>
+              <button className="btn btn-accent" style={{ width: '100%', fontSize: '1.3em', padding: '14px' }} onClick={() => setPayOpen((v) => !v)}>{ar ? 'سدد دلوقتي' : 'Pay now'} · {comm.outstanding} EGP</button>
+              {payOpen && (
+                <div style={{ marginTop: 12 }}>
+                  <p><strong>{ar ? 'الخطوات:' : 'Steps:'}</strong></p>
+                  <ol>
+                    <li>{ar ? 'حوّل بالظبط' : 'Transfer exactly'} <strong dir="ltr">{comm.outstanding} EGP</strong> <button className="btn btn-ghost btn-sm" onClick={() => navigator.clipboard && navigator.clipboard.writeText(String(comm.outstanding))}>{ar ? 'نسخ المبلغ' : 'Copy amount'}</button></li>
+                    <li>{ar ? 'على: ' : 'To: '}{(comm.collection && (comm.collection.vodafoneCash || comm.collection.instapay)) ? <>
+                      {comm.collection.vodafoneCash && <span dir="ltr">Vodafone Cash <strong>{comm.collection.vodafoneCash}</strong> <button className="btn btn-ghost btn-sm" onClick={() => navigator.clipboard && navigator.clipboard.writeText(comm.collection.vodafoneCash)}>{ar ? 'نسخ' : 'Copy'}</button> </span>}
+                      {comm.collection.instapay && <span dir="ltr">InstaPay <strong>{comm.collection.instapay}</strong> <button className="btn btn-ghost btn-sm" onClick={() => navigator.clipboard && navigator.clipboard.writeText(comm.collection.instapay)}>{ar ? 'نسخ' : 'Copy'}</button></span>}</> : <strong>{ar ? 'رقم التحويل هيتعلن قريبًا' : 'transfer number will be announced soon'}</strong>}</li>
+                    <li>{ar ? 'ارجع هنا واضغط "حوّلت" واكتب رقم العملية.' : 'Come back, tap "I sent it" and enter the transfer reference.'}</li>
+                  </ol>
+                  <div className="row">
+                    <select value={claimForm.method} onChange={(e) => setClaimForm({ ...claimForm, method: e.target.value })}><option value="vodafone-cash">Vodafone Cash</option><option value="instapay">InstaPay</option></select>
+                    <input placeholder={ar ? 'رقم العملية / المرجع' : 'Transfer reference'} value={claimForm.reference} onChange={(e) => setClaimForm({ ...claimForm, reference: e.target.value })} />
+                    <button className="btn btn-primary btn-sm" onClick={sendClaim}>{ar ? 'حوّلت' : 'I sent it'}</button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+          {comm.claim && <p className="muted">⏳ {ar ? `بلّغت بتحويل ${comm.claim.amount} جنيه، في انتظار تأكيد الإدارة.` : `You reported ${comm.claim.amount} EGP, waiting for admin confirmation.`}</p>}
+          {comm.outstanding === 0 && <p className="muted">✅ {ar ? 'مفيش مستحقات عليك.' : 'Nothing due.'}</p>}
         </section>
       )}
       <div className="grid stat-grid">
