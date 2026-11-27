@@ -84,9 +84,17 @@ const IdDoc = mongoose.model('IdDoc', new mongoose.Schema({
   id: { type: String, unique: true, index: true }, front: String, back: String, selfie: String, submittedAt: String,
 }, opts));
 
+// Receivables ledger: one row per paid job = FIX-IT's commission due on it. Kept in step with invoices by store.syncReceivables().
+const Receivable = mongoose.model('Receivable', new mongoose.Schema({
+  id: { type: String, unique: true, index: true }, invoiceId: String, bookingId: String, invoiceNumber: String,
+  technicianId: { type: String, index: true }, clientId: String, jobAmount: Number, rate: Number, commission: Number,
+  accruedAt: String, status: String, via: String, method: String, reportedAt: String, reportMethod: String, reportRef: String,
+  settledAt: String, settledBy: String,
+}, opts));
+
 const Counter = mongoose.model('Counter', new mongoose.Schema({ _id: String, value: Number }, opts));
 
-const MODELS = { users: User, technicians: Technician, bookings: Booking, invoices: Invoice, notifications: Notification, clinics: Clinic, procedures: Procedure, appointments: Appointment, providers: Provider, idDocs: IdDoc };
+const MODELS = { users: User, technicians: Technician, bookings: Booking, invoices: Invoice, notifications: Notification, clinics: Clinic, procedures: Procedure, appointments: Appointment, providers: Provider, idDocs: IdDoc, receivables: Receivable };
 
 const strip = (doc) => {
   if (!doc) return null;
@@ -143,6 +151,7 @@ module.exports = {
   procedures: table(MODELS.procedures),
   appointments: table(MODELS.appointments),
   idDocs: table(MODELS.idDocs),
+  receivables: table(MODELS.receivables),
   providers: { ...table(MODELS.providers), insertMany: async (rows) => { await Provider.insertMany(rows, { ordered: false }); },
     publishAll: async (batch) => { await Provider.updateMany({ publishedBatch: { $exists: false } }, { $set: { approved: true, publishedBatch: batch } }); } },
 };

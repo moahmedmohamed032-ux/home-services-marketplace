@@ -368,6 +368,7 @@ async function notifyPaid(invoice) {
   // Paid = completed: payment is the completion indicator for a job.
   const bk = inv.bookingId ? await findBookingById(inv.bookingId) : null;
   if (bk && ['accepted', 'in_progress', 'awaiting_confirmation'].includes(bk.status)) await setBookingStatus(bk, 'completed', { completedBy: 'payment' });
+  await syncReceivables();
   await notify(inv.clientId, { type: 'paid', bookingId: inv.bookingId, invoiceId: inv.id, link: '/dashboard',
     titleAr: 'تم تسجيل الدفع ✅', titleEn: 'Payment recorded ✅',
     bodyAr: `فاتورة ${inv.number} اتدفعت. شكراً لاستخدامك FIX-IT.`, bodyEn: `Invoice ${inv.number} is paid. Thank you for using FIX-IT.` });
@@ -1024,38 +1025,73 @@ const commissionOf = (inv) => round2(commissionBase(inv) * COMMISSION_RATE);
 const paidOnline = (inv) => inv.status === 'paid' && (!!inv.paymobTxnId || inv.method === 'card' || inv.method === 'wallet');
 const commissionCollected = (inv) => inv.commissionPaid === true || paidOnline(inv);
 
-async function adminCommissions() {
+// ---- receivables ledger (table `receivables`): one row per paid job, our commission due on it ----
+// Statuses: outstanding -> reported (technician says he paid) -> settled (admin confirmed, or taken from an online payment).
+async function syncReceivables() {
   await init();
-  const invoices = await db.invoices.getAll();
-  const techs = await db.technicians.getAll();
-  const users = await db.users.getAll();
-  const rows = [];
-  const by = new Map();
+  const [invoices, techs, rows] = await Promise.all([db.invoices.getAll(), db.technicians.getAll(), db.receivables.getAll()]);
+  const byId = new Map(rows.map((r) => [r.invoiceId, r]));
   for (const inv of invoices.filter((i) => i.status === 'paid')) {
     const tech = techs.find((x) => x.id === inv.technicianId);
-    const client = users.find((x) => x.id === inv.clientId);
-    const base = commissionBase(inv);
-    const commission = commissionOf(inv);
-    const collected = commissionCollected(inv);
-    rows.push({
-      invoiceId: inv.id, number: inv.number, bookingId: inv.bookingId, technicianId: inv.technicianId,
-      technicianName: tech ? tech.name : 'Unknown', clientName: client ? client.name : 'Unknown',
-      base, commission, collected, invoiceStatus: inv.status, method: inv.method || null,
-      viaOnline: paidOnline(inv), createdAt: inv.createdAt, commissionPaidAt: inv.commissionPaidAt || null,
-    });
-    const g = by.get(inv.technicianId) || { technicianId: inv.technicianId, technicianName: tech ? tech.name : 'Unknown', jobs: 0, earned: 0, collected: 0, outstanding: 0, claim: (tech && tech.settlementClaim) || null };
-    g.jobs += 1; g.earned = round2(g.earned + commission);
-    if (collected) g.collected = round2(g.collected + commission); else g.outstanding = round2(g.outstanding + commission);
-    by.set(inv.technicianId, g);
+    const claim = tech && tech.settlementClaim;
+    const online = paidOnline(inv);
+    const settled = commissionCollected(inv);
+    const status = settled ? 'settled' : (claim ? 'reported' : 'outstanding');
+    const want = {
+      status, via: settled ? (online ? 'online' : 'admin') : null,
+      reportedAt: !settled && claim ? claim.at : null, reportMethod: !settled && claim ? claim.method : null, reportRef: !settled && claim ? claim.reference : null,
+      settledAt: settled ? (online ? (inv.paidAt || null) : (inv.commissionPaidAt || null)) : null, settledBy: settled ? (online ? 'online-payment' : 'admin') : null,
+    };
+    const cur = byId.get(inv.id);
+    if (!cur) {
+      await db.receivables.insert({
+        id: await db.nextId('rcv'), invoiceId: inv.id, bookingId: inv.bookingId, invoiceNumber: inv.number, technicianId: inv.technicianId, clientId: inv.clientId,
+        jobAmount: commissionBase(inv), rate: COMMISSION_RATE, commission: commissionOf(inv), accruedAt: inv.paidAt || inv.createdAt, method: inv.method || null, ...want,
+      });
+    } else if (Object.keys(want).some((k) => (cur[k] ?? null) !== want[k])) {
+      await db.receivables.update(cur.id, want);
+    }
   }
-  rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const earned = round2(rows.reduce((s, r) => s + r.commission, 0));
-  const collected = round2(rows.filter((r) => r.collected).reduce((s, r) => s + r.commission, 0));
+}
+
+async function adminCommissions() {
+  await syncReceivables();
+  const [rows, techs, users, bookings] = await Promise.all([db.receivables.getAll(), db.technicians.getAll(), db.users.getAll(), db.bookings.getAll()]);
+  const now = Date.now();
+  const list = rows.map((r) => {
+    const tech = techs.find((x) => x.id === r.technicianId);
+    const client = users.find((x) => x.id === r.clientId);
+    const bk = bookings.find((x) => x.id === r.bookingId);
+    const ageDays = r.status === 'settled' ? null : Math.max(0, Math.floor((now - Date.parse(r.accruedAt)) / 86400e3));
+    return {
+      id: r.id, invoiceId: r.invoiceId, number: r.invoiceNumber, bookingId: r.bookingId, technicianId: r.technicianId,
+      technicianName: tech ? tech.name : 'Unknown', clientName: client ? client.name : 'Unknown',
+      job: bk ? String(bk.description || '').slice(0, 80) : '', base: r.jobAmount, commission: r.commission,
+      accruedAt: r.accruedAt, status: r.status, via: r.via || null, reportedAt: r.reportedAt || null, reportMethod: r.reportMethod || null, reportRef: r.reportRef || null,
+      settledAt: r.settledAt || null, ageDays, overdue: r.status !== 'settled' && ageDays >= OVERDUE_DAYS,
+      // legacy fields used by the older table
+      collected: r.status === 'settled', invoiceId2: r.invoiceId, createdAt: r.accruedAt, commissionPaidAt: r.settledAt || null, viaOnline: r.via === 'online',
+    };
+  }).sort((a, b) => String(b.accruedAt).localeCompare(String(a.accruedAt)));
+  const sum = (f) => round2(list.filter(f).reduce((s, r) => s + r.commission, 0));
+  const by = new Map();
+  for (const r of list) {
+    const g = by.get(r.technicianId) || { technicianId: r.technicianId, technicianName: r.technicianName, jobs: 0, earned: 0, collected: 0, outstanding: 0, reported: 0, oldestDays: null, claim: (techs.find((x) => x.id === r.technicianId) || {}).settlementClaim || null };
+    g.jobs += 1; g.earned = round2(g.earned + r.commission);
+    if (r.status === 'settled') g.collected = round2(g.collected + r.commission);
+    else { g.outstanding = round2(g.outstanding + r.commission); if (r.status === 'reported') g.reported = round2(g.reported + r.commission); g.oldestDays = Math.max(g.oldestDays || 0, r.ageDays); }
+    by.set(r.technicianId, g);
+  }
+  const earned = sum(() => true);
+  const collected = sum((r) => r.status === 'settled');
   return {
-    rate: COMMISSION_RATE,
-    totals: { jobs: rows.length, earned, collected, outstanding: round2(earned - collected) },
+    rate: COMMISSION_RATE, overdueDays: OVERDUE_DAYS, active: commissionActive(),
+    totals: {
+      jobs: list.length, earned, collected, outstanding: round2(earned - collected), reported: sum((r) => r.status === 'reported'),
+      overdue: sum((r) => r.overdue), outstandingCount: list.filter((r) => r.status !== 'settled').length, settledCount: list.filter((r) => r.status === 'settled').length,
+    },
     byTechnician: [...by.values()].sort((a, b) => b.outstanding - a.outstanding || b.earned - a.earned),
-    rows,
+    rows: list,
   };
 }
 
@@ -1133,6 +1169,7 @@ async function submitSettlementClaim(tech, { method, reference }) {
   if (!st.outstanding) throw ApiError.badRequest('No outstanding commission');
   const claim = { method, reference: String(reference || '').trim().slice(0, 80), amount: st.outstanding, at: new Date().toISOString() };
   await db.technicians.update(tech.id, { settlementClaim: claim });
+  await syncReceivables();
   const admins = (await db.users.getAll()).filter((u) => u.role === 'admin');
   for (const a of admins) {
     await notify(a.id, { type: 'settlement_claim', link: '/admin', titleAr: 'فني بلّغ إنه سدّد العمولة', titleEn: 'A technician reports a commission settlement',
@@ -1152,6 +1189,7 @@ async function adminSettleTechnician(techId) {
     await db.invoices.update(i.id, { commissionPaid: true, commissionPaidAt: now }); n += 1;
   }
   await db.technicians.update(tech.id, { settlementClaim: null });
+  await syncReceivables();
   await notify(tech.userId, { type: 'settlement_confirmed', link: '/pro', titleAr: 'تم استلام السداد ✅', titleEn: 'Settlement received ✅',
     bodyAr: 'شكراً، رصيدك اتصفّى وبتستقبل الطلبات عادي.', bodyEn: 'Thank you, your balance is cleared and you receive requests as usual.' });
   return { cleared: n };
@@ -1202,7 +1240,7 @@ module.exports = {
   startPaymobPayment, applyPaymobTransaction,
   notify, notificationsFor, markNotificationsRead,
   cleanIdentity, saveIdentity, adminGetIdentity, adminDecideIdentity,
-  listUsersAdmin, adminOverview, adminCommissions, COMMISSION_RATE, commissionStatusFor, isTechnicianBlocked, submitSettlementClaim, adminSettleTechnician,
+  listUsersAdmin, adminOverview, adminCommissions, syncReceivables, COMMISSION_RATE, commissionStatusFor, isTechnicianBlocked, submitSettlementClaim, adminSettleTechnician,
   adminListTechnicians, adminCreateTechnician, adminUpdateTechnician, adminDeleteTechnician,
   adminUpdateUser, adminDeleteUser, adminListBookings, adminSetBookingStatus, adminDeleteBooking,
   adminUpdateInvoice, adminDeleteInvoice,

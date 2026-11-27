@@ -72,9 +72,17 @@ test('overdue cash commission blocks new requests until the admin confirms settl
     assert.ok(!(await store.createNearestRequest({ clientId: client.id, profession: 'plumber', city: 'Qena', date: '2026-12-22', description: 'blocked', address: 'x' }).catch(() => null)) || true);
     const claim = await store.submitSettlementClaim(t, { method: 'instapay', reference: 'abc' });
     assert.equal(claim.claim.amount, 30);
+    {
+      const led = await store.adminCommissions();
+      const row = led.rows.find((r) => r.invoiceId === 'inv_debt1');
+      assert.equal(row.status, 'reported'); assert.equal(row.commission, 30); assert.ok(row.ageDays >= 8 && row.overdue);
+      assert.ok(led.totals.outstanding >= 30 && led.totals.outstandingCount >= 1);
+      assert.ok((await db.receivables.getAll()).some((r) => r.invoiceId === 'inv_debt1'), 'persisted in the receivables table');
+    }
     await store.adminSettleTechnician(t.id);
     const after = await store.commissionStatusFor(await store.findTechnicianById(t.id));
     assert.equal(after.outstanding, 0); assert.equal(after.blocked, false); assert.equal(after.claim, null);
+    assert.equal((await store.adminCommissions()).rows.find((r) => r.invoiceId === 'inv_debt1').status, 'settled');
   } finally { delete process.env.COMMISSION_ACTIVE; }
 });
 

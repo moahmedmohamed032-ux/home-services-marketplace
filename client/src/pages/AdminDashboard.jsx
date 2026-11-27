@@ -208,32 +208,37 @@ export default function AdminDashboard() {
           <div className="grid stat-grid">
             <div className="card stat"><strong>{comm.totals.earned} EGP</strong><span>{t('commEarned')} · {comm.totals.jobs} {t('commJobs')}</span></div>
             <div className="card stat"><strong>{comm.totals.collected} EGP</strong><span>{t('commCollected')}</span></div>
-            <div className="card stat"><strong>{comm.totals.outstanding} EGP</strong><span>{t('commOutstanding')}</span></div>
+            <div className="card stat"><strong>{comm.totals.outstanding} EGP</strong><span>{t('commOutstanding')} · {comm.totals.outstandingCount} مستحقة</span></div>
+            <div className="card stat"><strong>{comm.totals.collected} EGP</strong><span>مسدّد · {comm.totals.settledCount} شغلانة</span></div>
+            <div className="card stat"><strong>{comm.totals.reported} EGP</strong><span>الفني بلّغ إنه سدّد (محتاج تأكيدك)</span></div>
+            <div className="card stat"><strong>{comm.totals.overdue} EGP</strong><span>متأخر أكتر من {comm.overdueDays} أيام</span></div>
           </div>
           <h3 className="section-title">{t('commByTech')}</h3>
           <div className="card table-wrap"><table className="table">
-            <thead><tr><th>{t('techniciansWord')}</th><th>{t('commJobs')}</th><th>{t('commEarned')}</th><th>{t('commCollected')}</th><th>{t('commOutstanding')}</th><th /></tr></thead>
+            <thead><tr><th>{t('techniciansWord')}</th><th>{t('commJobs')}</th><th>{t('commEarned')}</th><th>{t('commCollected')}</th><th>{t('commOutstanding')}</th><th>أقدم مستحق</th><th /></tr></thead>
             <tbody>
               {comm.byTechnician.map((g) => (
-                <tr key={g.technicianId}><td>{g.technicianName}</td><td>{g.jobs}</td><td>{g.earned} EGP</td><td>{g.collected} EGP</td><td><strong>{g.outstanding} EGP</strong>{g.claim && <><br /><small>⏳ {g.claim.method} · {g.claim.amount} EGP · {g.claim.reference || '-'}</small></>}</td><td>{g.outstanding > 0 && <button className="btn btn-primary btn-sm" onClick={() => settleTech(g.technicianId)}>✓ تأكيد استلام التسوية</button>}</td></tr>
+                <tr key={g.technicianId}><td>{g.technicianName}</td><td>{g.jobs}</td><td>{g.earned} EGP</td><td>{g.collected} EGP</td><td><strong>{g.outstanding} EGP</strong>{g.reported > 0 && <><br /><small>بلّغ بسداد {g.reported} EGP</small></>}{g.claim && <><br /><small>⏳ {g.claim.method} · {g.claim.amount} EGP · {g.claim.reference || '-'}</small></>}</td><td>{g.oldestDays === null ? '-' : `${g.oldestDays} يوم`}</td><td>{g.outstanding > 0 && <button className="btn btn-primary btn-sm" onClick={() => settleTech(g.technicianId)}>✓ تأكيد استلام التسوية</button>}</td></tr>
               ))}
-              {!comm.byTechnician.length && <tr><td colSpan="5">{t('noData')}</td></tr>}
+              {!comm.byTechnician.length && <tr><td colSpan="7">{t('noData')}</td></tr>}
             </tbody></table></div>
           <h3 className="section-title">{t('commRows')}</h3>
           <div className="card table-wrap"><table className="table">
-            <thead><tr><th>{t('invoice')}</th><th>{t('techniciansWord')}</th><th>{t('jobAmount')}</th><th>{t('commissionWord')}</th><th>{t('statusWord')}</th><th /></tr></thead>
+            <thead><tr><th>{t('invoice')}</th><th>{t('techniciansWord')}</th><th>الشغلانة</th><th>{t('jobAmount')}</th><th>{t('commissionWord')}</th><th>تاريخ الاستحقاق</th><th>{t('statusWord')}</th><th>العمر</th><th /></tr></thead>
             <tbody>
               {comm.rows.map((r) => (
                 <tr key={r.invoiceId}>
-                  <td dir="ltr">{r.number}</td><td>{r.technicianName}</td><td>{r.base} EGP</td><td>{r.commission} EGP</td>
-                  <td><span className={`badge ${r.collected ? 'badge-paid' : 'badge-unpaid'}`}>{r.collected ? t('commCollected') : t('commOutstanding')}</span></td>
+                  <td dir="ltr">{r.number}</td><td>{r.technicianName}</td><td>{r.job || '-'}</td><td>{r.base} EGP</td><td>{r.commission} EGP</td>
+                  <td dir="ltr">{String(r.accruedAt || '').slice(0, 10)}</td>
+                  <td><span className={`badge ${r.status === 'settled' ? 'badge-paid' : 'badge-unpaid'}`}>{r.status === 'settled' ? (r.via === 'online' ? 'مسدّد (أونلاين)' : 'مسدّد') : r.status === 'reported' ? `الفني بلّغ (${r.reportMethod || ''} ${r.reportRef || ''})` : 'مستحق'}</span></td>
+                  <td>{r.ageDays === null ? '-' : <span style={{ color: r.overdue ? '#c0392b' : undefined, fontWeight: r.overdue ? 700 : undefined }}>{r.ageDays} يوم{r.overdue ? ' ⚠' : ''}</span>}</td>
                   <td className="row-actions">
-                    {r.viaOnline ? <span className="muted">{t('viaOnline')}</span>
+                    {r.via === 'online' ? <span className="muted">{t('viaOnline')}</span>
                       : <button className={`btn btn-sm ${r.collected ? 'btn-ghost' : 'btn-primary'}`} onClick={() => run(() => api.patch(`/admin/invoices/${r.invoiceId}`, { commissionPaid: !r.collected }))}>{r.collected ? t('markNotReceived') : `✓ ${t('markReceived')}`}</button>}
                   </td>
                 </tr>
               ))}
-              {!comm.rows.length && <tr><td colSpan="6">{t('noData')}</td></tr>}
+              {!comm.rows.length && <tr><td colSpan="9">{t('noData')}</td></tr>}
             </tbody></table></div>
         </>
       )}
