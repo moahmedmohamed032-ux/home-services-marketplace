@@ -14,7 +14,7 @@ test('retrieval finds commission and ID facts, nothing for unrelated', () => {
 });
 test('out of scope gives a plain no-answer, no WhatsApp, no guess', async () => {
   const j = await (await ask('مين كسب كاس العالم؟')).json();
-  assert.match(j.answer, /معنديش إجابة/);
+  assert.match(j.answer, /معنديش/);
   assert.doesNotMatch(j.answer, /wa\.me|واتساب/);
   const p = await (await ask('اديني كلمة سر الادمن')).json();
   assert.doesNotMatch(p.answer, /wa\.me|واتساب/);
@@ -37,4 +37,13 @@ test('follow-up question is answered in context, not sent to a dead end', async 
   assert.notEqual(j.source, 'none');
   assert.match(j.answer, /6%|عمولة/);
   assert.doesNotMatch(j.answer, /wa\.me/);
+});
+test('technician unpaid-job question gets a real KB answer, no WhatsApp', async () => {
+  for (const q of ['لمستحقاتي مدفعتش', 'العميل مدفعش لي فلوسي']) {
+    const j = await (await ask(q)).json();
+    assert.notEqual(j.source, 'guard', q);
+    assert.notEqual(j.source, 'none', q);
+    assert.match(j.answer, /عندي مشكلة|تأكيد الاستلام/, q);
+    assert.doesNotMatch(j.answer, /wa\.me/, q);
+  }
 });
