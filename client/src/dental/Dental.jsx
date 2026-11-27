@@ -269,6 +269,7 @@ export function ClinicPage() {
               {c.hours && <p className="small mb-1">🕒 {c.hours}</p>}
               <ProfileFacts c={c} />
               {c.about && <p className="small">{c.about}</p>}
+              {(c.services || []).length > 0 && <p className="small mb-2">الخدمات: {c.services.map((k) => <span key={k} className="badge text-bg-light border me-1">{names[k] || k}</span>)}</p>}
               {Object.keys(c.prices || {}).length > 0 && <table><tbody>{Object.entries(c.prices).map(([k, v]) => <tr key={k}><td>{names[k] || k}</td><td className="dental-price">{fmt(v)} ج</td></tr>)}</tbody></table>}
               <div className="d-flex gap-2 mt-3">
                 {c.phone && <a className="btn btn-outline-primary" href={`tel:${c.phone}`}>📞 اتصل</a>}
