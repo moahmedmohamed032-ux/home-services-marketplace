@@ -17,6 +17,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import { DentalHome, ClinicPage, ClinicRegister } from './dental/Dental';
 import DentalAdmin from './dental/DentalAdmin';
 import Directory from './directory/Directory';
+import Assistant from './components/Assistant';
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useT } from './i18n/useT';

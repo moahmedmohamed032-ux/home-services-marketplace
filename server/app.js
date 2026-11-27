@@ -13,6 +13,7 @@ const invoiceRoutes = require('./routes/invoices.routes');
 const adminRoutes = require('./routes/admin.routes');
 const paymobRoutes = require('./routes/paymob.routes');
 const dentalRoutes = require('./routes/dental.routes');
+const assistantRoutes = require('./routes/assistant.routes');
 const notificationRoutes = require('./routes/notifications.routes');
 
 const app = express();
@@ -44,6 +45,7 @@ app.use('/api/admin/dental', dentalRoutes.admin);
 app.use('/api/admin', adminRoutes);
 app.use('/api/paymob', paymobRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/assistant', assistantRoutes);
 // Daily Vercel cron: auto-confirm jobs the client did not answer within 48h (idempotent; also runs lazily on list reads).
 app.get('/api/cron/autoconfirm', async (req, res, next) => {
   try { res.json({ confirmed: await store.sweepAutoConfirm() }); } catch (e) { next(e); }
