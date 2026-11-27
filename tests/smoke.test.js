@@ -270,7 +270,12 @@ test('paymob hmac + callback', async () => {
 
 test('phone-only technician signup, photo upload, verified badge and 6% commission', async () => {
   const phone = '0101' + String(Math.floor(Math.random() * 1e7)).padStart(7, '0');
-  const reg = await post('/auth/register', { name: 'Fni Luxor', password: 'secret123', role: 'technician', phone, profession: 'plumber', city: 'Luxor' });
+  const idImg = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBD';
+  const ids = { idFront: idImg, idBack: idImg, idSelfie: idImg };
+  // national ID front + back + selfie are mandatory for technicians
+  assert.equal((await post('/auth/register', { name: 'No Id', password: 'secret123', role: 'technician', phone: '01077770001', profession: 'plumber', city: 'Luxor' })).status, 400);
+  assert.equal((await post('/auth/register', { name: 'No Id', password: 'secret123', role: 'technician', phone: '01077770001', profession: 'plumber', city: 'Luxor', idFront: idImg, idBack: idImg })).status, 400);
+  const reg = await post('/auth/register', { name: 'Fni Luxor', password: 'secret123', role: 'technician', phone, profession: 'plumber', city: 'Luxor', ...ids });
   assert.equal(reg.status, 201);
   const { token, user } = await reg.json();
   assert.equal(user.email, '');
@@ -278,9 +283,9 @@ test('phone-only technician signup, photo upload, verified badge and 6% commissi
   const li = await post('/auth/login', { identifier: '+20 ' + phone.slice(1), password: 'secret123' });
   assert.equal(li.status, 200);
   // phone is required for technicians
-  const bad = await post('/auth/register', { name: 'No Phone', email: 'np@example.com', password: 'secret123', role: 'technician', profession: 'plumber', city: 'Luxor' });
+  const bad = await post('/auth/register', { name: 'No Phone', email: 'np@example.com', password: 'secret123', role: 'technician', profession: 'plumber', city: 'Luxor', ...ids });
   assert.equal(bad.status, 400);
-  const dup = await post('/auth/register', { name: 'Dup', password: 'secret123', role: 'technician', phone, profession: 'plumber', city: 'Luxor' });
+  const dup = await post('/auth/register', { name: 'Dup', password: 'secret123', role: 'technician', phone, profession: 'plumber', city: 'Luxor', ...ids });
   assert.equal(dup.status, 409);
   // photo upload accepts images only; technician cannot self-verify
   const img = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBD';
@@ -292,6 +297,23 @@ test('phone-only technician signup, photo upload, verified badge and 6% commissi
   // admin grants the badge
   const adm = await (await post('/auth/login', { email: 'admin@demo.com', password: 'Demo@1234' })).json();
   assert.ok(adm.token);
+  // identity photos: admin-only, never public, approval sets the badge
+  {
+    await patch(`/admin/technicians/${me.id}`, { approved: true }, adm.token);
+    const pub = await (await fetch(`${base}/technicians/${me.id}`)).json();
+    assert.ok(!JSON.stringify(pub).includes('base64') || !JSON.stringify(pub).includes('idFront'));
+    assert.equal(pub.technician.idStatus, undefined, 'idStatus is not public');
+    assert.equal((await fetch(`${base}/admin/technicians/${me.id}/identity`, { headers: { authorization: `Bearer ${token}` } })).status, 403, 'technician cannot read ID photos');
+    assert.equal((await fetch(`${base}/admin/technicians/${me.id}/identity`)).status, 401);
+    const ident = await (await fetch(`${base}/admin/technicians/${me.id}/identity`, { headers: { authorization: `Bearer ${adm.token}` } })).json();
+    assert.equal(ident.identity.front, idImg); assert.equal(ident.identity.selfie, idImg);
+    assert.equal((await post(`/admin/technicians/${me.id}/identity`, { decision: 'reject' }, adm.token)).status, 200);
+    assert.equal((await post(`/admin/technicians/${me.id}/identity`, { decision: 'approve' }, adm.token)).status, 200);
+    const own = (await (await fetch(`${base}/technicians/me`, { headers: { authorization: `Bearer ${token}` } })).json()).technician;
+    assert.equal(own.verified, true); assert.equal(own.idStatus, 'approved');
+    assert.equal((await post('/technicians/me/identity', { idFront: 'x' }, token)).status, 400);
+    assert.equal((await post('/technicians/me/identity', ids, token)).status, 201);
+  }
   {
     const v = await patch(`/admin/technicians/${me.id}`, { verified: true }, adm.token);
     assert.equal(v.status, 200);

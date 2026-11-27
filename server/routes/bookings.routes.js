@@ -14,6 +14,7 @@ router.post('/', authenticate, requireRole('client'), async (req, res, next) => 
     const tech = await store.findTechnicianById(technicianId);
     if (!tech || tech.approved === false) throw ApiError.notFound('Technician not found');
     if (Number.isNaN(Date.parse(date))) throw ApiError.badRequest('Invalid booking date');
+    if (await store.isTechnicianBlocked(tech)) throw ApiError.conflict('This technician is not accepting new requests right now. Please choose another technician.');
     const booking = await store.createBooking({
       clientId: req.user.id, technicianId, date, description, address, clientLat, clientLng,
     });

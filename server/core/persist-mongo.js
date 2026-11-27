@@ -22,7 +22,7 @@ const Technician = mongoose.model('Technician', new mongoose.Schema({
   yearsExperience: Number, hourlyRate: Number, approved: Boolean, rating: Number, jobsDone: Number,
   bio: String, bioAr: String, phone: String, phonePublic: Boolean,
   address: String, addressActive: Boolean, reviews: [reviewSchema], lat: Number, lng: Number,
-  verified: Boolean, photo: String, workPhotos: [String],
+  verified: Boolean, photo: String, workPhotos: [String], settlementClaim: mongoose.Schema.Types.Mixed, idStatus: String,
 }, opts));
 
 const Booking = mongoose.model('Booking', new mongoose.Schema({
@@ -79,9 +79,14 @@ const Appointment = mongoose.model('Appointment', new mongoose.Schema({
   status: String, createdAt: String,
 }, opts));
 
+// National ID photos + selfie: private, admin-only. Kept apart from the technician document so nothing public can ever include them.
+const IdDoc = mongoose.model('IdDoc', new mongoose.Schema({
+  id: { type: String, unique: true, index: true }, front: String, back: String, selfie: String, submittedAt: String,
+}, opts));
+
 const Counter = mongoose.model('Counter', new mongoose.Schema({ _id: String, value: Number }, opts));
 
-const MODELS = { users: User, technicians: Technician, bookings: Booking, invoices: Invoice, notifications: Notification, clinics: Clinic, procedures: Procedure, appointments: Appointment, providers: Provider };
+const MODELS = { users: User, technicians: Technician, bookings: Booking, invoices: Invoice, notifications: Notification, clinics: Clinic, procedures: Procedure, appointments: Appointment, providers: Provider, idDocs: IdDoc };
 
 const strip = (doc) => {
   if (!doc) return null;
@@ -137,6 +142,7 @@ module.exports = {
   clinics: table(MODELS.clinics),
   procedures: table(MODELS.procedures),
   appointments: table(MODELS.appointments),
+  idDocs: table(MODELS.idDocs),
   providers: { ...table(MODELS.providers), insertMany: async (rows) => { await Provider.insertMany(rows, { ordered: false }); },
     publishAll: async (batch) => { await Provider.updateMany({ publishedBatch: { $exists: false } }, { $set: { approved: true, publishedBatch: batch } }); } },
 };

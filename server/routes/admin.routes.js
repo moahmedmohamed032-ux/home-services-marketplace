@@ -62,6 +62,9 @@ router.patch('/bookings/:id', wrap(async (req, res) => {
 router.delete('/bookings/:id', wrap(async (req, res) => { await store.adminDeleteBooking(req.params.id); res.json({ ok: true }); }));
 
 // ---- invoices ----
+router.get('/technicians/:id/identity', wrap(async (req, res) => { res.set('Cache-Control', 'no-store'); res.json({ identity: await store.adminGetIdentity(req.params.id) }); }));
+router.post('/technicians/:id/identity', wrap(async (req, res) => res.json(await store.adminDecideIdentity(req.params.id, (req.body || {}).decision))));
+router.post('/technicians/:id/settle', wrap(async (req, res) => res.json(await store.adminSettleTechnician(req.params.id))));
 router.patch('/invoices/:id', wrap(async (req, res) => res.json({ invoice: await store.adminUpdateInvoice(req.params.id, req.body) })));
 router.delete('/invoices/:id', wrap(async (req, res) => { await store.adminDeleteInvoice(req.params.id); res.json({ ok: true }); }));
 

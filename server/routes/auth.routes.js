@@ -69,8 +69,10 @@ router.post('/register', rateLimiter, async (req, res, next) => {
       if (!store.isEgPhone(phone)) throw ApiError.badRequest('Enter a valid Egyptian mobile number (e.g. 01012345678)');
       if (await store.findUserByPhone(phone)) throw ApiError.conflict('Phone number is already registered');
     }
+    let idDocs = null;
     if (role === 'technician') {
       requireFields(req.body, ['profession', 'phone']);
+      idDocs = store.cleanIdentity(req.body); // national ID front + back + selfie are required
       if (!(await store.listProfessions()).some((p) => p.id === profession)) {
         throw ApiError.badRequest('Unknown profession');
       }
@@ -82,6 +84,8 @@ router.post('/register', rateLimiter, async (req, res, next) => {
     });
     if (role === 'technician') {
       await store.createTechnicianProfile(user, { profession, city, yearsExperience, hourlyRate, bio, lat, lng, phone: store.normalizePhone(phone), phonePublic, address, addressActive });
+      const techRow = await store.findTechnicianByUserId(user.id);
+      if (techRow && idDocs) await store.saveIdentity(techRow, idDocs);
     }
     res.status(201).json(authPayload(user));
   } catch (err) {

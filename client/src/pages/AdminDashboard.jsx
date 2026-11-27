@@ -43,6 +43,10 @@ export default function AdminDashboard() {
     catch (e) { setErr((e.response && e.response.data && e.response.data.error && e.response.data.error.message) || t('adminError')); }
   };
   const del = (path) => setPendingDel(path);
+  const [idView, setIdView] = useState(null);
+  const openId = async (x) => { try { const r = await api.get(`/admin/technicians/${x.id}/identity`); setIdView({ tech: x, ...r.data.identity }); } catch { alert('No ID photos'); } };
+  const decideId = async (decision) => { await api.post(`/admin/technicians/${idView.tech.id}/identity`, { decision }); setIdView(null); load && load(); };
+  const settleTech = (id) => run(() => api.post(`/admin/technicians/${id}/settle`).then(() => 'ok'));
   const confirmDel = () => { const path = pendingDel; setPendingDel(null); run(() => api.delete(path).then(() => 'deleted')); };
 
   const payStatusKey = { paid: 'paidLabel', unpaid: 'unpaidLabel', pending_verification: 'pendingVerification', pending_cash: 'pendingCash', pending_online: 'pendingOnline' };
@@ -114,6 +118,7 @@ export default function AdminDashboard() {
                 <tr key={x.id}>
                   <td>{x.photo ? '📷 ' : ''}{x.name} {x.verified && <VerifiedBadge small />} {x.approved === false && <span className="badge badge-pending">{t('pendingApproval')}</span>}</td><td>{profName(x.profession)}</td><td>{x.city}</td><td>{x.district || '-'}</td><td>{x.rating}</td><td dir="ltr">{x.phone || '-'}</td>
                   <td className="row-actions">
+                    {x.idStatus && x.idStatus !== 'none' && <button className="btn btn-ghost btn-sm" onClick={() => openId(x)}>🪪 {x.idStatus === 'approved' ? 'ID ✔' : x.idStatus === 'rejected' ? 'ID ✖' : 'ID ⏳'}</button>}
                     {x.approved === false && <button className="btn btn-primary btn-sm" onClick={() => run(() => api.patch(`/admin/technicians/${x.id}`, { approved: true }))}>✅ {t('approveAction')}</button>}
                     <button className={`btn btn-sm ${x.verified ? 'btn-ghost' : 'btn-primary'}`} onClick={() => run(() => api.patch(`/admin/technicians/${x.id}`, { verified: !x.verified }))}>{x.verified ? t('unverifyAction') : `✔ ${t('verifyAction')}`}</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => setModal({ kind: 'tech', mode: 'edit', data: { id: x.id, name: x.name, profession: x.profession, city: x.city, district: x.district || '', phone: x.phone || '', rating: x.rating, hourlyRate: x.hourlyRate } })}>{t('crudEdit')}</button>
@@ -207,10 +212,10 @@ export default function AdminDashboard() {
           </div>
           <h3 className="section-title">{t('commByTech')}</h3>
           <div className="card table-wrap"><table className="table">
-            <thead><tr><th>{t('techniciansWord')}</th><th>{t('commJobs')}</th><th>{t('commEarned')}</th><th>{t('commCollected')}</th><th>{t('commOutstanding')}</th></tr></thead>
+            <thead><tr><th>{t('techniciansWord')}</th><th>{t('commJobs')}</th><th>{t('commEarned')}</th><th>{t('commCollected')}</th><th>{t('commOutstanding')}</th><th /></tr></thead>
             <tbody>
               {comm.byTechnician.map((g) => (
-                <tr key={g.technicianId}><td>{g.technicianName}</td><td>{g.jobs}</td><td>{g.earned} EGP</td><td>{g.collected} EGP</td><td><strong>{g.outstanding} EGP</strong></td></tr>
+                <tr key={g.technicianId}><td>{g.technicianName}</td><td>{g.jobs}</td><td>{g.earned} EGP</td><td>{g.collected} EGP</td><td><strong>{g.outstanding} EGP</strong>{g.claim && <><br /><small>⏳ {g.claim.method} · {g.claim.amount} EGP · {g.claim.reference || '-'}</small></>}</td><td>{g.outstanding > 0 && <button className="btn btn-primary btn-sm" onClick={() => settleTech(g.technicianId)}>✓ تأكيد استلام التسوية</button>}</td></tr>
               ))}
               {!comm.byTechnician.length && <tr><td colSpan="5">{t('noData')}</td></tr>}
             </tbody></table></div>
@@ -296,6 +301,13 @@ export default function AdminDashboard() {
             </div>
           </form>
         </div>
+      )}
+      {idView && (
+        <div className="modal-back" onClick={() => setIdView(null)}><div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }}>
+          <h3>🪪 {idView.tech.name}</h3>
+          {['front', 'back', 'selfie'].map((k) => <p key={k}><small>{k}</small><br /><img src={idView[k]} alt={k} style={{ maxWidth: '100%', borderRadius: 8 }} /></p>)}
+          <div className="row-actions"><button className="btn btn-primary btn-sm" onClick={() => decideId('approve')}>✔ توثيق</button><button className="btn btn-ghost btn-sm danger" onClick={() => decideId('reject')}>✖ رفض</button><button className="btn btn-ghost btn-sm" onClick={() => setIdView(null)}>×</button></div>
+        </div></div>
       )}
     </>
   );

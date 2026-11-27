@@ -25,6 +25,34 @@ router.get('/me', authenticate, requireRole('technician'), async (req, res, next
   } catch (err) { next(err); }
 });
 
+// POST /api/technicians/me/identity { idFront, idBack, idSelfie } — submit (or resubmit) ID photos. Write-only: never readable back here.
+router.post('/me/identity', authenticate, requireRole('technician'), async (req, res, next) => {
+  try {
+    const tech = await store.findTechnicianByUserId(req.user.id);
+    if (!tech) return next(ApiError.notFound('Technician profile not found'));
+    await store.saveIdentity(tech, store.cleanIdentity(req.body || {}));
+    res.status(201).json({ idStatus: 'submitted' });
+  } catch (err) { next(err); }
+});
+
+// GET /api/technicians/me/commission — own outstanding commission, due date and where to pay.
+router.get('/me/commission', authenticate, requireRole('technician'), async (req, res, next) => {
+  try {
+    const tech = await store.findTechnicianByUserId(req.user.id);
+    if (!tech) return next(ApiError.notFound('Technician profile not found'));
+    res.json({ commission: await store.commissionStatusFor(tech) });
+  } catch (err) { next(err); }
+});
+
+// POST /api/technicians/me/settlement { method, reference } — "I paid", the admin then confirms receipt.
+router.post('/me/settlement', authenticate, requireRole('technician'), async (req, res, next) => {
+  try {
+    const tech = await store.findTechnicianByUserId(req.user.id);
+    if (!tech) return next(ApiError.notFound('Technician profile not found'));
+    res.json({ commission: await store.submitSettlementClaim(tech, req.body || {}) });
+  } catch (err) { next(err); }
+});
+
 // PATCH /api/technicians/me — update own profile.
 router.patch('/me', authenticate, requireRole('technician'), async (req, res, next) => {
   try {

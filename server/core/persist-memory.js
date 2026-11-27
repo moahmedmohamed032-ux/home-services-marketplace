@@ -8,7 +8,7 @@ async function init() {
   if (data) return;
   data = buildDataset();
   if (!data.notifications) data.notifications = [];
-  for (const k of ['clinics', 'procedures', 'appointments', 'providers']) if (!data[k]) data[k] = [];
+  for (const k of ['clinics', 'procedures', 'appointments', 'providers', 'idDocs']) if (!data[k]) data[k] = [];
 }
 
 const strip = (o) => (o ? JSON.parse(JSON.stringify(o)) : o);
@@ -42,6 +42,7 @@ module.exports = {
   clinics: table('clinics'),
   procedures: table('procedures'),
   appointments: table('appointments'),
+  idDocs: table('idDocs'),
   providers: { ...table('providers'), insertMany: async (rows) => { data.providers.push(...rows); },
     publishAll: async (batch) => { for (const r of data.providers) if (r.publishedBatch === undefined) { r.approved = true; r.publishedBatch = batch; } } },
 };

@@ -174,8 +174,8 @@ function assertRateWithinCap(profession, rate) {
 
 async function publicTechnician(t, { owner = false, withReviews = false } = {}) {
   if (!t) return null;
-  const { phone, reviews, workPhotos, ...rest } = t;
-  const out = { ...rest, verified: t.verified === true, phone: owner || t.phonePublic ? phone : null };
+  const { phone, reviews, workPhotos, settlementClaim, idStatus, ...rest } = t;
+  const out = { ...rest, ...(owner ? { idStatus: idStatus || 'none' } : {}), verified: t.verified === true, phone: owner || t.phonePublic ? phone : null };
   const band = priceBand(t.profession);
   if (band) {
     out.priceMin = band.priceMin; out.priceMax = band.priceMax;
@@ -274,7 +274,9 @@ async function createNearestRequest({ clientId, profession, city, date, descript
     if (!c) throw ApiError.badRequest('Share your location or choose your city');
     cands = cands.filter((t) => t.city === c).sort((a, b) => (b.rating || 0) - (a.rating || 0));
   }
-  cands = cands.slice(0, 3);
+  const open = [];
+  for (const t of cands) if (!(await isTechnicianBlocked(t))) open.push(t);
+  cands = open.slice(0, 3);
   if (!cands.length) throw ApiError.notFound('No technician available near you for this service yet');
   const dispatchId = await db.nextId('dsp');
   const made = [];
@@ -850,6 +852,7 @@ async function removeBookingCascade(bookingId) {
 async function removeTechnicianCascade(tech) {
   for (const b of (await db.bookings.getAll()).filter((x) => x.technicianId === tech.id)) await removeBookingCascade(b.id);
   await db.technicians.remove(tech.id);
+  if (db.idDocs) await db.idDocs.remove(tech.id);
 }
 async function adminDeleteTechnician(id) {
   await init();
@@ -983,7 +986,7 @@ async function adminCommissions() {
       base, commission, collected, invoiceStatus: inv.status, method: inv.method || null,
       viaOnline: paidOnline(inv), createdAt: inv.createdAt, commissionPaidAt: inv.commissionPaidAt || null,
     });
-    const g = by.get(inv.technicianId) || { technicianId: inv.technicianId, technicianName: tech ? tech.name : 'Unknown', jobs: 0, earned: 0, collected: 0, outstanding: 0 };
+    const g = by.get(inv.technicianId) || { technicianId: inv.technicianId, technicianName: tech ? tech.name : 'Unknown', jobs: 0, earned: 0, collected: 0, outstanding: 0, claim: (tech && tech.settlementClaim) || null };
     g.jobs += 1; g.earned = round2(g.earned + commission);
     if (collected) g.collected = round2(g.collected + commission); else g.outstanding = round2(g.outstanding + commission);
     by.set(inv.technicianId, g);
@@ -997,6 +1000,104 @@ async function adminCommissions() {
     byTechnician: [...by.values()].sort((a, b) => b.outstanding - a.outstanding || b.earned - a.earned),
     rows,
   };
+}
+
+
+// ---- technician identity (national ID front + back + selfie): private, admin-only ----
+const ID_IMG_MAX = 600000;
+function cleanIdImage(v, label) {
+  const x = String(v || '');
+  if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(x)) throw ApiError.badRequest(`${label} photo is required (JPEG, PNG or WebP image)`);
+  if (x.length > ID_IMG_MAX) throw ApiError.badRequest(`${label} photo is too large`);
+  return x;
+}
+function cleanIdentity(b = {}) {
+  return { front: cleanIdImage(b.idFront || b.front, 'National ID front'), back: cleanIdImage(b.idBack || b.back, 'National ID back'), selfie: cleanIdImage(b.idSelfie || b.selfie, 'Selfie') };
+}
+async function saveIdentity(tech, docs) {
+  await init();
+  const row = { ...docs, submittedAt: new Date().toISOString() };
+  if (await db.idDocs.getById(tech.id)) await db.idDocs.update(tech.id, row); else await db.idDocs.insert({ id: tech.id, ...row });
+  await db.technicians.update(tech.id, { idStatus: 'submitted' });
+  const admins = (await db.users.getAll()).filter((u) => u.role === 'admin');
+  for (const a of admins) {
+    await notify(a.id, { type: 'identity_submitted', link: '/admin', titleAr: 'فني رفع صور الهوية للمراجعة', titleEn: 'A technician submitted ID photos for review',
+      bodyAr: `${tech.name}: راجع البطاقة والسيلفي من لوحة الأدمن.`, bodyEn: `${tech.name}: review the ID card and selfie in the admin view.` });
+  }
+}
+async function adminGetIdentity(techId) {
+  await init();
+  const d = await db.idDocs.getById(techId);
+  if (!d) throw ApiError.notFound('No identity documents submitted');
+  return d;
+}
+async function adminDecideIdentity(techId, decision) {
+  await init();
+  const tech = await findTechnicianById(techId);
+  if (!tech) throw ApiError.notFound('Technician not found');
+  if (!['approve', 'reject'].includes(decision)) throw ApiError.badRequest('decision must be approve or reject');
+  if (!(await db.idDocs.getById(techId))) throw ApiError.badRequest('No identity documents submitted');
+  const approve = decision === 'approve';
+  await db.technicians.update(techId, approve ? { idStatus: 'approved', verified: true } : { idStatus: 'rejected', verified: false });
+  await notify(tech.userId, approve
+    ? { type: 'identity_approved', link: '/pro', titleAr: 'تم توثيق هويتك ✅', titleEn: 'Your identity is verified ✅', bodyAr: 'ظهرت شارة "موثّق" على بروفايلك.', bodyEn: 'The verified badge now shows on your profile.' }
+    : { type: 'identity_rejected', link: '/pro', titleAr: 'صور الهوية محتاجة تتبعت تاني', titleEn: 'Please resubmit your ID photos', bodyAr: 'الصور مش واضحة أو مش مطابقة. ارفع صور البطاقة (وش وضهر) والسيلفي تاني من لوحة التحكم.', bodyEn: 'The photos were unclear or did not match. Upload the ID (front and back) and a selfie again from your dashboard.' });
+  return { idStatus: approve ? 'approved' : 'rejected' };
+}
+
+// ---- cash commission settlement + enforcement ----
+// Cash jobs: the technician holds the money, so the 6% commission is owed to FIX-IT. He settles
+// periodically (Vodafone Cash / InstaPay), the admin confirms receipt and the balance clears.
+// A technician whose oldest unsettled commission is older than OVERDUE_DAYS stops receiving new
+// requests until he settles. Off until COMMISSION_ACTIVE=1 (the launch period is commission-free).
+const OVERDUE_DAYS = 7;
+const commissionActive = () => process.env.COMMISSION_ACTIVE === '1';
+const collectionDetails = () => ({
+  vodafoneCash: process.env.SETTLEMENT_VODAFONE_CASH || '',
+  instapay: process.env.SETTLEMENT_INSTAPAY || '',
+});
+async function commissionStatusFor(tech) {
+  await init();
+  const mine = (await db.invoices.getAll()).filter((i) => i.technicianId === tech.id && i.status === 'paid' && !commissionCollected(i));
+  const outstanding = round2(mine.reduce((s, i) => s + commissionOf(i), 0));
+  const times = mine.map((i) => Date.parse(i.paidAt || i.createdAt)).filter(Number.isFinite).sort((a, b) => a - b);
+  const oldest = times.length ? new Date(times[0]).toISOString() : null;
+  const dueBy = oldest ? new Date(times[0] + OVERDUE_DAYS * 86400e3).toISOString() : null;
+  const active = commissionActive();
+  const overdue = active && !!dueBy && Date.parse(dueBy) <= Date.now();
+  return { active, rate: COMMISSION_RATE, overdueDays: OVERDUE_DAYS, outstanding, jobs: mine.length, oldest, dueBy, overdue, blocked: overdue, claim: tech.settlementClaim || null, collection: collectionDetails() };
+}
+async function isTechnicianBlocked(tech) { return (await commissionStatusFor(tech)).blocked; }
+
+async function submitSettlementClaim(tech, { method, reference }) {
+  await init();
+  if (!['vodafone-cash', 'instapay'].includes(method)) throw ApiError.badRequest('Choose Vodafone Cash or InstaPay');
+  const st = await commissionStatusFor(tech);
+  if (!st.outstanding) throw ApiError.badRequest('No outstanding commission');
+  const claim = { method, reference: String(reference || '').trim().slice(0, 80), amount: st.outstanding, at: new Date().toISOString() };
+  await db.technicians.update(tech.id, { settlementClaim: claim });
+  const admins = (await db.users.getAll()).filter((u) => u.role === 'admin');
+  for (const a of admins) {
+    await notify(a.id, { type: 'settlement_claim', link: '/admin', titleAr: 'فني بلّغ إنه سدّد العمولة', titleEn: 'A technician reports a commission settlement',
+      bodyAr: `${tech.name}: ${claim.amount} جنيه عن طريق ${method === 'instapay' ? 'انستاباي' : 'فودافون كاش'}. راجع الاستلام وأكّد.`, bodyEn: `${tech.name}: ${claim.amount} EGP via ${method}. Verify receipt and confirm.` });
+  }
+  return commissionStatusFor({ ...tech, settlementClaim: claim });
+}
+
+// Admin confirms the money arrived: every outstanding cash commission of this technician is cleared.
+async function adminSettleTechnician(techId) {
+  await init();
+  const tech = await findTechnicianById(techId);
+  if (!tech) throw ApiError.notFound('Technician not found');
+  const now = new Date().toISOString();
+  let n = 0;
+  for (const i of (await db.invoices.getAll()).filter((x) => x.technicianId === tech.id && x.status === 'paid' && !commissionCollected(x))) {
+    await db.invoices.update(i.id, { commissionPaid: true, commissionPaidAt: now }); n += 1;
+  }
+  await db.technicians.update(tech.id, { settlementClaim: null });
+  await notify(tech.userId, { type: 'settlement_confirmed', link: '/pro', titleAr: 'تم استلام السداد ✅', titleEn: 'Settlement received ✅',
+    bodyAr: 'شكراً، رصيدك اتصفّى وبتستقبل الطلبات عادي.', bodyEn: 'Thank you, your balance is cleared and you receive requests as usual.' });
+  return { cleared: n };
 }
 
 async function adminOverview() {
@@ -1043,7 +1144,8 @@ module.exports = {
   payInvoice, verifyInvoice, confirmInvoice, publicInvoice,
   startPaymobPayment, applyPaymobTransaction,
   notify, notificationsFor, markNotificationsRead,
-  listUsersAdmin, adminOverview, adminCommissions, COMMISSION_RATE,
+  cleanIdentity, saveIdentity, adminGetIdentity, adminDecideIdentity,
+  listUsersAdmin, adminOverview, adminCommissions, COMMISSION_RATE, commissionStatusFor, isTechnicianBlocked, submitSettlementClaim, adminSettleTechnician,
   adminListTechnicians, adminCreateTechnician, adminUpdateTechnician, adminDeleteTechnician,
   adminUpdateUser, adminDeleteUser, adminListBookings, adminSetBookingStatus, adminDeleteBooking,
   adminUpdateInvoice, adminDeleteInvoice,

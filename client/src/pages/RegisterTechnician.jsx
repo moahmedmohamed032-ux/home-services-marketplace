@@ -8,6 +8,7 @@ import useGeolocation from '../components/useGeolocation';
 import LocationError from '../components/LocationError';
 import { cityLabel } from '../i18n/translations';
 import { useT } from '../i18n/useT';
+import { resizeImage } from '../utils/image';
 import GoogleButton from '../components/GoogleButton';
 
 export default function RegisterTechnician() {
@@ -21,6 +22,14 @@ export default function RegisterTechnician() {
     yearsExperience: 1, hourlyRate: 100, bio: '', phonePublic: false, addressActive: true,
   });
   const [gTicket, setGTicket] = useState('');
+  const [ids, setIds] = useState({ idFront: '', idBack: '', idSelfie: '' });
+  const [idErr, setIdErr] = useState('');
+  const ar = lang === 'ar';
+  const pickId = (k) => async (e) => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try { setIds((cur) => ({ ...cur, [k]: '' })); const d = await resizeImage(f, 1100, 0.7); setIds((cur) => ({ ...cur, [k]: d })); setIdErr(''); } catch { setIdErr(ar ? 'الصورة غير صالحة، جرّب صورة تانية' : 'Invalid image, try another one'); }
+  };
   const band = professions.find((p) => p.id === form.profession);
   const [pos, setPos] = useState(null);
   const [locate, locating, geoError, retryLocate] = useGeolocation();
@@ -30,7 +39,8 @@ export default function RegisterTechnician() {
 
   const submit = async (e) => {
     e.preventDefault();
-    const res = await dispatch(register({ ...form, role: 'technician', ...(gTicket ? { googleTicket: gTicket } : {}), ...(pos || {}) }));
+    if (!ids.idFront || !ids.idBack || !ids.idSelfie) { setIdErr(ar ? 'لازم ترفع صورة البطاقة (وش وضهر) وسيلفي' : 'ID front, ID back and a selfie are required'); return; }
+    const res = await dispatch(register({ ...form, ...ids, role: 'technician', ...(gTicket ? { googleTicket: gTicket } : {}), ...(pos || {}) }));
     if (register.fulfilled.match(res)) navigate('/pro', { replace: true });
   };
 
@@ -77,6 +87,14 @@ export default function RegisterTechnician() {
         <label>{t('bio')}<textarea rows="3" value={form.bio} onChange={set('bio')} /></label>
         <label className="check"><input type="checkbox" checked={form.addressActive} onChange={check('addressActive')} /> {t('activateAddress')}</label>
         <label className="check"><input type="checkbox" checked={form.phonePublic} onChange={check('phonePublic')} /> <span>{t('phonePublicLabel')}<br /><small className="muted">{t('phonePublicHelp')}</small></span></label>
+        <fieldset className="card id-box">
+          <legend>🪪 {ar ? 'توثيق الهوية (إجباري)' : 'Identity verification (required)'}</legend>
+          <p className="muted"><small>{ar ? 'بنطلب صورة البطاقة وش وضهر + سيلفي. الصور بتتشاف من إدارة FIX-IT بس، ومش بتظهر للعملاء ولا لأي حد، وبنستخدمها للتأكد من هويتك بس.' : 'We ask for the national ID (front and back) and a selfie. Only the FIX-IT admin can see them. They are never shown to customers or the public and are used only to verify who you are.'} <Link to="/privacy">{ar ? 'سياسة الخصوصية' : 'Privacy notice'}</Link></small></p>
+          {[['idFront', ar ? 'البطاقة - الوش' : 'National ID - front'], ['idBack', ar ? 'البطاقة - الضهر' : 'National ID - back'], ['idSelfie', ar ? 'سيلفي' : 'Selfie']].map(([k, label]) => (
+            <label key={k}>{label} {ids[k] ? '✅' : ''}<input type="file" accept="image/*" capture={k === 'idSelfie' ? 'user' : undefined} onChange={pickId(k)} /></label>
+          ))}
+          {idErr && <p className="error">{idErr}</p>}
+        </fieldset>
         {error && <p className="error">{error}</p>}
         <button className="btn btn-accent" disabled={status === 'loading'}>{t('createTech')}</button>
       </form>

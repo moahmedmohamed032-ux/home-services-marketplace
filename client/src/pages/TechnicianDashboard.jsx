@@ -12,7 +12,13 @@ import { useT } from '../i18n/useT';
 
 export default function TechnicianDashboard() {
   const dispatch = useDispatch();
-  const { t } = useT();
+  const { t, lang } = useT();
+  const ar = lang === 'ar';
+  const [comm, setComm] = useState(null);
+  const [claimForm, setClaimForm] = useState({ method: 'vodafone-cash', reference: '' });
+  const [idForm, setIdForm] = useState({ idFront: '', idBack: '', idSelfie: '' });
+  const [idMsg, setIdMsg] = useState('');
+  const loadComm = () => api.get('/technicians/me/commission').then((r) => setComm(r.data.commission || r.data)).catch(() => {});
   const user = useSelector((s) => s.auth.user);
   const incoming = useSelector((s) => s.bookings.incoming);
   const [tech, setTech] = useState(null);
@@ -27,9 +33,21 @@ export default function TechnicianDashboard() {
   useEffect(() => {
     dispatch(fetchIncomingBookings());
     api.get('/technicians/me').then((r) => setTech(r.data.technician));
-    loadPayments();
+    loadPayments(); loadComm();
   }, [dispatch]);
 
+  const pickIdImg = (k) => async (e) => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try { const d = await resizeImage(f, 1100, 0.7); setIdForm((c) => ({ ...c, [k]: d })); setIdMsg(''); } catch { setIdMsg(ar ? 'الصورة غير صالحة' : 'Invalid image'); }
+  };
+  const sendIdentity = async () => {
+    if (!idForm.idFront || !idForm.idBack || !idForm.idSelfie) { setIdMsg(ar ? 'لازم الثلاث صور: وش وضهر وسيلفي' : 'All three photos are required'); return; }
+    try { await api.post('/technicians/me/identity', idForm); setTech((c) => ({ ...c, idStatus: 'submitted' })); setIdForm({ idFront: '', idBack: '', idSelfie: '' }); setIdMsg(''); } catch { setIdMsg(ar ? 'حصلت مشكلة في الرفع، جرّب تاني' : 'Upload failed, try again'); }
+  };
+  const sendClaim = async () => {
+    try { await api.post('/technicians/me/settlement', claimForm); setClaimForm({ ...claimForm, reference: '' }); loadComm(); } catch (e) { setIdMsg(''); alert(e.response?.data?.message || (ar ? 'حصلت مشكلة' : 'Something went wrong')); }
+  };
   const confirmCash = async (id) => { await api.post(`/invoices/${id}/confirm`); loadPayments(); };
   const payStatusKey = { paid: 'paidLabel', unpaid: 'unpaidLabel', pending_verification: 'pendingVerification', pending_cash: 'pendingCash', pending_online: 'pendingOnline' };
 
@@ -76,6 +94,32 @@ export default function TechnicianDashboard() {
           {tech.addressActive ? t('addressActive') : t('addressInactive')}
         </span>
       </section>
+      {tech.idStatus && !['submitted', 'approved'].includes(tech.idStatus) && (
+        <section className="card id-box">
+          <h3>🪪 {tech.idStatus === 'rejected' ? (ar ? 'ارفع صور الهوية تاني' : 'Please resubmit your ID photos') : (ar ? 'وثّق هويتك عشان تاخد شارة "موثّق"' : 'Verify your identity to get the verified badge')}</h3>
+          <p className="muted"><small>{ar ? 'صورة البطاقة وش وضهر + سيلفي. بتتشاف من إدارة FIX-IT بس ومش بتظهر لأي عميل.' : 'National ID front and back plus a selfie. Only the FIX-IT admin sees them; never customers.'}</small></p>
+          {[['idFront', ar ? 'البطاقة - الوش' : 'ID front'], ['idBack', ar ? 'البطاقة - الضهر' : 'ID back'], ['idSelfie', ar ? 'سيلفي' : 'Selfie']].map(([k, label]) => (
+            <label key={k}>{label} {idForm[k] ? '✅' : ''}<input type="file" accept="image/*" capture={k === 'idSelfie' ? 'user' : undefined} onChange={pickIdImg(k)} /></label>
+          ))}
+          {idMsg && <p className="error">{idMsg}</p>}
+          <button className="btn btn-primary" onClick={sendIdentity}>{ar ? 'ارفع للمراجعة' : 'Submit for review'}</button>
+        </section>
+      )}
+      {tech.idStatus === 'submitted' && <p className="notice">🪪 {ar ? 'صور الهوية اتبعتت وبتتراجع.' : 'Your ID photos were submitted and are under review.'}</p>}
+      {comm && comm.active && (comm.outstanding > 0 || comm.blocked) && (
+        <section className={`card ${comm.blocked ? 'notice' : ''}`}>
+          <h3>💰 {ar ? 'عمولة المنصة المستحقة' : 'Platform commission due'}: {comm.outstanding} EGP</h3>
+          <p className="muted"><small>{ar ? `عمولة ${Math.round(comm.rate * 100)}% على كل شغل اتدفع كاش. سدّدها خلال ${comm.overdueDays} أيام من أقدم شغلانة.` : `${Math.round(comm.rate * 100)}% on every cash job. Settle within ${comm.overdueDays} days of the oldest one.`} {comm.dueBy ? (ar ? 'آخر موعد: ' : 'Due by: ') + new Date(comm.dueBy).toLocaleDateString(ar ? 'ar-EG' : 'en-GB') : ''}</small></p>
+          {comm.blocked && <p className="error">{ar ? 'مؤقتًا مش بتستقبل طلبات جديدة لحد ما تسدّد العمولة ونأكد الاستلام.' : 'You are not receiving new requests until the commission is settled and confirmed.'}</p>}
+          <p>{ar ? 'التحويل على: ' : 'Send to: '}{(comm.collection && (comm.collection.vodafoneCash || comm.collection.instapay)) ? <>{comm.collection.vodafoneCash && <span dir="ltr">Vodafone Cash {comm.collection.vodafoneCash} </span>}{comm.collection.instapay && <span dir="ltr">InstaPay {comm.collection.instapay}</span>}</> : (ar ? 'هيتم الإعلان عن رقم التحويل قريبًا' : 'collection details will be announced soon')}</p>
+          {comm.claim ? <p className="muted">⏳ {ar ? `بلّغت بتحويل ${comm.claim.amount} جنيه، في انتظار تأكيد الإدارة.` : `You reported ${comm.claim.amount} EGP, waiting for admin confirmation.`}</p> : (
+            <div className="row">
+              <select value={claimForm.method} onChange={(e) => setClaimForm({ ...claimForm, method: e.target.value })}><option value="vodafone-cash">Vodafone Cash</option><option value="instapay">InstaPay</option></select>
+              <input placeholder={ar ? 'رقم العملية / المرجع' : 'Transfer reference'} value={claimForm.reference} onChange={(e) => setClaimForm({ ...claimForm, reference: e.target.value })} />
+              <button className="btn btn-primary btn-sm" onClick={sendClaim}>{ar ? 'أنا دفعت' : 'I paid'}</button>
+            </div>)}
+        </section>
+      )}
       <div className="grid stat-grid">
         <div className="card stat"><strong>{count((b) => b.status === 'pending')}</strong><span>{t('pending')}</span></div>
         <div className="card stat"><strong>{count((b) => b.status === 'accepted')}</strong><span>{t('accepted')}</span></div>

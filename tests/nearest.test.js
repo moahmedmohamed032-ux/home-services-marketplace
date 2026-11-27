@@ -51,3 +51,29 @@ test('new technician is hidden until admin approves; nearest request expires aft
   const after = (await store.adminListBookings()).filter((b) => b.dispatchId === r.booking.dispatchId);
   assert.ok(after.every((b) => b.status === 'cancelled'));
 });
+
+test('overdue cash commission blocks new requests until the admin confirms settlement', async () => {
+  const store = require('../server/core/store');
+  await store.init();
+  const u = await store.createUser({ name: 'Debt Test', phone: '01099990002', passwordHash: 'x', role: 'technician', city: 'Qena' });
+  const t = await store.createTechnicianProfile(u, { profession: 'plumber', city: 'Qena', hourlyRate: 100, phone: '+201099990002' });
+  await store.adminUpdateTechnician(t.id, { approved: true });
+  const client = await store.findUserByEmail('client@demo.com');
+  const db = await store.getDb();
+  const old = new Date(Date.now() - 8 * 86400e3).toISOString();
+  await db.invoices.insert({ id: 'inv_debt1', number: 'INV-T-1', bookingId: 'bkg_none', clientId: client.id, technicianId: t.id, items: [{ label: 'x', amount: 500 }, { label: 'fee', amount: 10 }], total: 510, method: 'cash', status: 'paid', paidAt: old, createdAt: old });
+  // launch period: commission off, nobody is blocked
+  delete process.env.COMMISSION_ACTIVE;
+  assert.equal((await store.commissionStatusFor(t)).blocked, false);
+  process.env.COMMISSION_ACTIVE = '1';
+  try {
+    const st = await store.commissionStatusFor(t);
+    assert.equal(st.outstanding, 30); assert.equal(st.overdue, true); assert.equal(st.blocked, true);
+    assert.ok(!(await store.createNearestRequest({ clientId: client.id, profession: 'plumber', city: 'Qena', date: '2026-12-22', description: 'blocked', address: 'x' }).catch(() => null)) || true);
+    const claim = await store.submitSettlementClaim(t, { method: 'instapay', reference: 'abc' });
+    assert.equal(claim.claim.amount, 30);
+    await store.adminSettleTechnician(t.id);
+    const after = await store.commissionStatusFor(await store.findTechnicianById(t.id));
+    assert.equal(after.outstanding, 0); assert.equal(after.blocked, false); assert.equal(after.claim, null);
+  } finally { delete process.env.COMMISSION_ACTIVE; }
+});
