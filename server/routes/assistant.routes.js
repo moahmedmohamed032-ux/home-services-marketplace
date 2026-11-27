@@ -141,7 +141,10 @@ router.post('/', async (req, res) => {
     return res.json({ answer: followUp ? `هشرحها تاني ببساطة:\n${base}\n\nأي جزء فيها مش واضح؟` : base, source: 'kb' });
   }
   if (/OUT_OF_SCOPE/.test(out)) return general();
-  res.json({ answer: out, source: 'ai' });
+  // Payment or commission topics always carry the cash-only status, even if the model leaves it out.
+  const payTopic = ctx.some((c) => ['payment', 'commission', 'commission_cycle', 'settlement', 'cashflow', 'techpay', 'pricing'].includes(c.id));
+  const answer = payTopic && !/كاش/.test(out) ? `${out}\n\nملحوظة: الدفع الإلكتروني لسه مش شغال، وكل الدفع دلوقتي كاش.` : out;
+  res.json({ answer, source: 'ai' });
 });
 
 module.exports = router;

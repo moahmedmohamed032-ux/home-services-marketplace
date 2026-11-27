@@ -58,3 +58,12 @@ test('cycle questions are covered by the knowledge base', () => {
   assert.ok(retrieve('ايه مراحل الطلب من البداية للنهاية؟').some((e) => e.id === 'cycle'));
   assert.ok(retrieve('اقرب فني بيوصل لمين؟').some((e) => e.id === 'request_nearest'));
 });
+test('commission and payment answers state the details and that online payment is not live', async () => {
+  const c = await (await ask('العمولة كام؟')).json();
+  assert.match(c.answer, /6%/);
+  assert.match(c.answer, /7 أيام/);
+  assert.match(c.answer, /لسه مش (شغال|مفعّل)/);
+  const p = await (await ask('الدفع بيتم ازاي؟')).json();
+  assert.match(p.answer, /كاش/);
+  assert.match(p.answer, /الدفع الإلكتروني/);
+});
