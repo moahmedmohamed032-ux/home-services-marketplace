@@ -33,6 +33,7 @@ export default function Login() {
         <label>{t('loginId')}<input required dir="ltr" autoComplete="username" value={form.identifier} onChange={(e) => setForm({ ...form, identifier: e.target.value })} /></label>
         <label>{t('password')}<PasswordInput  required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></label>
         {error && <p className="error">{error}</p>}
+        {error && <p className="muted">{t('googleHint')}</p>}
         <button className="btn btn-primary" disabled={status === 'loading'}>{t('login')}</button>
       </form>
       <p className="muted">{t('noAccount')} <Link to="/register/client">{t('joinClient')}</Link> · <Link to="/register/technician">{t('joinTech')}</Link></p>
