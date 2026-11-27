@@ -63,6 +63,25 @@ function Carousel({ photos, id, alt }) {
 
 const waLink = (num, text) => `https://wa.me/20${String(num).replace(/^0/, '')}?text=${encodeURIComponent(text)}`;
 
+const DAYS = [['sat', 'السبت'], ['sun', 'الأحد'], ['mon', 'الاثنين'], ['tue', 'الثلاثاء'], ['wed', 'الأربعاء'], ['thu', 'الخميس'], ['fri', 'الجمعة']];
+const YN = { yes: 'نعم', no: 'لا' };
+const FAQ_Q = { emergency: 'بتستقبل حالات طوارئ؟', advanceBooking: 'لازم حجز مسبق؟', femaleDoctor: 'فيه طبيبة سيدات؟' };
+const dayText = (v) => (v.mode === 'open' ? `${v.from} - ${v.to}` : v.mode === 'closed' ? 'مقفول' : 'بالحجز');
+
+function ProfileFacts({ c }) {
+  const sch = c.schedule || {}; const ins = c.insurance || {}; const faq = c.faq || {};
+  const days = DAYS.filter(([k]) => sch[k]);
+  return (
+    <>
+      {days.length > 0 && <table className="small mb-2"><tbody>{days.map(([k, ar]) => <tr key={k}><td className="pe-3">{ar}</td><td>{dayText(sch[k])}</td></tr>)}</tbody></table>}
+      {ins.accepted && <p className="small mb-1">🏥 تأمين: {YN[ins.accepted]}{ins.accepted === 'yes' && ins.names ? ` (${ins.names})` : ''}</p>}
+      {c.otherServices && <p className="small mb-1">خدمات أخرى: {c.otherServices}</p>}
+      {Object.keys(faq).length > 0 && <ul className="list-unstyled small mb-2">{Object.entries(faq).map(([k, v]) => <li key={k}>{FAQ_Q[k]} <strong>{YN[v]}</strong></li>)}</ul>}
+      {c.mapUrl && <p className="small mb-1"><a href={c.mapUrl} target="_blank" rel="noopener noreferrer nofollow">📍 الموقع على الخريطة</a></p>}
+    </>
+  );
+}
+
 function ClinicCard({ c, procedures }) {
   const names = Object.fromEntries(procedures.map((p) => [p.id, p.nameAr]));
   const prices = Object.entries(c.prices || {});
@@ -74,6 +93,7 @@ function ClinicCard({ c, procedures }) {
           <h3 className="card-title h5">{c.name} {c.verified && <span className="badge text-bg-success" title="تم التحقق من العيادة تليفونيًا">✔ موثقة</span>}</h3>
           <p className="card-text text-muted small mb-2"><span className="badge text-bg-primary">{c.cityAr}</span> {c.address}</p>
           {c.hours && <p className="small mb-2">🕒 {c.hours}</p>}
+          {c.mapUrl && <p className="small mb-2"><a href={c.mapUrl} target="_blank" rel="noopener noreferrer nofollow">📍 الموقع على الخريطة</a></p>}
           {prices.length > 0 && (
             <ul className="list-unstyled small mb-2">
               {prices.map(([k, v]) => <li key={k}>{names[k] || k}: <span className="dental-price">{fmt(v)} ج</span></li>)}
@@ -111,7 +131,7 @@ function ProcedureCards({ procedures }) {
             <div className="card-body">
               <div style={{ fontSize: '2rem' }}>{p.icon}</div>
               <h3 className="card-title h6">{p.nameAr}</h3>
-              <p className="dental-price mb-1">{fmt(p.min)} - {fmt(p.max)} ج</p>
+              <p className="dental-price mb-1">{p.min == null ? 'لا يوجد سعر منشور موثق' : `${fmt(p.min)} - ${fmt(p.max)} ج`}</p>
               <p className="small text-muted mb-2">تحديث: {p.checkedAt}</p>
               <Link to={`/dental/${p.slug}`} className="stretched-link small">التفاصيل والمصادر ←</Link>
             </div>
@@ -170,10 +190,10 @@ export function DentalHome() {
   const procName = proc ? proc.nameAr : null;
   const title = proc ? `سعر ${procName} في مصر وفي الأقصر 2026 | FIX-IT`
     : cityAr ? `دكتور أسنان في ${cityAr} وأسعار الكشف والعلاج | FIX-IT` : 'أسعار علاج الأسنان في الأقصر وإسنا وقنا وأرمنت | دليل أسنان FIX-IT';
-  const desc = proc ? `أسعار ${procName} المنشورة في مصر: من ${fmt(proc.min)} إلى ${fmt(proc.max)} جنيه، مع المصادر وتاريخ المراجعة.`
-    : cityAr ? `دليل عيادات الأسنان في ${cityAr} مع أسعار الكشف والحشو والتنظيف والعلاج. اطلب موعد من عيادة معتمدة.` : 'دليل أسعار الأسنان: كشف، تنظيف جير، حشو، علاج عصب، خلع، تلبيس وتبييض، مع عيادات الأسنان في الأقصر وإسنا وقنا وأرمنت.';
+  const desc = proc ? (proc.min == null ? `${procName}: لا يوجد سعر منشور موثق حاليًا. اطلب موعد من عيادة معتمدة.` : `أسعار ${procName} المنشورة في مصر: من ${fmt(proc.min)} إلى ${fmt(proc.max)} جنيه، مع المصادر وتاريخ المراجعة.`)
+    : cityAr ? `دليل عيادات الأسنان في ${cityAr}. اطلب موعد من عيادة معتمدة.` : 'دليل أسعار الأسنان: تنظيف جير، حشو، علاج عصب، خلع، تلبيس وتبييض، مع عيادات الأسنان في الأقصر وإسنا وقنا وأرمنت.';
   const path = proc ? `/dental/${slug}` : cityEn ? `/dental/${slug}` : '/dental';
-  const faq = proc ? [[`كم سعر ${procName} في مصر؟`, `أقل رقم منشور في المصادر ${fmt(proc.min)} جنيه وأعلى رقم ${fmt(proc.max)} جنيه (المصادر مذكورة في الصفحة).`]] : null;
+  const faq = proc && proc.min != null ? [[`كم سعر ${procName} في مصر؟`, `أقل رقم منشور في المصادر ${fmt(proc.min)} جنيه وأعلى رقم ${fmt(proc.max)} جنيه (المصادر مذكورة في الصفحة).`]] : null;
   useSeo({ title, desc, path, ld: faq ? { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) } : null });
   if (on === false) return <ComingSoon />;
   if (slug && !cityEn && d.procedures.length && !proc) return <Navigate to="/dental" replace />;
@@ -185,7 +205,7 @@ export function DentalHome() {
       {d.error && <div className="alert alert-danger">{d.error}</div>}
       {proc ? (
         <div className="card mb-3"><div className="card-body">
-          <p className="dental-price fs-4 mb-1">{fmt(proc.min)} - {fmt(proc.max)} جنيه</p>
+          <p className="dental-price fs-4 mb-1">{proc.min == null ? 'لا يوجد سعر منشور موثق لهذا الإجراء حاليًا' : `${fmt(proc.min)} - ${fmt(proc.max)} جنيه`}</p>
           {proc.descAr && <p>{proc.descAr}</p>}
           <h2 className="h6">المصادر (أسعار منشورة)</h2>
           <ul className="small">{proc.sources.map((s) => <li key={s.name}>{s.url ? <a href={s.url} target="_blank" rel="noopener noreferrer nofollow">{s.name}</a> : s.name}</li>)}</ul>
@@ -238,6 +258,7 @@ export function ClinicPage() {
               <h1 className="h4">{c.name} {c.verified && <span className="badge text-bg-success">✔ موثقة</span>}</h1>
               <p className="mb-1"><span className="badge text-bg-primary">{c.cityAr}</span> {c.address}</p>
               {c.hours && <p className="small mb-1">🕒 {c.hours}</p>}
+              <ProfileFacts c={c} />
               {c.about && <p className="small">{c.about}</p>}
               {Object.keys(c.prices || {}).length > 0 && <table><tbody>{Object.entries(c.prices).map(([k, v]) => <tr key={k}><td>{names[k] || k}</td><td className="dental-price">{fmt(v)} ج</td></tr>)}</tbody></table>}
               <div className="d-flex gap-2 mt-3">
@@ -274,7 +295,7 @@ export function ClinicPage() {
 
 export function ClinicRegister() {
   const [procs, setProcs] = useState([]);
-  const [f, setF] = useState({ name: '', contactName: '', city: '', address: '', phone: '', whatsapp: '', email: '', hours: '', about: '', services: [], prices: {}, photos: [], photoConsent: false, confirmOwner: false });
+  const [f, setF] = useState({ name: '', contactName: '', city: '', address: '', phone: '', whatsapp: '', email: '', about: '', schedule: {}, insAccepted: '', insNames: '', mapUrl: '', otherServices: '', faq: {}, services: [], prices: {}, photos: [], photoConsent: false, confirmOwner: false });
   const [err, setErr] = useState(''); const [done, setDone] = useState(false); const [busy, setBusy] = useState(false);
   useSeo({ title: 'سجّل عيادة أسنان | FIX-IT', desc: 'دكتور أسنان في الأقصر أو إسنا أو قنا أو أرمنت؟ سجّل عيادتك مجانًا وهتظهر للمرضى بعد المراجعة.', path: '/dental/register' });
   useEffect(() => { api.get('/dental/register-options').then((r) => setProcs(r.data.procedures)); }, []);
@@ -288,35 +309,56 @@ export function ClinicRegister() {
   };
   const submit = async (e) => {
     e.preventDefault(); setErr(''); setBusy(true);
-    try { await api.post('/dental/clinics', f); setDone(true); window.scrollTo(0, 0); } catch (x) { setErr(errorMessage(x)); } finally { setBusy(false); }
+    try { const { insAccepted, insNames, ...rest } = f; await api.post('/dental/clinics', { ...rest, insurance: { accepted: insAccepted, names: insNames } }); setDone(true); window.scrollTo(0, 0); } catch (x) { setErr(errorMessage(x)); } finally { setBusy(false); }
   };
   if (done) return <div className="bs py-3"><div className="alert alert-success"><h1 className="h5">وصلنا طلب التسجيل ✅</h1><p className="mb-0">هنراجع بيانات العيادة ونتصل بيك للتأكيد، وبعدها بتظهر في الدليل. <Link to="/">الرئيسية</Link></p></div></div>;
   return (
     <div className="bs py-3">
       <h1>سجّل عيادة الأسنان</h1>
       <p className="text-muted">مجاني، مفيش عمولة. كل عيادة بتتراجع قبل ما تظهر.</p>
-      <form onSubmit={submit} className="card"><div className="card-body">
+      <form onSubmit={submit} className="card reg-form"><div className="card-body">
+        <fieldset className="reg-section"><legend>بيانات العيادة</legend>
         <div className="row g-3">
           <div className="col-md-6"><label className="form-label">اسم العيادة<input className="form-control" required value={f.name} onChange={set('name')} /></label></div>
           <div className="col-md-6"><label className="form-label">اسم المسؤول<input className="form-control" required value={f.contactName} onChange={set('contactName')} /></label></div>
           <div className="col-md-6"><label className="form-label">المدينة<select className="form-select" required value={f.city} onChange={set('city')}><option value="">اختر</option>{Object.entries(CITY_AR).map(([en, ar]) => <option key={en} value={en}>{ar}</option>)}</select></label></div>
           <div className="col-md-6"><label className="form-label">العنوان<input className="form-control" required value={f.address} onChange={set('address')} /></label></div>
+        </div></fieldset>
+        <fieldset className="reg-section"><legend>التواصل</legend>
+        <div className="row g-3">
           <div className="col-md-6"><label className="form-label">تليفون العيادة<input className="form-control" required dir="ltr" type="tel" value={f.phone} onChange={set('phone')} /></label></div>
           <div className="col-md-6"><label className="form-label">واتساب (اختياري)<input className="form-control" dir="ltr" type="tel" value={f.whatsapp} onChange={set('whatsapp')} /></label></div>
           <div className="col-md-6"><label className="form-label">إيميل (اختياري، مش بيظهر للعامة)<input className="form-control" dir="ltr" type="email" value={f.email} onChange={set('email')} /></label></div>
-          <div className="col-md-6"><label className="form-label">مواعيد العمل<input className="form-control" placeholder="اكتب مواعيد العمل" value={f.hours} onChange={set('hours')} /></label></div>
+          <div className="col-12"><label className="form-label">رابط موقع العيادة على خرائط جوجل (اختياري)<input className="form-control" dir="ltr" type="url" placeholder="https://maps.app.goo.gl/..." value={f.mapUrl} onChange={set('mapUrl')} /></label><div className="form-text">افتح العيادة في Google Maps واضغط "مشاركة" وانسخ الرابط.</div></div>
           <div className="col-12"><label className="form-label">نبذة عن العيادة<textarea className="form-control" rows={2} maxLength={600} value={f.about} onChange={set('about')} /></label></div>
-        </div>
-        <h2 className="h6 mt-4">الخدمات وأسعارك (اختياري)</h2>
+        </div></fieldset>
+        <h2 className="reg-title">الخدمات وأسعارك (اختياري)</h2>
         <p className="small text-muted">اكتب سعرك الفعلي. لازم يكون قريب من نطاق السوق.</p>
         {procs.map((p) => (
           <div className="d-flex align-items-center gap-2 mb-2" key={p.id}>
             <input type="checkbox" className="form-check-input" checked={f.services.includes(p.id)} onChange={() => toggle(p.id)} id={`s-${p.id}`} />
-            <label htmlFor={`s-${p.id}`} className="flex-grow-1 mb-0">{p.nameAr} <span className="small text-muted">({fmt(p.min)}-{fmt(p.max)})</span></label>
-            <input className="form-control" style={{ width: 110 }} type="number" min="0" placeholder="سعرك" dir="ltr" value={f.prices[p.id] || ''} onChange={(e) => setF({ ...f, prices: { ...f.prices, [p.id]: e.target.value }, services: e.target.value && !f.services.includes(p.id) ? [...f.services, p.id] : f.services })} />
+            <label htmlFor={`s-${p.id}`} className="flex-grow-1 mb-0">{p.nameAr} {p.min != null && <span className="small text-muted">({fmt(p.min)}-{fmt(p.max)})</span>}</label>
+            <input className="form-control" style={{ width: 120 }} inputMode="numeric" type="number" min="0" placeholder="سعرك" dir="ltr" value={f.prices[p.id] || ''} onChange={(e) => setF({ ...f, prices: { ...f.prices, [p.id]: e.target.value }, services: e.target.value && !f.services.includes(p.id) ? [...f.services, p.id] : f.services })} />
           </div>
         ))}
-        <h2 className="h6 mt-4">صور العيادة (اختياري، حتى 5)</h2>
+        <h2 className="reg-title">أيام وساعات العمل (اختياري، سيب اليوم فاضي لو مش عايز تكتبه)</h2>
+        {DAYS.map(([k, ar]) => { const v = f.schedule[k] || {}; const upd = (x) => setF({ ...f, schedule: { ...f.schedule, [k]: x } });
+          return (
+            <div className="d-flex flex-wrap align-items-center gap-2 mb-2" key={k}>
+              <span style={{ width: 80 }}>{ar}</span>
+              <select className="form-select" style={{ width: 130 }} value={v.mode || ''} onChange={(e) => upd(e.target.value ? { ...v, mode: e.target.value } : undefined)}><option value="">غير محدد</option><option value="open">مفتوح</option><option value="closed">مقفول</option><option value="appointment">بالحجز فقط</option></select>
+              {v.mode === 'open' && <><input className="form-control" style={{ width: 120 }} type="time" required dir="ltr" value={v.from || ''} onChange={(e) => upd({ ...v, from: e.target.value })} aria-label={`${ar} من`} /><span>إلى</span><input className="form-control" style={{ width: 120 }} type="time" required dir="ltr" value={v.to || ''} onChange={(e) => upd({ ...v, to: e.target.value })} aria-label={`${ar} إلى`} /></>}
+            </div>
+          ); })}
+        <h2 className="reg-title">التأمين (اختياري)</h2>
+        <div className="d-flex flex-wrap gap-2 align-items-center">
+          <select className="form-select" style={{ width: 160 }} value={f.insAccepted} onChange={set('insAccepted')}><option value="">غير محدد</option><option value="yes">بنقبل تأمين</option><option value="no">مفيش تأمين</option></select>
+          {f.insAccepted === 'yes' && <input className="form-control" style={{ maxWidth: 360 }} maxLength={200} placeholder="أسماء شركات التأمين" value={f.insNames} onChange={set('insNames')} />}
+        </div>
+        <h2 className="reg-title">معلومات يسأل عنها المرضى (اختياري)</h2>
+        {Object.entries(FAQ_Q).map(([k, q]) => <div className="d-flex align-items-center gap-2 mb-2" key={k}><span className="flex-grow-1">{q}</span><select className="form-select" style={{ width: 130 }} value={f.faq[k] || ''} onChange={(e) => setF({ ...f, faq: { ...f.faq, [k]: e.target.value } })}><option value="">غير محدد</option><option value="yes">نعم</option><option value="no">لا</option></select></div>)}
+        <div className="mt-3"><label className="form-label">خدمات أخرى (اختياري)<input className="form-control" maxLength={200} value={f.otherServices} onChange={set('otherServices')} /></label></div>
+        <h2 className="reg-title">صور العيادة (اختياري، حتى 5)</h2>
         <input type="file" accept="image/*" multiple className="form-control" onChange={addPhotos} disabled={f.photos.length >= 5} />
         {f.photos.length > 0 && <div className="d-flex gap-2 flex-wrap mt-2">{f.photos.map((p, k) => <div key={k}><img src={p} alt="" style={{ width: 90, height: 70, objectFit: 'cover', borderRadius: 8 }} /><br /><button type="button" className="btn btn-sm btn-outline-danger mt-1" onClick={() => setF({ ...f, photos: f.photos.filter((_, j) => j !== k) })}>حذف</button></div>)}</div>}
         {f.photos.length > 0 && <div className="form-check mt-2"><input id="pc" type="checkbox" className="form-check-input" checked={f.photoConsent} onChange={set('photoConsent')} /><label htmlFor="pc" className="form-check-label small">الصور دي بتاعتي وموافق إنها تتعرض على FIX-IT.</label></div>}

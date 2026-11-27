@@ -58,12 +58,20 @@ const Clinic = mongoose.model('Clinic', new mongoose.Schema({
   lat: Number, lng: Number, about: String, hours: String, services: [String],
   prices: { type: mongoose.Schema.Types.Mixed, default: {} },
   photos: [String], origin: String, sources: [String], notes: String, invited: Boolean,
+  schedule: { type: mongoose.Schema.Types.Mixed, default: {} }, insurance: { type: mongoose.Schema.Types.Mixed, default: {} },
+  faq: { type: mongoose.Schema.Types.Mixed, default: {} }, mapUrl: String, otherServices: String,
   approved: Boolean, verified: Boolean, removed: Boolean, createdAt: String, updatedAt: String,
 }, opts));
 const Procedure = mongoose.model('Procedure', new mongoose.Schema({
   id: { type: String, unique: true, index: true },
   slug: String, nameAr: String, descAr: String, icon: String, min: Number, max: Number, order: Number,
   sources: [{ _id: false, name: String, url: String, note: String }], checkedAt: String,
+}, opts));
+const Provider = mongoose.model('Provider', new mongoose.Schema({
+  id: { type: String, unique: true, index: true },
+  kind: { type: String, index: true }, name: String, specialty: String, specialtyKey: { type: String, index: true }, city: { type: String, index: true },
+  address: String, phone: String, whatsapp: String, website: String, sources: [String], notes: String, registryNo: String, origin: String,
+  approved: { type: Boolean, index: true }, removed: Boolean, createdAt: String, updatedAt: String,
 }, opts));
 const Appointment = mongoose.model('Appointment', new mongoose.Schema({
   id: { type: String, unique: true, index: true },
@@ -73,7 +81,7 @@ const Appointment = mongoose.model('Appointment', new mongoose.Schema({
 
 const Counter = mongoose.model('Counter', new mongoose.Schema({ _id: String, value: Number }, opts));
 
-const MODELS = { users: User, technicians: Technician, bookings: Booking, invoices: Invoice, notifications: Notification, clinics: Clinic, procedures: Procedure, appointments: Appointment };
+const MODELS = { users: User, technicians: Technician, bookings: Booking, invoices: Invoice, notifications: Notification, clinics: Clinic, procedures: Procedure, appointments: Appointment, providers: Provider };
 
 const strip = (doc) => {
   if (!doc) return null;
@@ -129,4 +137,5 @@ module.exports = {
   clinics: table(MODELS.clinics),
   procedures: table(MODELS.procedures),
   appointments: table(MODELS.appointments),
+  providers: { ...table(MODELS.providers), insertMany: async (rows) => { await Provider.insertMany(rows, { ordered: false }); } },
 };

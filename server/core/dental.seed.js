@@ -25,12 +25,12 @@ const S = {
 const src = (name, url, note) => ({ name, url, note });
 
 const PROCEDURES = [
-  { id: 'checkup', slug: 'checkup', nameAr: 'كشف أسنان', icon: '🦷', min: 100, max: 200, order: 1,
+  { id: 'checkup', slug: 'checkup', nameAr: 'كشف أسنان', icon: '🦷', min: null, max: null, order: 1,
     descAr: '',
-    sources: [src('كشف في الأقصر 200 ج (Medikawi، حسب قائمة التواصل، الرابط غير محفوظ)', ''), src('متوسط كشف في قنا حوالي 100 ج (Okshif، حسب قائمة التواصل، الرابط غير محفوظ)', '')] },
-  { id: 'cleaning', slug: 'cleaning', nameAr: 'تنظيف الأسنان وإزالة الجير', icon: '✨', min: 300, max: 3000, order: 2,
+    sources: [] },
+  { id: 'cleaning', slug: 'cleaning', nameAr: 'تنظيف الأسنان وإزالة الجير', icon: '✨', min: 400, max: 3000, order: 2,
     descAr: '',
-    sources: [src('عرض تنظيف جير في أرمنت 300 ج (عيادة، حسب قائمة التواصل، الرابط غير محفوظ)', ''), src('عيادة د. محمد فهمي: من 400 ج', S.fahmy), src('أمان: من 700 ج', S.amanClean), src('Guarantee Dental: من 750 ج', S.guarantee), src('Professors: 1,000-3,000 ج', S.profClean)] },
+    sources: [src('عيادة د. محمد فهمي: من 400 ج', S.fahmy), src('أمان: من 700 ج', S.amanClean), src('Guarantee Dental: من 750 ج', S.guarantee), src('Professors: 1,000-3,000 ج', S.profClean)] },
   { id: 'filling', slug: 'filling', nameAr: 'حشو الأسنان (حشو عادي / كومبوزيت)', icon: '🧱', min: 500, max: 3500, order: 3,
     descAr: '',
     sources: [src('Webdental: بلاتين 500-700، أبيض 1,250-1,750 ج', S.webdental), src('أمان: من 1,250 ج', S.amanFill), src('Guarantee Dental: 500-2,500 ج', S.guarantee), src('د. نور: كومبوزيت 3,000-3,500 ج', S.drnour)] },

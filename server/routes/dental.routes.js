@@ -21,6 +21,8 @@ admin.use(authenticate, requireRole('admin'));
 admin.get('/procedures', wrap(async (req, res) => res.json({ procedures: await dental.listProcedures() })));
 admin.get('/clinics', wrap(async (req, res) => res.json({ clinics: await dental.adminClinics() })));
 admin.patch('/clinics/:id', wrap(async (req, res) => res.json({ clinic: await dental.adminUpdateClinic(req.params.id, req.body || {}) })));
+admin.get('/providers', wrap(async (req, res) => res.json(await dental.adminProviders(req.query))));
+admin.patch('/providers/:id', wrap(async (req, res) => res.json({ provider: await dental.adminUpdateProvider(req.params.id, req.body || {}) })));
 admin.get('/appointments', wrap(async (req, res) => res.json({ appointments: await dental.adminAppointments() })));
 admin.patch('/appointments/:id', wrap(async (req, res) => res.json({ appointment: await dental.adminUpdateAppointment(req.params.id, req.body || {}) })));
 admin.patch('/procedures/:id', wrap(async (req, res) => res.json({ procedure: await dental.adminUpdateProcedure(req.params.id, req.body || {}) })));

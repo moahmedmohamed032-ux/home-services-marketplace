@@ -20,3 +20,22 @@
 /* the site's own .row is a 2-column grid; inside .bs it must behave like Bootstrap's flex row */
 .bs .row { display: flex; flex-wrap: wrap; grid-template-columns: none; gap: 0; }
 .bs .row.g-3 { --bs-gutter-x: 1rem; --bs-gutter-y: 1rem; }
+
+/* Registration form polish (scoped under .bs) */
+.bs .reg-form .card-body { padding: 1.25rem; }
+.bs .reg-section { border: 0; padding: 0; margin: 0 0 1.5rem; }
+.bs .reg-section legend, .bs .reg-title { font-size: 1.05rem; font-weight: 700; color: #0d6efd; border-bottom: 2px solid #e7f0ff; padding-bottom: .4rem; margin: 1.75rem 0 1rem; width: 100%; float: none; }
+.bs .reg-section:first-of-type legend { margin-top: 0; }
+.bs .reg-form .form-label { font-weight: 600; font-size: .92rem; margin-bottom: .35rem; display: block; width: 100%; }
+.bs .reg-form .form-control, .bs .reg-form .form-select { min-height: 46px; border-radius: .6rem; border-color: #ced4da; background-color: #fff; text-align: start; }
+.bs .reg-form textarea.form-control { min-height: 90px; }
+.bs .reg-form .form-control:focus, .bs .reg-form .form-select:focus { border-color: #0d6efd; box-shadow: 0 0 0 .22rem rgba(13,110,253,.18); }
+.bs .reg-form .form-control::placeholder { color: #98a2b3; }
+.bs .reg-form .form-check-input { width: 1.2rem; height: 1.2rem; margin-top: .2rem; }
+.bs .reg-form .form-text { font-size: .8rem; }
+.bs .reg-form [dir="ltr"] { text-align: left; }
+@media (max-width: 575.98px) {
+  .bs .reg-form .card-body { padding: 1rem; }
+  .bs .reg-form .form-control, .bs .reg-form .form-select { font-size: 16px; }
+  .bs .reg-form .btn-primary { width: 100%; padding: .75rem; font-size: 1.05rem; }
+}

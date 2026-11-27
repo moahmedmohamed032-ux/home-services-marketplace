@@ -6,6 +6,61 @@ import { api, errorMessage } from '../api/axios';
 const CITY_AR = { Luxor: 'الأقصر', Armant: 'أرمنت', Esna: 'إسنا', Qena: 'قنا', Aswan: 'أسوان' };
 const STATUS = { new: 'جديد', contacted: 'تم التواصل', done: 'تم', cancelled: 'ملغي' };
 
+
+const KIND_AR = { clinic: 'عيادة', hospital: 'مستشفى' };
+const SPEC_AR = { dental: 'أسنان', 'ob-gyn': 'نساء وتوليد', pediatrics: 'أطفال', 'general-surgery': 'جراحة عامة', 'general-practice': 'ممارس عام', 'internal-medicine': 'باطنة', orthopedics: 'عظام', ophthalmology: 'عيون', cardiology: 'قلب', urology: 'مسالك', dermatology: 'جلدية', 'neuro-psych': 'مخ وأعصاب ونفسية', hospital: 'مستشفيات', ent: 'أنف وأذن', chest: 'صدر', other: 'أخرى', gastro: 'هضمي وكبد', 'plastic-surgery': 'تجميل', radiology: 'أشعة', '': 'غير محدد' };
+
+function Directory() {
+  const [data, setData] = useState(null); const [err, setErr] = useState('');
+  const [f, setF] = useState({ kind: '', city: '', specialty: '', q: '', status: 'pending', page: 1 });
+  const [qi, setQi] = useState('');
+  useEffect(() => {
+    let live = true;
+    api.get('/admin/dental/providers', { params: { ...f, limit: 50 } }).then((r) => live && setData(r.data)).catch((e) => live && setErr(errorMessage(e)));
+    return () => { live = false; };
+  }, [f]);
+  const upd = (k, v) => setF((s) => ({ ...s, [k]: v, page: 1 }));
+  const patch = async (id, body) => { try { await api.patch(`/admin/dental/providers/${id}`, body); setF((s) => ({ ...s })); } catch (e) { setErr(errorMessage(e)); } };
+  const pages = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1;
+  return (
+    <>
+      <div className="alert alert-info small">بيانات جاية من سجل مديرية الصحة والأبحاث (أسماء وتخصصات وعناوين). كلها مخفية، ومفيش صفحة عامة بتعرضها لسه. الاعتماد هنا مجرد تحضير.</div>
+      {err && <div className="alert alert-danger">{err}</div>}
+      <div className="row g-2 mb-3">
+        <div className="col-md-3"><select className="form-select" value={f.status} onChange={(e) => upd('status', e.target.value)}><option value="pending">في الانتظار</option><option value="approved">معتمد</option><option value="all">الكل</option></select></div>
+        <div className="col-md-3"><select className="form-select" value={f.kind} onChange={(e) => upd('kind', e.target.value)}><option value="">كل الأنواع</option>{(data?.facets.kinds || []).map(([k, n]) => <option key={k} value={k}>{KIND_AR[k] || k} ({n})</option>)}</select></div>
+        <div className="col-md-3"><select className="form-select" value={f.city} onChange={(e) => upd('city', e.target.value)}><option value="">كل المدن</option>{(data?.facets.cities || []).map(([k, n]) => <option key={k} value={k}>{CITY_AR[k] || k} ({n})</option>)}</select></div>
+        <div className="col-md-3"><select className="form-select" value={f.specialty} onChange={(e) => upd('specialty', e.target.value)}><option value="">كل التخصصات</option>{(data?.facets.specialties || []).map(([k, n]) => <option key={k} value={k}>{SPEC_AR[k] || k} ({n})</option>)}</select></div>
+        <div className="col-12"><form onSubmit={(e) => { e.preventDefault(); upd('q', qi); }} className="d-flex gap-2"><input className="form-control" placeholder="بحث بالاسم أو التخصص أو العنوان" value={qi} onChange={(e) => setQi(e.target.value)} /><button className="btn btn-outline-primary">بحث</button></form></div>
+      </div>
+      {!data ? <p className="text-muted">جاري التحميل...</p> : (
+        <>
+          <p className="small text-muted">{data.total} نتيجة، صفحة {data.page} من {pages}</p>
+          <div className="row g-2">
+            {data.items.map((p) => (
+              <div className="col-md-6" key={p.id}><div className="card h-100"><div className="card-body py-2">
+                <h3 className="h6 mb-1">{p.name} <span className="badge text-bg-secondary">{KIND_AR[p.kind] || p.kind}</span> <span className="badge text-bg-light border">{SPEC_AR[p.specialtyKey] || p.specialtyKey}</span></h3>
+                <p className="small mb-1">{p.specialty && `${p.specialty} · `}{CITY_AR[p.city] || p.city}{p.address ? ` · ${p.address}` : ''}</p>
+                {(p.phone || p.whatsapp) && <p className="small mb-1" dir="ltr">📞 {p.phone || '—'} {p.whatsapp && `| WA ${p.whatsapp}`}</p>}
+                {p.notes && <p className="small text-muted mb-1">{p.notes}</p>}
+                <div className="small mb-1">{(p.sources || []).filter((u) => /^https?:/.test(u)).map((u) => <a key={u} className="me-2" href={u} target="_blank" rel="noopener noreferrer nofollow">مصدر</a>)}{p.registryNo && <span className="text-muted">سجل رقم {p.registryNo}</span>}</div>
+                <div className="d-flex gap-1">
+                  <button className={`btn btn-sm ${p.approved ? 'btn-outline-secondary' : 'btn-success'}`} onClick={() => patch(p.id, { approved: !p.approved })}>{p.approved ? 'إلغاء الاعتماد' : '✅ اعتماد'}</button>
+                  <button className="btn btn-sm btn-outline-danger" onClick={() => window.confirm('إزالة من القائمة؟') && patch(p.id, { removed: true })}>إزالة</button>
+                </div>
+              </div></div></div>
+            ))}
+          </div>
+          <div className="d-flex gap-2 mt-3 align-items-center">
+            <button className="btn btn-sm btn-outline-primary" disabled={data.page <= 1} onClick={() => setF({ ...f, page: f.page - 1 })}>السابق</button>
+            <button className="btn btn-sm btn-outline-primary" disabled={data.page >= pages} onClick={() => setF({ ...f, page: f.page + 1 })}>التالي</button>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
 export default function DentalAdmin() {
   const [tab, setTab] = useState('pending');
   const [clinics, setClinics] = useState([]); const [apts, setApts] = useState([]); const [procs, setProcs] = useState([]);
@@ -24,7 +79,7 @@ export default function DentalAdmin() {
       <h1>إدارة دليل الأسنان</h1>
       {err && <div className="alert alert-danger">{err}</div>}
       <div className="mb-3">
-        {[['pending', `في الانتظار (${clinics.filter((c) => !c.approved).length})`], ['live', `ظاهرة (${clinics.filter((c) => c.approved).length})`], ['apts', `طلبات المواعيد (${apts.filter((a) => a.status === 'new').length})`], ['prices', 'نطاقات الأسعار']].map(([k, l]) => (
+        {[['pending', `في الانتظار (${clinics.filter((c) => !c.approved).length})`], ['live', `ظاهرة (${clinics.filter((c) => c.approved).length})`], ['dir', 'الدليل العام (عيادات ومستشفيات)'], ['apts', `طلبات المواعيد (${apts.filter((a) => a.status === 'new').length})`], ['prices', 'نطاقات الأسعار']].map(([k, l]) => (
           <button key={k} className={`btn btn-sm me-1 ${tab === k ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
@@ -55,6 +110,7 @@ export default function DentalAdmin() {
           </div>
         </>
       )}
+      {tab === 'dir' && <Directory />}
       {tab === 'apts' && (
         <table><thead><tr><th>العيادة</th><th>الاسم</th><th>الموبايل</th><th>الخدمة</th><th>الوقت</th><th>الحالة</th></tr></thead><tbody>
           {apts.map((a) => <tr key={a.id}><td>{a.clinicName}</td><td>{a.name}</td><td dir="ltr"><a href={`tel:${a.phone}`}>{a.phone}</a></td><td>{a.procedure}</td><td>{a.preferred} {a.note}</td>
