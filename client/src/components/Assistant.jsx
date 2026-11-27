@@ -30,7 +30,7 @@ export default function Assistant() {
     <div className="asst" dir="rtl">
       {open && (
         <div className="asst-panel" role="dialog" aria-label="مساعد FIX-IT">
-          <div className="asst-head"><strong>مساعد FIX-IT</strong><button type="button" className="asst-x" aria-label="إغلاق" onClick={() => setOpen(false)}>×</button></div>
+          <div className="asst-head"><div className="asst-title"><span className="asst-avatar">🤖</span><div><strong>مساعد FIX-IT</strong><small>بيجاوب من معلومات المنصة بس</small></div></div><button type="button" className="asst-x" aria-label="إغلاق" onClick={() => setOpen(false)}>×</button></div>
           <div className="asst-body">
             {msgs.map((m, i) => <div key={i} className={`asst-msg asst-${m.from}`}>{linkify(m.text)}</div>)}
             {msgs.length === 1 && <div className="asst-sug">{SUGGEST.map((s) => <button type="button" key={s} onClick={() => send(s)}>{s}</button>)}</div>}
@@ -43,7 +43,7 @@ export default function Assistant() {
           </form>
         </div>
       )}
-      <button type="button" className="asst-fab" onClick={() => setOpen((o) => !o)} aria-label="مساعد FIX-IT">{open ? '×' : '💬 اسأل المساعد'}</button>
+      <button type="button" className="asst-fab" onClick={() => setOpen((o) => !o)} aria-label="مساعد FIX-IT">{open ? '×' : <><span className="asst-ico">✨</span>اسأل مساعد FIX-IT</>}</button>
     </div>
   );
 }
