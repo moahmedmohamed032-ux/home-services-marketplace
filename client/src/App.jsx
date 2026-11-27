@@ -16,6 +16,7 @@ import ServiceLanding from './pages/ServiceLanding';
 import AdminDashboard from './pages/AdminDashboard';
 import { DentalHome, ClinicPage, ClinicRegister } from './dental/Dental';
 import DentalAdmin from './dental/DentalAdmin';
+import Directory from './directory/Directory';
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useT } from './i18n/useT';
@@ -24,7 +25,7 @@ export default function App() {
   const { t, lang } = useT();
   const { pathname } = useLocation();
   useEffect(() => {
-    if (/^\/(luxor|esna|qena|aswan|dental)(\/|$)/.test(pathname)) return;
+    if (/^\/(luxor|esna|qena|aswan|dental|directory)(\/|$)/.test(pathname)) return;
     const key = pathname === '/' ? 'home' : pathname.startsWith('/technicians') ? 'find'
       : pathname.startsWith('/login') ? 'login' : pathname.startsWith('/register') ? 'signup'
       : pathname.startsWith('/admin') ? 'admin' : 'dashboard';
@@ -48,6 +49,8 @@ export default function App() {
           <Route path="/esna/:slug" element={<ServiceLanding city="esna" />} />
           <Route path="/qena/:slug" element={<ServiceLanding city="qena" />} />
           <Route path="/aswan/:slug" element={<ServiceLanding city="aswan" />} />
+          <Route path="/directory" element={<Directory />} />
+          <Route path="/directory/:slug" element={<Directory />} />
           <Route path="/dental" element={<DentalHome />} />
           <Route path="/dental/register" element={<ClinicRegister />} />
           <Route path="/dental/clinic/:id" element={<ClinicPage />} />

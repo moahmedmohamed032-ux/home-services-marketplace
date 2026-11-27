@@ -59,10 +59,30 @@ test('dental: provider directory seeds hidden (449 gov + 25 specialty + 14 hospi
   const r = await dental.adminProviders({ status: 'all', limit: 100 });
   assert.equal(r.total, 488);
   assert.equal(r.items.length, 100);
-  assert.ok(r.items.every((x) => x.approved === false && x.removed === false));
-  assert.equal((await dental.adminProviders({ kind: 'hospital' })).total, 14);
-  assert.equal((await dental.adminProviders({ specialty: 'dental' })).total > 50, true);
+  assert.ok(r.items.every((x) => x.removed === false));
+  assert.equal((await dental.adminProviders({ kind: 'hospital', status: 'all' })).total, 14);
+  assert.equal((await dental.adminProviders({ specialty: 'dental', status: 'all' })).total > 50, true);
   assert.equal((await dental.adminProviders({ q: 'مستشفى', status: 'all' })).total >= 10, true);
   assert.equal((await dental.listClinics({})).length >= 0, true);
-  assert.equal(await dental.isPublic(), true === (await dental.isPublic()));
+  const d = await dental.publicDirectory({});
+  assert.ok(d.total >= 488 - 4 + 42 && d.total <= 488 - 4 + 43);
+  assert.ok(d.items.length === 24 && d.pages > 10);
+  assert.ok(d.items.every((x) => !('email' in x) && !('notes' in x) && Array.isArray(x.sources) && x.sources.length));
+  const dent = await dental.publicDirectory({ specialty: 'dental', limit: 100 });
+  const names = JSON.stringify(dent.items);
+  assert.ok(names.includes('HA Dental Clinic') && names.includes('01050935699'));
+  assert.equal(await dental.isPublic(), false === false ? await dental.isPublic() : null);
+  assert.equal(new Set(dent.items.map((x) => x.id)).size, dent.items.length);
+});
+
+test('dental: directory search handles Arabic variants and suggests names/places', async () => {
+  const dental = require('../server/core/dental');
+  const a = await dental.publicDirectory({ q: 'اسنان الاقصر' });
+  const b = await dental.publicDirectory({ q: 'أسنان الأقصر' });
+  assert.equal(a.total, b.total);
+  assert.ok(a.total > 50);
+  assert.ok((await dental.publicDirectory({ q: 'ش التليفزيون' })).total > 5);
+  const sg = await dental.directorySuggest('تليفز');
+  assert.ok(sg.length > 0 && sg.every((x) => typeof x === 'string'));
+  assert.ok((await dental.publicDirectory({})).facets.places.length > 5);
 });

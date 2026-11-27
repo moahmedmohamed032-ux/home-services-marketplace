@@ -227,7 +227,7 @@ export function DentalHome() {
       <ClinicsGrid clinics={clinics} procedures={d.procedures} empty={cityAr ? `لسه مفيش عيادات معتمدة في ${cityAr}.` : null} />
       <div className="card mt-4"><div className="card-body">
         <h3 className="h6">دكتور أسنان؟ ضيف عيادتك</h3>
-        <p className="small mb-2">التسجيل مجاني، وبنراجع كل عيادة قبل ما تظهر. مفيش عمولة على الكشف أو العلاج.</p>
+        <p className="small mb-2">التسجيل مجانًا لمدة 3 شهور كميزة إطلاق، وبنراجع كل عيادة قبل ما تظهر. مفيش عمولة على الكشف أو العلاج.</p>
         <Link to="/dental/register" className="btn btn-primary btn-sm">سجّل عيادتك</Link>
       </div></div>
     </div>
@@ -306,7 +306,7 @@ export function ClinicRegister() {
   const [procs, setProcs] = useState([]);
   const [f, setF] = useState({ name: '', contactName: '', city: '', address: '', phone: '', whatsapp: '', email: '', about: '', schedule: {}, insAccepted: '', insNames: '', mapUrl: '', otherServices: '', faq: {}, services: [], prices: {}, photos: [], photoConsent: false, confirmOwner: false });
   const [err, setErr] = useState(''); const [done, setDone] = useState(false); const [busy, setBusy] = useState(false);
-  useSeo({ title: 'سجّل عيادة أسنان | FIX-IT', desc: 'دكتور أسنان في الأقصر أو إسنا أو قنا أو أرمنت؟ سجّل عيادتك مجانًا وهتظهر للمرضى بعد المراجعة.', path: '/dental/register' });
+  useSeo({ title: 'سجّل عيادة أسنان | FIX-IT', desc: 'دكتور أسنان في الأقصر أو إسنا أو قنا أو أرمنت؟ سجّل عيادتك مجانًا لمدة 3 شهور كميزة إطلاق، وهتظهر للمرضى بعد المراجعة.', path: '/dental/register' });
   useEffect(() => { api.get('/dental/register-options').then((r) => setProcs(r.data.procedures)); }, []);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
   const toggle = (id) => setF({ ...f, services: f.services.includes(id) ? f.services.filter((s) => s !== id) : [...f.services, id] });
@@ -324,7 +324,7 @@ export function ClinicRegister() {
   return (
     <div className="bs py-3">
       <h1>سجّل عيادة الأسنان</h1>
-      <p className="text-muted">مجاني، مفيش عمولة. كل عيادة بتتراجع قبل ما تظهر.</p>
+      <div className="alert alert-success mb-3"><strong>مجانًا لمدة 3 شهور كميزة إطلاق.</strong> بدون عمولة وبدون أي مدفوعات. كل عيادة بتتراجع قبل ما تظهر.</div>
       <form onSubmit={submit} className="card reg-form"><div className="card-body">
         <fieldset className="reg-section"><legend>بيانات العيادة</legend>
         <div className="row g-3">

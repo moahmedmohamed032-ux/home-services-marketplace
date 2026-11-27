@@ -22,6 +22,7 @@ export default function Navbar() {
         <nav className="nav-links">
           <NavLink to="/" end>{t('home')}</NavLink>
           <NavLink to="/technicians">{t('find')}</NavLink>
+          <NavLink to="/directory">🏥 العيادات</NavLink>
           {dentalOn && <NavLink to="/dental">🦷 أسنان</NavLink>}
         </nav>
         <div className="nav-actions">

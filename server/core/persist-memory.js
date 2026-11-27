@@ -42,5 +42,6 @@ module.exports = {
   clinics: table('clinics'),
   procedures: table('procedures'),
   appointments: table('appointments'),
-  providers: { ...table('providers'), insertMany: async (rows) => { data.providers.push(...rows); } },
+  providers: { ...table('providers'), insertMany: async (rows) => { data.providers.push(...rows); },
+    publishAll: async (batch) => { for (const r of data.providers) if (r.publishedBatch === undefined) { r.approved = true; r.publishedBatch = batch; } } },
 };

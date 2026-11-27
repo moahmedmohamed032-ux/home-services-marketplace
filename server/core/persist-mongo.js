@@ -59,7 +59,7 @@ const Clinic = mongoose.model('Clinic', new mongoose.Schema({
   prices: { type: mongoose.Schema.Types.Mixed, default: {} },
   photos: [String], origin: String, sources: [String], notes: String, invited: Boolean,
   schedule: { type: mongoose.Schema.Types.Mixed, default: {} }, insurance: { type: mongoose.Schema.Types.Mixed, default: {} },
-  faq: { type: mongoose.Schema.Types.Mixed, default: {} }, mapUrl: String, otherServices: String,
+  faq: { type: mongoose.Schema.Types.Mixed, default: {} }, mapUrl: String, otherServices: String, directoryListed: Boolean,
   approved: Boolean, verified: Boolean, removed: Boolean, createdAt: String, updatedAt: String,
 }, opts));
 const Procedure = mongoose.model('Procedure', new mongoose.Schema({
@@ -71,7 +71,7 @@ const Provider = mongoose.model('Provider', new mongoose.Schema({
   id: { type: String, unique: true, index: true },
   kind: { type: String, index: true }, name: String, specialty: String, specialtyKey: { type: String, index: true }, city: { type: String, index: true },
   address: String, phone: String, whatsapp: String, website: String, sources: [String], notes: String, registryNo: String, origin: String,
-  approved: { type: Boolean, index: true }, removed: Boolean, createdAt: String, updatedAt: String,
+  approved: { type: Boolean, index: true }, removed: Boolean, publishedBatch: String, mergedWith: String, createdAt: String, updatedAt: String,
 }, opts));
 const Appointment = mongoose.model('Appointment', new mongoose.Schema({
   id: { type: String, unique: true, index: true },
@@ -137,5 +137,6 @@ module.exports = {
   clinics: table(MODELS.clinics),
   procedures: table(MODELS.procedures),
   appointments: table(MODELS.appointments),
-  providers: { ...table(MODELS.providers), insertMany: async (rows) => { await Provider.insertMany(rows, { ordered: false }); } },
+  providers: { ...table(MODELS.providers), insertMany: async (rows) => { await Provider.insertMany(rows, { ordered: false }); },
+    publishAll: async (batch) => { await Provider.updateMany({ publishedBatch: { $exists: false } }, { $set: { approved: true, publishedBatch: batch } }); } },
 };

@@ -27,6 +27,7 @@ async function ensureSeed() {
       for (const c of SEED_CLINICS) {
         const ex = clinics.find((x) => x.id === c.id);
         if (ex) {
+          if (ex.directoryListed === undefined) await db.clinics.update(c.id, { directoryListed: true });
           // Corrected seed phone (source CSV fix): only fill a blank, never touch an edited/approved clinic.
           if (!ex.approved && !ex.phone && c.phone) await db.clinics.update(c.id, { phone: c.phone, whatsapp: c.whatsapp || '', phoneRaw: c.phoneRaw || '' });
           continue;
@@ -35,7 +36,7 @@ async function ensureSeed() {
           id: c.id, name: c.name, city: c.city, address: c.address, phone: c.phone, phoneRaw: c.phoneRaw || '', whatsapp: c.whatsapp || '',
           email: c.email || '', lat: undefined, lng: undefined, about: '', hours: '', services: [], prices: {}, photos: [],
           origin: 'public-listing', sources: c.sources || [], notes: c.notes || '', invited: !!c.invited,
-          approved: false, verified: false, removed: false, createdAt: now, updatedAt: now,
+          approved: false, directoryListed: true, verified: false, removed: false, createdAt: now, updatedAt: now,
         });
       }
     })().catch((e) => { seeded = null; throw e; });
@@ -50,10 +51,18 @@ async function ensureProviders() {
     provSeeded = (async () => {
       const db = await store.getDb();
       const seed = require('./providers.seed.json');
-      const have = new Set((await db.providers.getAll()).map((x) => x.id));
+      const existing = await db.providers.getAll();
+      const have = new Set(existing.map((x) => x.id));
       const now = new Date().toISOString();
-      const rows = seed.filter((x) => !have.has(x.id)).map((x) => ({ ...x, approved: false, removed: false, createdAt: now, updatedAt: now }));
+      // Publishing the seeded directory was relayed by the main agent as the owner's request (relayed msgs 24156904 / 24166200). Rows seeded earlier as pending get published once (batch v1);
+      // later admin hide/unhide is respected because publishedBatch stays set.
+      if (existing.some((x) => x.publishedBatch === undefined)) await db.providers.publishAll('v1');
+      const rows = seed.filter((x) => !have.has(x.id)).map((x) => ({ ...x, approved: true, publishedBatch: 'v1', removed: false, createdAt: now, updatedAt: now }));
       if (rows.length) await db.providers.insertMany(rows);
+      for (const x of seed) {
+        const ex = existing.find((e) => e.id === x.id);
+        if (ex && x.mergedWith && ex.mergedWith !== x.mergedWith) await db.providers.update(x.id, { mergedWith: x.mergedWith });
+      }
     })().catch((e) => { provSeeded = null; throw e; });
   }
   return provSeeded;
@@ -82,6 +91,68 @@ async function adminUpdateProvider(id, b) {
   if (b.whatsapp !== undefined) patch.whatsapp = b.whatsapp ? checkPhone(b.whatsapp, 'رقم واتساب') : '';
   if (b.notes !== undefined) patch.notes = str(b.notes, 300);
   return db.providers.update(id, patch);
+}
+
+// ---- public general directory (publication requested via parent relay of owner msgs 24156904 / 24166200): official registry + outreach-list clinics + hospitals ----
+const REGISTRY_LABEL = 'سجل محافظة الأقصر الرسمي (مديرية الشئون الصحية)';
+const hostLabel = (sources) => [...new Set((sources || []).map((u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } }).filter(Boolean))].map((h) => `قائمة منشورة على ${h}`);
+const SPEC_NAME = { dental: 'أسنان' };
+function dirFromProvider(p, mergedLabels) {
+  const labels = p.origin === 'luxor-gov-registry' ? [REGISTRY_LABEL] : hostLabel(p.sources);
+  return { id: p.id, kind: p.kind, name: p.name, specialty: p.specialty || '', specialtyKey: p.specialtyKey || '', city: p.city, cityAr: CITY_AR[p.city] || p.city, address: p.address || '', phone: p.phone || '', sources: [...labels, ...(mergedLabels || [])], rank: p.kind === 'hospital' ? 0 : p.origin === 'luxor-gov-registry' ? 2 : 1, ord: Number(p.registryNo) || 0 };
+}
+function dirFromClinic(c, mergedLabels) {
+  const labels = c.origin === 'registered' ? ['سجّلتها العيادة بنفسها على FIX-IT'] : (hostLabel(c.sources).length ? hostLabel(c.sources) : ['قائمة منشورة']);
+  return { id: c.id, kind: 'clinic', name: c.name, specialty: SPEC_NAME.dental, specialtyKey: 'dental', city: c.city, cityAr: CITY_AR[c.city] || c.city, address: c.address || '', phone: c.phone || '', sources: [...labels, ...(mergedLabels || [])], rank: 1, ord: 0 };
+}
+// Arabic-friendly matching: ignore diacritics, hamza/alef forms, ya/alef-maqsura, ta marbuta, the source's doubled alef ("االقصر"), and "د /" prefixes.
+const arNorm = (t) => String(t || '').toLowerCase()
+  .replace(/[\u064b-\u0652\u0640]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/ا{2,}/g, 'ا')
+  .replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+const placesOf = (addr) => String(addr || '').split(/[–\-،,/]/).map((x) => x.replace(/\s+/g, ' ').trim()).filter((x) => x.length >= 4 && arNorm(x) !== 'الاقصر' && !/^\d+$/.test(x));
+async function allDirectory() {
+  await ensureProviders();
+  await ensureSeed();
+  const db = await store.getDb();
+  const [provs, clinics] = await Promise.all([db.providers.getAll(), db.clinics.getAll()]);
+  const shown = provs.filter((p) => p.approved && !p.removed);
+  const out = [];
+  for (const c of clinics) {
+    if (c.removed || !(c.approved || c.directoryListed === true)) continue;
+    const merged = provs.filter((p) => p.mergedWith === c.id && !p.removed).map(() => REGISTRY_LABEL);
+    out.push(dirFromClinic(c, merged));
+  }
+  for (const p of shown) if (!p.mergedWith) out.push(dirFromProvider(p));
+  for (const x of out) x.hay = arNorm(`${x.name} ${x.specialty} ${x.address} ${x.cityAr}`);
+  out.sort((a, b) => a.rank - b.rank || a.ord - b.ord || (a.name < b.name ? -1 : 1));
+  return out;
+}
+async function publicDirectory(q = {}) {
+  const all = await allDirectory();
+  const count = (f) => Object.entries(all.reduce((m, x) => ((m[x[f]] = (m[x[f]] || 0) + 1), m), {})).sort((a, b) => b[1] - a[1]);
+  const tokens = arNorm(String(q.q || '').slice(0, 60)).split(' ').filter(Boolean);
+  const list = all.filter((x) => (!q.kind || x.kind === q.kind) && (!q.city || x.city === q.city) && (!q.specialty || x.specialtyKey === q.specialty)
+    && tokens.every((t) => x.hay.includes(t)));
+  const placeCount = {};
+  for (const x of all) for (const pl of new Set(placesOf(x.address))) placeCount[pl] = (placeCount[pl] || 0) + 1;
+  const limit = 24;
+  const page = Math.max(parseInt(q.page, 10) || 1, 1);
+  return {
+    total: list.length, page, pages: Math.max(1, Math.ceil(list.length / limit)), limit,
+    items: list.slice((page - 1) * limit, page * limit).map(({ rank, ord, hay, ...rest }) => rest),
+    facets: { places: Object.entries(placeCount).sort((a, b) => b[1] - a[1]).slice(0, 40).map(([k]) => k), totalAll: all.length, specialties: count('specialtyKey').filter(([k]) => k), cities: count('city'), kinds: count('kind') },
+  };
+}
+
+async function directorySuggest(qs) {
+  const tokens = arNorm(String(qs || '').slice(0, 40)).split(' ').filter(Boolean);
+  if (!tokens.length) return [];
+  const all = await allDirectory();
+  const out = new Set();
+  for (const x of all) if (tokens.every((t) => arNorm(x.name).includes(t))) { out.add(x.name); if (out.size >= 6) break; }
+  const places = new Set();
+  for (const x of all) for (const pl of placesOf(x.address)) if (tokens.every((t) => arNorm(pl).includes(t))) places.add(pl);
+  return [...out, ...[...places].slice(0, 6)].slice(0, 10);
 }
 
 const publicClinic = (c) => ({
@@ -280,7 +351,7 @@ async function adminUpdateClinic(id, b) {
   if (b.otherServices !== undefined) patch.otherServices = str(b.otherServices, 200);
   if (b.prices !== undefined) patch.prices = await cleanPrices(b.prices);
   if (b.photos !== undefined) patch.photos = cleanPhotos(b.photos, true);
-  if (b.approved !== undefined) patch.approved = !!b.approved;
+  if (b.approved !== undefined) { patch.approved = !!b.approved; patch.directoryListed = !!b.approved; }
   if (b.verified !== undefined) patch.verified = !!b.verified;
   if (b.removed !== undefined) patch.removed = !!b.removed;
   return db.clinics.update(id, patch);
@@ -309,7 +380,7 @@ async function adminUpdateProcedure(id, b) {
 }
 
 module.exports = {
-  adminProviders, adminUpdateProvider,
+  directorySuggest, publicDirectory, adminProviders, adminUpdateProvider,
   isPublic, requirePublic, DENTAL_CITIES, ensureSeed, listProcedures, listClinics, cityCounts, getClinic, registerClinic, createAppointment,
   adminClinics, adminUpdateClinic, adminAppointments, adminUpdateAppointment, adminUpdateProcedure,
 };

@@ -27,4 +27,14 @@ admin.get('/appointments', wrap(async (req, res) => res.json({ appointments: awa
 admin.patch('/appointments/:id', wrap(async (req, res) => res.json({ appointment: await dental.adminUpdateAppointment(req.params.id, req.body || {}) })));
 admin.patch('/procedures/:id', wrap(async (req, res) => res.json({ procedure: await dental.adminUpdateProcedure(req.params.id, req.body || {}) })));
 
-module.exports = { pub, admin };
+const directory = express.Router();
+directory.get('/suggest', wrap(async (req, res) => {
+  res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+  res.json({ suggestions: await dental.directorySuggest(req.query.q) });
+}));
+directory.get('/', wrap(async (req, res) => {
+  res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+  res.json(await dental.publicDirectory(req.query));
+}));
+
+module.exports = { pub, admin, directory };

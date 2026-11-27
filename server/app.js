@@ -39,6 +39,7 @@ app.use('/api/technicians', technicianRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/dental', dentalRoutes.pub);
+app.use('/api/directory', dentalRoutes.directory);
 app.use('/api/admin/dental', dentalRoutes.admin);
 app.use('/api/admin', adminRoutes);
 app.use('/api/paymob', paymobRoutes);
