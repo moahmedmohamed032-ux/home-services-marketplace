@@ -18,7 +18,7 @@ export default function Assistant() {
     setText(''); setBusy(true);
     setMsgs((m) => [...m, { from: 'me', text: q }]);
     try {
-      const r = await fetch('/api/assistant', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: q }) });
+      const r = await fetch('/api/assistant', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: q, history: msgs.slice(1).slice(-4) }) });
       const j = await r.json();
       setMsgs((m) => [...m, { from: 'bot', text: j.answer || j.error?.message || 'حصلت مشكلة، جرب تاني.' }]);
     } catch {

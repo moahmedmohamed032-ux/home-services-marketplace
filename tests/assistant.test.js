@@ -31,3 +31,10 @@ test('validation: empty and too long', async () => {
   assert.equal((await ask('')).status, 400);
   assert.equal((await ask('ا'.repeat(400))).status, 400);
 });
+test('follow-up question is answered in context, not sent to a dead end', async () => {
+  const r = await fetch(base, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: 'ازاي يعني', history: [{ from: 'me', text: 'العمولة كام؟' }, { from: 'bot', text: 'العمولة 6% من الشغل المكتمل.' }] }) });
+  const j = await r.json();
+  assert.notEqual(j.source, 'none');
+  assert.match(j.answer, /6%|عمولة/);
+  assert.doesNotMatch(j.answer, /wa\.me/);
+});
