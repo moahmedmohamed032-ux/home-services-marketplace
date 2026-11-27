@@ -12,14 +12,23 @@ const DISCLAIMER = 'الأسعار دي متوسطات منشورة في الس�
 const fmt = (n) => Number(n).toLocaleString('ar-EG');
 
 function setMeta(sel, attr, val) { const el = document.querySelector(sel); if (el) el.setAttribute(attr, val); }
+const META_SEL = [['meta[name="description"]', 'content'], ['link[rel="canonical"]', 'href'], ['meta[property="og:title"]', 'content'], ['meta[property="og:description"]', 'content'], ['meta[property="og:url"]', 'content'], ['meta[name="twitter:title"]', 'content'], ['meta[name="twitter:description"]', 'content']];
 function useSeo({ title, desc, path, ld }) {
   useEffect(() => {
+    const prevTitle = document.title;
+    const prev = META_SEL.map(([sel, attr]) => { const e = document.querySelector(sel); return [sel, attr, e ? e.getAttribute(attr) : null]; });
     document.title = title;
+    const url = `${SITE}${path}`;
     setMeta('meta[name="description"]', 'content', desc);
-    setMeta('link[rel="canonical"]', 'href', `${SITE}${path}`);
+    setMeta('link[rel="canonical"]', 'href', url);
+    setMeta('meta[property="og:title"]', 'content', title);
+    setMeta('meta[property="og:description"]', 'content', desc);
+    setMeta('meta[property="og:url"]', 'content', url);
+    setMeta('meta[name="twitter:title"]', 'content', title);
+    setMeta('meta[name="twitter:description"]', 'content', desc);
     let el = null;
     if (ld) { el = document.createElement('script'); el.type = 'application/ld+json'; el.text = JSON.stringify(ld); document.head.appendChild(el); }
-    return () => { if (el) el.remove(); setMeta('link[rel="canonical"]', 'href', `${SITE}/`); };
+    return () => { if (el) el.remove(); document.title = prevTitle; prev.forEach(([sel, attr, v]) => { if (v !== null) setMeta(sel, attr, v); }); };
   }, [title, desc, path]); // eslint-disable-line
 }
 
