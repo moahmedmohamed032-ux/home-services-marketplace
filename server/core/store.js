@@ -642,6 +642,8 @@ async function payInvoice(invoice, { method, mobileNumber, cardNumber }) {
   await init();
   if (!['unpaid', 'pending_online'].includes(invoice.status)) throw ApiError.conflict('Invoice is not awaiting payment');
   if (!['visa', 'cash', 'vodafone-cash'].includes(method)) throw ApiError.badRequest('Unknown payment method');
+  // Simulated card / wallet flows never mark anything paid unless a demo flag is set explicitly.
+  if (method !== 'cash' && process.env.ALLOW_SIMULATED_PAYMENTS !== '1') throw ApiError.badRequest('Online payment is not available yet. Choose cash.');
   // With a real gateway configured, the simulated card / wallet flows are off.
   if (method !== 'cash' && paymob.config().enabled) throw ApiError.badRequest('Use the secure online checkout to pay');
   const now = new Date().toISOString();
@@ -712,6 +714,7 @@ async function applyPaymobTransaction({ reference, transactionId, amountCents, s
 
 async function verifyInvoice(invoice, codeInput) {
   await init();
+  if (process.env.ALLOW_SIMULATED_PAYMENTS !== '1') throw ApiError.badRequest('Online payment is not available yet.');
   if (invoice.status !== 'pending_verification') throw ApiError.badRequest('Invoice is not awaiting verification');
   if (String(codeInput) !== String(invoice.verificationCode)) throw ApiError.badRequest('Wrong verification code');
   const updated = await db.invoices.update(invoice.id, {

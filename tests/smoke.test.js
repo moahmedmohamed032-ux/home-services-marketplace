@@ -164,6 +164,12 @@ test('invoice and simulated payment flow', async () => {
   assert.equal(inv.verificationCode, undefined, 'verification code never leaks');
 
   // Vodafone Cash: code issued, wrong code rejected, right code pays
+  // Simulated payments are blocked by default: nothing can be marked paid without real payment.
+  res = await post(`/invoices/${inv.id}/pay`, { method: 'visa', cardNumber: '4242424242424242' }, clientToken);
+  assert.equal(res.status, 400);
+  res = await post(`/invoices/${inv.id}/pay`, { method: 'vodafone-cash', mobileNumber: '01012345678' }, clientToken);
+  assert.equal(res.status, 400);
+  process.env.ALLOW_SIMULATED_PAYMENTS = '1';
   res = await post(`/invoices/${inv.id}/pay`, { method: 'vodafone-cash', mobileNumber: '01012345678' }, clientToken);
   assert.equal(res.status, 200);
   const { demoCode } = await res.json();
@@ -177,6 +183,7 @@ test('invoice and simulated payment flow', async () => {
   assert.ok(paid.confirmationCode.startsWith('FX-'));
 
   // second payment attempt on a paid invoice is rejected
+  delete process.env.ALLOW_SIMULATED_PAYMENTS;
   res = await post(`/invoices/${inv.id}/pay`, { method: 'cash' }, clientToken);
   assert.equal(res.status, 409);
 
