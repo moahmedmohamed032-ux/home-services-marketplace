@@ -259,7 +259,7 @@ async function updateTechnicianProfile(id, patch) {
 
 // "Nearest available technician": one request goes to the 3 closest technicians of the category.
 // Those who accept become price offers; the customer picks one (see chooseNearestOffer).
-const NEAREST_MAX_KM = 80;
+const NEAREST_MAX_KM = 50;
 async function createNearestRequest({ clientId, profession, city, date, description, address, clientLat, clientLng }) {
   await init();
   let cands = (await db.technicians.getAll()).filter((t) => t.profession === profession && t.addressActive !== false && isPublicCity(t));
