@@ -223,16 +223,3 @@ label small.muted{display:block;margin-top:4px}
 .asst-form button { background: linear-gradient(135deg, #2b7de9, #7a4df0); color: #fff; border: 0; border-radius: 999px; padding: 0 20px; font-weight: 700; cursor: pointer; }
 .asst-form button:disabled { opacity: .45; }
 @media (max-width: 520px) { .asst { left: 16px; bottom: 24px; } .asst-fab { font-size: 16px; padding: 13px 20px; } }
-
-/* booking chat */
-.chat { width: 100%; margin-top: .4rem; }
-.chat-box { border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); padding: .6rem; margin-top: .4rem; max-width: 520px; }
-.chat-list { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px; }
-.chat-msg { max-width: 82%; padding: 7px 12px; border-radius: 14px; font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; display: flex; flex-direction: column; }
-.chat-msg small { font-size: 11px; opacity: .65; margin-top: 2px; }
-.chat-mine { align-self: flex-start; background: #2b7de9; color: #fff; border-bottom-right-radius: 4px; }
-.chat-theirs { align-self: flex-end; background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
-.chat-form { display: flex; gap: 6px; margin-top: .5rem; }
-.chat-form input { flex: 1; min-width: 0; border: 1.5px solid var(--border); border-radius: 999px; padding: 8px 14px; background: var(--surface); color: var(--text); }
-.chat-empty, .chat-closed, .chat-note { font-size: 13px; margin: .3rem 0 0; }
-.chat-err { color: #c0392b; font-size: 13px; margin: .3rem 0 0; }

@@ -92,15 +92,9 @@ const Receivable = mongoose.model('Receivable', new mongoose.Schema({
   settledAt: String, settledBy: String,
 }, opts));
 
-// In-app chat messages (customer <-> technician), one row per message, private to the two parties of the booking.
-const Message = mongoose.model('Message', new mongoose.Schema({
-  id: { type: String, unique: true, index: true }, bookingId: { type: String, index: true },
-  from: String, text: String, read: Boolean, createdAt: String,
-}, opts));
-
 const Counter = mongoose.model('Counter', new mongoose.Schema({ _id: String, value: Number, summary: String }, opts));
 
-const MODELS = { users: User, technicians: Technician, bookings: Booking, invoices: Invoice, notifications: Notification, clinics: Clinic, procedures: Procedure, appointments: Appointment, providers: Provider, idDocs: IdDoc, receivables: Receivable, messages: Message };
+const MODELS = { users: User, technicians: Technician, bookings: Booking, invoices: Invoice, notifications: Notification, clinics: Clinic, procedures: Procedure, appointments: Appointment, providers: Provider, idDocs: IdDoc, receivables: Receivable };
 
 const strip = (doc) => {
   if (!doc) return null;
@@ -215,7 +209,6 @@ module.exports = {
   appointments: table(MODELS.appointments),
   idDocs: table(MODELS.idDocs),
   receivables: table(MODELS.receivables),
-  messages: table(MODELS.messages),
   providers: { ...table(MODELS.providers), insertMany: async (rows) => { await Provider.insertMany(rows, { ordered: false }); },
     publishAll: async (batch) => { await Provider.updateMany({ publishedBatch: { $exists: false } }, { $set: { approved: true, publishedBatch: batch } }); } },
 };

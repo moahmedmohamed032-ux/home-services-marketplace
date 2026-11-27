@@ -334,56 +334,6 @@ async function chooseNearestOffer(booking) {
   return updated;
 }
 
-
-// ---- in-app chat (customer <-> technician, per booking) ----
-// Opens when the customer has picked the technician (nearest flow: the chosen offer; direct booking: the technician accepted)
-// and stays writable while the job is open. After completion/cancellation it is read-only history. Phone numbers are never part of it.
-const CHAT_OPEN_STATUSES = ['accepted', 'in_progress', 'awaiting_confirmation'];
-const CHAT_MAX_LEN = 500;
-const CHAT_MAX_PER_BOOKING = 300;
-const chatHits = new Map();
-function chatState(booking) {
-  const picked = !booking.dispatchId || booking.chosen === true;
-  const live = picked && !booking.superseded;
-  return { available: live && (CHAT_OPEN_STATUSES.includes(booking.status) || booking.status === 'completed'), open: live && CHAT_OPEN_STATUSES.includes(booking.status) };
-}
-async function chatRole(booking, userId) {
-  if (booking.clientId === userId) return 'client';
-  if ((await techUserId(booking.technicianId)) === userId) return 'technician';
-  throw ApiError.forbidden('Not your booking');
-}
-async function chatMessages(booking, userId) {
-  await init();
-  const role = await chatRole(booking, userId);
-  const st = chatState(booking);
-  if (!st.available) return { open: false, available: false, me: role, messages: [] };
-  const all = (await db.messages.getAll()).filter((m) => m.bookingId === booking.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  for (const m of all) if (m.from !== role && !m.read) await db.messages.update(m.id, { read: true });
-  return { open: st.open, available: true, me: role, messages: all.map((m) => ({ id: m.id, from: m.from, text: m.text, createdAt: m.createdAt })) };
-}
-async function sendChatMessage(booking, userId, rawText) {
-  await init();
-  const role = await chatRole(booking, userId);
-  if (!chatState(booking).open) throw ApiError.conflict('Chat is not open for this booking');
-  const text = String(rawText === undefined || rawText === null ? '' : rawText).replace(/\s+\n/g, '\n').trim();
-  if (!text) throw ApiError.badRequest('Message is empty');
-  if (text.length > CHAT_MAX_LEN) throw ApiError.badRequest(`Message is too long (max ${CHAT_MAX_LEN} characters)`);
-  const now = Date.now();
-  const hits = (chatHits.get(userId) || []).filter((t) => now - t < 60000);
-  if (hits.length >= 20) throw ApiError.tooMany('Too many messages, wait a minute');
-  hits.push(now); chatHits.set(userId, hits);
-  const all = (await db.messages.getAll()).filter((m) => m.bookingId === booking.id);
-  if (all.length >= CHAT_MAX_PER_BOOKING) throw ApiError.badRequest('Chat message limit reached for this booking');
-  const msg = await db.messages.insert({ id: await db.nextId('msg'), bookingId: booking.id, from: role, text, read: false, createdAt: new Date().toISOString() });
-  // One unread chat notification per booking and recipient, so a burst of messages does not flood the bell.
-  const toUser = role === 'client' ? await techUserId(booking.technicianId) : booking.clientId;
-  if (toUser) {
-    const pending = (await db.notifications.getAll()).some((n) => n.userId === toUser && n.type === 'chat' && n.bookingId === booking.id && !n.read);
-    if (!pending) await notify(toUser, { type: 'chat', bookingId: booking.id, link: role === 'client' ? '/pro' : '/dashboard', titleAr: 'رسالة جديدة 💬', titleEn: 'New message 💬', bodyAr: 'عندك رسالة جديدة في محادثة الطلب.', bodyEn: 'You have a new message in a booking chat.' });
-  }
-  return { id: msg.id, from: msg.from, text: msg.text, createdAt: msg.createdAt };
-}
-
 // ---- in-app notifications (stored per user; the app polls and shows toasts) ----
 async function notify(userId, n) {
   try {
@@ -1279,7 +1229,6 @@ async function adminOverview() {
 
 async function getDb() { await init(); return db; }
 module.exports = {
-  chatMessages, sendChatMessage, chatState,
   getDb, BOOKING_STATUS, createNearestRequest, chooseNearestOffer, SUPPORTED_CITIES, submitFinalAmount, sweepAutoConfirm, clientCashAnswer, init,
   findUserByEmail, findUserByPhone, findUserByLogin, setUserPassword, normalizePhone, isEgPhone, findUserById, publicUser, createUser,
   listProfessions, listCities,

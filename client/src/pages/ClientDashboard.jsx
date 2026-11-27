@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { api } from '../api/axios';
-import ChatBox from '../components/ChatBox';
 import InvoiceCard from '../components/InvoiceCard';
 import { fetchMyBookings, reviewBooking, updateBookingStatus } from '../features/bookings/bookingsSlice';
 import { useT } from '../i18n/useT';
@@ -97,7 +96,6 @@ export default function ClientDashboard() {
                 </div>
               </div>
             )}
-            {(!b.dispatchId || b.chosen) && ['accepted', 'in_progress', 'awaiting_confirmation', 'completed'].includes(b.status) && <ChatBox booking={b} />}
             {['pending', 'accepted'].includes(b.status) && (
               <button className="btn btn-ghost btn-sm" onClick={() => dispatch(updateBookingStatus({ id: b.id, status: 'cancelled' }))}>{t('cancel')}</button>
             )}
