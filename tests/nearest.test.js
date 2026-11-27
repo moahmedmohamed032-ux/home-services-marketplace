@@ -124,3 +124,36 @@ test('silent technician: reminders, customer cash check, auto-complete or disput
     assert.equal(inv.status, 'paid'); assert.equal(inv.method, 'cash');
   } finally { Date.now = real; }
 });
+
+test('booking chat: opens after the customer picks, both parties only, no phone data, read-only after completion', async () => {
+  const store = require('../server/core/store');
+  await store.init();
+  const client = await store.createUser({ name: 'Chat Client', email: 'chat-client@test.local', passwordHash: 'x', role: 'client' });
+  const other = await store.createUser({ name: 'Other', email: 'chat-other@test.local', passwordHash: 'x', role: 'client' });
+  const tu = await store.createUser({ name: 'Chat Tech', phone: '01099990077', passwordHash: 'x', role: 'technician', city: 'Luxor' });
+  const tech = await store.createTechnicianProfile(tu, { profession: 'plumber', city: 'Luxor', hourlyRate: 100, phone: '+201099990077', lat: 25.6872, lng: 32.6396 });
+  const b = await store.createBooking({ clientId: client.id, technicianId: tech.id, date: '2026-12-20', description: 'chat', address: 'x' });
+  await assert.rejects(store.sendChatMessage(b, client.id, 'hi'), /not open/);
+  await store.setBookingStatus(await store.findBookingById(b.id), 'accepted');
+  let bk = await store.findBookingById(b.id);
+  const m1 = await store.sendChatMessage(bk, client.id, '  مرحبا  ');
+  assert.equal(m1.text, 'مرحبا');
+  await store.sendChatMessage(bk, tu.id, 'أهلا');
+  await assert.rejects(store.chatMessages(bk, other.id), /Not your booking/);
+  await assert.rejects(store.sendChatMessage(bk, client.id, 'x'.repeat(501)), /too long/);
+  await assert.rejects(store.sendChatMessage(bk, client.id, '   '), /empty/);
+  const view = await store.chatMessages(bk, tu.id);
+  assert.equal(view.open, true);
+  assert.equal(view.messages.length, 2);
+  assert.equal(JSON.stringify(view).includes('0109999'), false);
+  await store.setBookingStatus(bk, 'cancelled');
+  bk = await store.findBookingById(b.id);
+  assert.equal((await store.chatMessages(bk, client.id)).available, false);
+  await assert.rejects(store.sendChatMessage(bk, client.id, 'late'), /not open/);
+  // nearest flow: not open until the customer chooses
+  const d = await store.createBooking({ clientId: client.id, technicianId: tech.id, date: '2026-12-21', description: 'n', address: 'x', dispatchId: 'dsp_t1', nearest: true });
+  await store.setBookingStatus(await store.findBookingById(d.id), 'accepted');
+  await assert.rejects(store.sendChatMessage(await store.findBookingById(d.id), client.id, 'hi'), /not open/);
+  await store.chooseNearestOffer(await store.findBookingById(d.id));
+  assert.ok((await store.sendChatMessage(await store.findBookingById(d.id), client.id, 'hi')).id);
+});

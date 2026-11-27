@@ -5,6 +5,7 @@ import { updateMyProfile } from '../features/technicians/techniciansSlice';
 import { api } from '../api/axios';
 import useGeolocation from '../components/useGeolocation';
 import LocationError from '../components/LocationError';
+import ChatBox from '../components/ChatBox';
 import Stars from '../components/Stars';
 import TechAvatar, { VerifiedBadge } from '../components/TechAvatar';
 import { resizeImage } from '../utils/image';
@@ -172,6 +173,7 @@ export default function TechnicianDashboard() {
                       <button className="btn btn-primary btn-sm" type="submit">{t('workDone')}</button>
                     </form>
                   )}
+                  {(!b.dispatchId || b.chosen) && ['accepted', 'in_progress', 'awaiting_confirmation', 'completed'].includes(b.status) && <ChatBox booking={b} />}
                   {b.status === 'awaiting_confirmation' && <p className="muted">{t('awaitingClient')} · {b.finalAmount} EGP</p>}
                 </div>
               </div>

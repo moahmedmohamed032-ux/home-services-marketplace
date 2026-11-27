@@ -45,6 +45,22 @@ router.post('/:id/choose', authenticate, requireRole('client'), async (req, res,
   } catch (err) { next(err); }
 });
 
+// In-app chat for a booking (both parties only; opens once the customer picked the technician).
+router.get('/:id/chat', authenticate, async (req, res, next) => {
+  try {
+    const booking = await store.findBookingById(req.params.id);
+    if (!booking) throw ApiError.notFound('Booking not found');
+    res.json(await store.chatMessages(booking, req.user.id));
+  } catch (err) { next(err); }
+});
+router.post('/:id/chat', authenticate, async (req, res, next) => {
+  try {
+    const booking = await store.findBookingById(req.params.id);
+    if (!booking) throw ApiError.notFound('Booking not found');
+    res.status(201).json({ message: await store.sendChatMessage(booking, req.user.id, req.body && req.body.text) });
+  } catch (err) { next(err); }
+});
+
 // GET /api/bookings/mine — the client's own bookings.
 router.get('/mine', authenticate, requireRole('client'), async (req, res, next) => {
   try {
