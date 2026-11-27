@@ -2,7 +2,7 @@
 // Stateless: nothing is written to the database and message text is never logged.
 // It never reads users, bookings, invoices, receivables or ID documents.
 const express = require('express');
-const { retrieve, SUPPORT_WHATSAPP } = require('../core/assistantKb');
+const { retrieve } = require('../core/assistantKb');
 
 const router = express.Router();
 const MODELS = (process.env.GEMINI_MODELS || 'gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-2.5-flash-lite').split(',');
@@ -13,8 +13,8 @@ const DAILY_CAP = Number(process.env.ASSISTANT_DAILY_CAP || 800); // per warm in
 const buckets = new Map();
 let day = { d: '', n: 0 };
 
-const OUT_OF_SCOPE = `المعلومة دي مش عندي، ومش هتوقع إجابة. كلّم الدعم على واتساب وهيساعدوك: https://wa.me/${SUPPORT_WHATSAPP}`;
-const PRIVATE = `مقدرش أساعد في بيانات حسابات أو طلبات أو مستندات حد. للمساعدة في حسابك كلّم الدعم على واتساب: https://wa.me/${SUPPORT_WHATSAPP}`;
+const OUT_OF_SCOPE = 'معنديش إجابة على ده. جرّب تسأل بطريقة تانية، أو اسأل عن الحجز أو الدفع أو التوثيق أو العمولة.';
+const PRIVATE = 'مقدرش أساعد في بيانات حسابات أو طلبات أو مستندات حد. المساعد بيجاوب عن المنصة بشكل عام بس.';
 const PRIVATE_RE = /(ادمن|admin|مستحقات|receivable|كلمه سر|كلمة سر|باسورد|password|token|توكن|صور (البطاق|الهوي)|بطاقه فلان|بيانات (فلان|حد|عميل|فني)|رقم (فلان|حد)|prompt|تعليمات النظام|system)/i;
 
 function limited(req) {
@@ -67,7 +67,7 @@ router.post('/', async (req, res) => {
   if (!q) return res.status(400).json({ error: { message: 'اكتب سؤالك' } });
   if (q.length > MAX_LEN) return res.status(400).json({ error: { message: `السؤال طويل، اختصره (الحد ${MAX_LEN} حرف)` } });
   const lim = limited(req);
-  if (lim) return res.status(429).json({ error: { message: 'المساعد مشغول دلوقتي، جرب بعد شوية أو كلّم الدعم على واتساب.' } });
+  if (lim) return res.status(429).json({ error: { message: 'المساعد مشغول دلوقتي، جرب بعد شوية.' } });
   if (PRIVATE_RE.test(q)) return res.json({ answer: PRIVATE, source: 'guard' });
   const ctx = retrieve(q);
   if (!ctx.length) return res.json({ answer: OUT_OF_SCOPE, source: 'none' });
