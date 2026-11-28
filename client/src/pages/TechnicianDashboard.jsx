@@ -169,7 +169,7 @@ export default function TechnicianDashboard() {
                   <span className={`badge badge-${b.status}`}>{t(b.status)}</span>
                 </div>
                 <p>{b.description}</p>
-                <p className="muted">📍 {b.address}
+                <p className="muted">📍 {b.locationHidden ? (lang === 'ar' ? `العنوان بيظهر بعد ما العميل يختارك${b.distanceKm !== undefined ? ` (حوالي ${b.distanceKm} كم منك)` : ''}` : `Address is shown once the customer picks you${b.distanceKm !== undefined ? ` (about ${b.distanceKm} km away)` : ''}`) : b.address}
                   {b.clientLat !== undefined && <> · <a target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${b.clientLat},${b.clientLng}`}>{t('openMap')}</a></>}
                 </p>
                 <div className="btn-row">
@@ -232,7 +232,7 @@ export default function TechnicianDashboard() {
               <span>{t('phonePublicLabel')}<br /><small className="muted">{t('phonePublicHelp')}</small></span></label>
             <label>{t('bio')}<textarea rows="3" value={tech.bio || ''} onChange={(e) => set('bio', e.target.value)} /></label>
             <div className="row">
-              <label>{t('rate')}<input type="number" value={tech.hourlyRate} onChange={(e) => set('hourlyRate', e.target.value)} />{tech.priceMax && <small className="muted">{t('rateHint')} {tech.priceMin}-{tech.priceMax} {t('perHour')}</small>}</label>
+              <label>{t(tech.profession === 'delivery' ? 'rateTrip' : 'rate')}<input type="number" value={tech.hourlyRate} onChange={(e) => set('hourlyRate', e.target.value)} />{tech.priceMax && <small className="muted">{t('rateHint')} {tech.priceMin}-{tech.priceMax} {t('perHour')}</small>}</label>
               <label>{t('experience')}<input type="number" value={tech.yearsExperience} onChange={(e) => set('yearsExperience', e.target.value)} /></label>
             </div>
             {saveErr && <p className="error">{saveErr}</p>}

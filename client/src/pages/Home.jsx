@@ -35,6 +35,10 @@ export default function Home() {
         {geoError && <LocationError retry={retryLocate} loading={locating} className="error" />}
       </section>
 
+      {(professions.find((p) => p.id === 'delivery') || {}).technicianCount > 0 && (
+        <p style={{ textAlign: 'center' }}><Link className="btn btn-outline" to="/orders">🛵 {lang === 'ar' ? 'اطلب من أي مكان (طيار توصيل)' : 'Order from anywhere (delivery courier)'}</Link></p>
+      )}
+
       <h2 className="section-title">{t('browseCategories')}</h2>
       <div className="grid cats">
         {professions.filter((p) => p.technicianCount > 0).map((p) => (

@@ -11,6 +11,7 @@ import Register from './pages/Register';
 import ClientDashboard from './pages/ClientDashboard';
 import TechnicianDashboard from './pages/TechnicianDashboard';
 import NearestRequest from './pages/NearestRequest';
+import Orders from './pages/Orders';
 import ServiceLanding from './pages/ServiceLanding';
 import AdminDashboard from './pages/AdminDashboard';
 import { DentalHome, ClinicPage, ClinicRegister } from './dental/Dental';
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/orders" element={<Orders />} />
           <Route path="/request-nearest" element={<NearestRequest />} />
           <Route path="/technicians" element={<Technicians />} />
           <Route path="/technicians/:id" element={<TechnicianDetails />} />

@@ -84,7 +84,7 @@ export default function RegisterTechnician() {
         {geoError && <LocationError retry={retryLocate} loading={locating} className="error" />}
         <div className="row">
           <label>{t('experience')}<input type="number" min="0" value={form.yearsExperience} onChange={set('yearsExperience')} /></label>
-          <label>{t('rate')}<input type="number" min="0" value={form.hourlyRate} onChange={set('hourlyRate')} />{band && <small className="muted">{t('rateHint')} {band.priceMin}-{band.priceMax} {t('perHour')}</small>}</label>
+          <label>{t(form.profession === 'delivery' ? 'rateTrip' : 'rate')}<input type="number" min="0" value={form.hourlyRate} onChange={set('hourlyRate')} />{band && band.priceMax !== undefined && <small className="muted">{t('rateHint')} {band.priceMin}-{band.priceMax} {t('perHour')}</small>}</label>
         </div>
         <label>{t('bio')}<textarea rows="3" value={form.bio} onChange={set('bio')} /></label>
         <label className="check"><input type="checkbox" checked={form.addressActive} onChange={check('addressActive')} /> {t('activateAddress')}</label>

@@ -26,7 +26,7 @@ const PRIVATE = 'مقدرش أساعد في بيانات حسابات أو طل�
 const PRIVATE_RE = /(ادمن|admin|مستحقات (فلان|حد|الفنيين|فني [^ ]+)|receivable|كلمه سر|كلمة سر|باسورد|password|token|توكن|صور (البطاق|الهوي)|بطاقه فلان|بيانات (فلان|حد|عميل|فني)|رقم (فلان|حد)|prompt|تعليمات النظام|system)/i;
 
 const VAGUE_RE = /^(عايز|عاوز|محتاج|ابغى|ادور على|دور لي|دورلي|ابحث عن|ورّيني|وريني)\s*(حد|فني|صنايعي|واحد)?(\s*(كويس|شاطر|قريب))?$/;
-const PROF_RE = /(سباك|كهربائي|نقاش|نجار|تكييف|نظافه|نظافة|اجهزه|أجهزة|بلاط)/;
+const PROF_RE = /(سباك|كهربائي|نقاش|نجار|تكييف|نظافه|نظافة|اجهزه|أجهزة|بلاط|توصيل|طيار|دليفري|ديليفري)/;
 
 // Per-IP limit lives in Redis (shared across serverless instances); falls back to per-instance memory if Redis is down.
 async function limited(req) {

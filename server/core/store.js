@@ -207,7 +207,7 @@ async function allReviews(t) {
 const priceBand = (profession) => seed.PROFESSIONS.find((p) => p.id === profession) || null;
 function assertRateWithinCap(profession, rate) {
   const b = priceBand(profession);
-  if (!b || !Number.isFinite(Number(rate))) return;
+  if (!b || b.priceMax === undefined || !Number.isFinite(Number(rate))) return;
   if (Number(rate) > b.priceMax) {
     throw ApiError.badRequest(`Hourly rate is above the market limit for this service (max ${b.priceMax} EGP). Please lower it.`);
   }
@@ -218,7 +218,8 @@ async function publicTechnician(t, { owner = false, withReviews = false } = {}) 
   const { phone, reviews, workPhotos, settlementClaim, idStatus, ...rest } = t;
   const out = { ...rest, ...(owner ? { idStatus: idStatus || 'none' } : {}), verified: t.verified === true, phone: owner || t.phonePublic ? phone : null };
   const band = priceBand(t.profession);
-  if (band) {
+  out.rateUnit = band && band.unit === 'trip' ? 'trip' : 'hour';
+  if (band && band.priceMax !== undefined) {
     out.priceMin = band.priceMin; out.priceMax = band.priceMax;
     out.priceStatus = t.hourlyRate > band.priceMax ? 'above' : t.hourlyRate < band.priceMin ? 'below' : 'within';
   }
@@ -353,7 +354,7 @@ async function collapseDispatch(rows) {
       const t = await findTechnicianById(r.technicianId);
       if (!t) continue;
       const hasGeo = r.clientLat !== undefined && r.clientLng !== undefined && Number.isFinite(Number(t.lat));
-      offers.push({ bookingId: r.id, technicianId: t.id, name: t.name, hourlyRate: t.hourlyRate, rating: t.rating || 0, jobsDone: t.jobsDone || 0,
+      offers.push({ bookingId: r.id, technicianId: t.id, name: t.name, hourlyRate: t.hourlyRate, rateUnit: (priceBand(t.profession) || {}).unit === 'trip' ? 'trip' : 'hour', rating: t.rating || 0, jobsDone: t.jobsDone || 0,
         distanceKm: hasGeo ? Math.round(haversineKm(Number(r.clientLat), Number(r.clientLng), t.lat, t.lng) * 10) / 10 : undefined });
     }
     offers.sort((a, b) => a.hourlyRate - b.hourlyRate);
@@ -497,7 +498,16 @@ async function bookingsForTechnician(userId) {
   if (!tech) return [];
   const all = await db.bookings.getAll();
   const rows = [];
-  for (const b of all.filter((x) => x.technicianId === tech.id && !x.superseded)) rows.push(await hydrateBooking(b));
+  for (const b of all.filter((x) => x.technicianId === tech.id && !x.superseded)) {
+    const h = await hydrateBooking(b);
+    // Nearest-technician request not yet chosen by the customer: several technicians got it, so none sees the exact
+    // address or map point. They get the approximate distance only; the chosen one sees the full location.
+    if (b.dispatchId && !b.chosen) {
+      const hasGeo = b.clientLat !== undefined && b.clientLng !== undefined && Number.isFinite(Number(b.clientLat)) && Number.isFinite(Number(tech.lat));
+      const { address, clientLat, clientLng, ...rest } = h;
+      rows.push({ ...rest, locationHidden: true, ...(hasGeo ? { distanceKm: Math.round(haversineKm(Number(b.clientLat), Number(b.clientLng), tech.lat, tech.lng) * 10) / 10 } : {}) });
+    } else rows.push(h);
+  }
   return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -548,7 +558,7 @@ async function submitFinalAmount(booking, amount, photos) {
   const a = Number(amount);
   if (!Number.isFinite(a) || a <= 0) throw ApiError.badRequest('Enter the final amount in EGP');
   const band = priceBand(tech && tech.profession);
-  if (band && a > band.priceMax * 5) throw ApiError.badRequest(`Final amount is above the market limit for this service (max ${band.priceMax * 5} EGP per job)`);
+  if (band && band.priceMax !== undefined && a > band.priceMax * 5) throw ApiError.badRequest(`Final amount is above the market limit for this service (max ${band.priceMax * 5} EGP per job)`);
   const extra = { finalAmount: Math.round(a) };
   if (proof.length) {
     // Evidence is append-only: a re-submit after the customer reopened keeps the earlier photos.

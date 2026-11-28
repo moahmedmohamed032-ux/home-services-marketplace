@@ -17,7 +17,7 @@ export default function NearestRequest() {
   const [params] = useSearchParams();
   const { user } = useSelector((s) => s.auth);
   const { professions, cities } = useSelector((s) => s.technicians);
-  const [form, setForm] = useState({ profession: params.get('profession') || '', city: 'Luxor', date: '', description: '', address: '' });
+  const [form, setForm] = useState({ profession: params.get('profession') || '', city: 'Luxor', date: '', description: params.get('description') || '', address: '' });
   const [pos, setPos] = useState(null);
   const [message, setMessage] = useState(null);
   const [busy, setBusy] = useState(false);
