@@ -115,6 +115,9 @@ router.post('/login', rateLimiter, async (req, res, next) => {
     const identifier = req.body.identifier || req.body.email;
     requireFields({ identifier, password: req.body.password }, ['identifier', 'password']);
     const { password } = req.body;
+    // Per-account throttle on top of the per-IP limiter: stops password guessing spread over many IPs.
+    const acctKey = `rl:login:${String(identifier).trim().toLowerCase().slice(0, 120)}`;
+    if ((await rateLimiter.count(acctKey)) > 12) return res.status(429).json({ error: { message: 'Too many sign-in attempts for this account, try again in 15 minutes' } });
     const user = await store.findUserByLogin(identifier);
     if (!user || !(await comparePassword(password, user.passwordHash))) {
       throw ApiError.unauthorized('Wrong email/phone or password');

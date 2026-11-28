@@ -33,8 +33,8 @@ export default function App() {
       ? (lang === 'ar' ? 'فني في الأقصر وإسنا وقنا وأسوان: سباك وكهربائي وفني تكييف | FIX-IT' : 'Technicians in Luxor, Esna, Qena and Aswan | FIX-IT')
       : `${t(key)} | FIX-IT`;
     const desc = lang === 'ar'
-      ? 'محتاج فني في الأقصر أو إسنا أو قنا أو أسوان؟ اطلب سباك الأقصر أو كهربائي الأقصر أو فني تكييف الأقصر أو نجار ونقاش بتقييمات حقيقية. احجز في دقايق وادفع كاش أو أونلاين.'
-      : 'Need a technician in Luxor? Book rated plumbers, electricians, AC technicians, carpenters and painters in minutes. Pay cash or online.';
+      ? 'محتاج فني في الأقصر أو إسنا أو قنا أو أسوان؟ اطلب سباك الأقصر أو كهربائي الأقصر أو فني تكييف الأقصر أو نجار ونقاش بتقييمات حقيقية. احجز وادفع كاش للفني بعد الشغل.'
+      : 'Need a technician in Luxor? Book rated plumbers, electricians, AC technicians, carpenters and painters Pay the technician in cash after the job.';
     const m = document.querySelector('meta[name="description"]');
     if (m) m.setAttribute('content', desc);
     document.documentElement.lang = lang;

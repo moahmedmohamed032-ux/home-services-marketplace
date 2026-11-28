@@ -74,7 +74,7 @@ test('a tampered or unsigned token is rejected', async () => {
 test('rate limit: 50 requests per IP, then 429, other IPs unaffected', async () => {
   const ip = '203.0.113.77';
   let last;
-  for (let i = 0; i < 51; i += 1) last = await call('POST', '/auth/login', { identifier: 'nobody@test.dev', password: 'x' }, null, { 'x-forwarded-for': ip });
+  for (let i = 0; i < 51; i += 1) last = await call('POST', '/auth/login', { identifier: `nobody${i}@test.dev`, password: 'x' }, null, { 'x-forwarded-for': ip });
   assert.equal(last.status, 429);
   const other = await call('POST', '/auth/login', { identifier: 'nobody@test.dev', password: 'x' }, null, { 'x-forwarded-for': '203.0.113.78' });
   assert.equal(other.status, 401);

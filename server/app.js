@@ -16,9 +16,16 @@ const dentalRoutes = require('./routes/dental.routes');
 const assistantRoutes = require('./routes/assistant.routes');
 const notificationRoutes = require('./routes/notifications.routes');
 
-const app = express();
+const securityHeaders = require('./middleware/securityHeaders');
 
-app.use(cors());
+const app = express();
+app.disable('x-powered-by');
+app.use(securityHeaders);
+// The API is called by our own site (Bearer token, no cookies). Other websites' browsers are refused.
+const ALLOWED_ORIGINS = new Set(['https://fanni-marketplace.vercel.app', ...(process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean)]);
+app.use(cors({
+  origin: (origin, cb) => cb(null, !origin || ALLOWED_ORIGINS.has(origin) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)),
+}));
 app.use(express.json({ limit: '3mb' }));
 app.use(logger);
 

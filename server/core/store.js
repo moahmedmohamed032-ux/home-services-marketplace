@@ -265,13 +265,14 @@ async function createTechnicianProfile(user, { profession, city, district, years
   }
   return saved;
 }
+const imageSigOk = require('../utils/imageSig');
 const IMG_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 const PHOTO_MAX = 120000;
 const WORK_PHOTO_MAX = 300000;
 const WORK_PHOTOS_MAX = 6;
 function cleanImage(v, max) {
   if (v === '' || v === null) return '';
-  if (typeof v !== 'string' || v.length > max || !IMG_RE.test(v)) throw ApiError.badRequest('Invalid or too large image (JPEG/PNG/WebP only)');
+  if (typeof v !== 'string' || v.length > max || !IMG_RE.test(v) || !imageSigOk(v)) throw ApiError.badRequest('Invalid or too large image (JPEG/PNG/WebP only)');
   return v;
 }
 async function updateTechnicianProfile(id, patch) {
@@ -1194,6 +1195,7 @@ const ID_IMG_MAX = 600000;
 function cleanIdImage(v, label) {
   const x = String(v || '');
   if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(x)) throw ApiError.badRequest(`${label} photo is required (JPEG, PNG or WebP image)`);
+  if (!imageSigOk(x)) throw ApiError.badRequest(`${label} photo is not a valid image file`);
   if (x.length > ID_IMG_MAX) throw ApiError.badRequest(`${label} photo is too large`);
   return x;
 }
