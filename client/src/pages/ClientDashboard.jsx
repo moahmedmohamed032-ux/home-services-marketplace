@@ -7,6 +7,7 @@ import { api } from '../api/axios';
 import InvoiceCard from '../components/InvoiceCard';
 import { fetchMyBookings, reviewBooking, updateBookingStatus } from '../features/bookings/bookingsSlice';
 import { useT } from '../i18n/useT';
+import { fmtDateTime } from '../i18n/translations';
 
 function ReviewForm({ booking }) {
   const dispatch = useDispatch();
@@ -58,7 +59,7 @@ export default function ClientDashboard() {
         {bookings.map((b) => (
           <div key={b.id} className="card booking">
             <div className="booking-top">
-              <div><h3>{b.technicianName}</h3><p className="muted">{b.profession} · {b.date}</p></div>
+              <div><h3>{b.technicianName}</h3><p className="muted">{b.profession} · {b.date}</p><p className="muted" dir="ltr">{b.orderNo} · {fmtDateTime(b.createdAt, lang)}</p></div>
               <span className={`badge badge-${b.status}`}>{t(b.status)}</span>
             </div>
             <p>{b.description}</p>

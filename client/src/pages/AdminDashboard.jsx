@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { api } from '../api/axios';
 import { useT } from '../i18n/useT';
+import { fmtDateTime, cityLabel } from '../i18n/translations';
 import { VerifiedBadge } from '../components/TechAvatar';
 
 const BOOKING_STATUSES = ['pending', 'accepted', 'in_progress', 'awaiting_confirmation', 'declined', 'completed', 'cancelled'];
@@ -78,7 +79,7 @@ export default function AdminDashboard() {
   const toggleUser = (u) => run(() => api.patch(`/admin/users/${u.id}`, { active: u.active === false }));
   const togglePaid = (i) => run(() => api.patch(`/admin/invoices/${i.id}`, { status: i.status === 'paid' ? 'unpaid' : 'paid' }));
 
-  const tabs = [['technicians', t('techniciansWord'), techs.length], ['users', t('usersWord'), users.length], ['bookings', t('bookingsWord'), bookings.length], ['invoices', t('invoices'), invoices.length], ['disputes', lang === 'ar' ? 'المشاكل' : 'Disputes', disputes.filter((d) => d.status === 'open').length], ['commission', t('commissionsTab'), comm ? comm.totals.jobs : 0]];
+  const tabs = [['technicians', t('techniciansWord'), techs.length], ['users', t('usersWord'), users.length], ['bookings', t('bookingsWord'), bookings.length], ['invoices', t('invoices'), invoices.length], ['delivery', lang === 'ar' ? '🛵 توصيل' : '🛵 Delivery', bookings.filter((b) => b.professionId === 'delivery').length], ['disputes', lang === 'ar' ? 'المشاكل' : 'Disputes', disputes.filter((d) => d.status === 'open').length], ['commission', t('commissionsTab'), comm ? comm.totals.jobs : 0]];
 
   return (
     <>
@@ -163,11 +164,11 @@ export default function AdminDashboard() {
         <>
           <h2 className="section-title">{t('bookingsWord')} ({bookings.length})</h2>
           <div className="card table-wrap"><table className="table">
-            <thead><tr><th>#</th><th>{t('clientsWord')}</th><th>{t('techniciansWord')}</th><th>{t('dateWord')}</th><th>{t('statusWord')}</th><th /></tr></thead>
+            <thead><tr><th>{lang === 'ar' ? 'رقم الطلب' : 'Order no.'}</th><th>{lang === 'ar' ? 'الخدمة' : 'Service'}</th><th>{t('clientsWord')}</th><th>{t('techniciansWord')}</th><th>{lang === 'ar' ? 'وقت الطلب' : 'Placed'}</th><th>{t('dateWord')}</th><th>{t('statusWord')}</th><th /></tr></thead>
             <tbody>
               {bookings.map((b) => (
                 <tr key={b.id}>
-                  <td dir="ltr">{b.id}</td><td>{b.clientName}</td><td>{b.technicianName}</td><td>{(b.date || '').slice(0, 10)}</td>
+                  <td dir="ltr">{b.orderNo || b.id}</td><td>{lang === 'ar' ? b.professionAr : b.profession}</td><td>{b.clientName}</td><td>{b.technicianName}</td><td>{fmtDateTime(b.createdAt, lang)}</td><td>{(b.date || '').slice(0, 10)}</td>
                   <td><span className={`badge badge-${b.status}`}>{t(b.status)}</span>{b.proofCount > 0 && <ProofPhotos bookingId={b.id} count={b.proofCount} />}</td>
                   <td className="row-actions">
                     <select className="status-select" value={b.status} onChange={(e) => run(() => api.patch(`/admin/bookings/${b.id}`, { status: e.target.value }))}>
@@ -177,7 +178,7 @@ export default function AdminDashboard() {
                   </td>
                 </tr>
               ))}
-              {!bookings.length && <tr><td colSpan="6">{t('noData')}</td></tr>}
+              {!bookings.length && <tr><td colSpan="8">{t('noData')}</td></tr>}
             </tbody></table></div>
         </>
       )}
@@ -201,6 +202,29 @@ export default function AdminDashboard() {
                 </tr>
               ))}
               {!invoices.length && <tr><td colSpan="8">{t('noData')}</td></tr>}
+            </tbody></table></div>
+        </>
+      )}
+
+      {tab === 'delivery' && (
+        <>
+          <h2 className="section-title">🛵 {lang === 'ar' ? 'الطيارين (توصيل طلبات)' : 'Couriers'} ({techs.filter((x) => x.profession === 'delivery').length})</h2>
+          <div className="card table-wrap"><table className="table">
+            <thead><tr><th>{t('name')}</th><th>{t('city')}</th><th>{t('statusWord')}</th><th>{t('phoneLabel')}</th></tr></thead>
+            <tbody>
+              {techs.filter((x) => x.profession === 'delivery').map((x) => (
+                <tr key={x.id}><td>{x.name}</td><td>{x.city}</td><td>{x.approved === false ? <span className="badge badge-pending">{t('pendingApproval')}</span> : (lang === 'ar' ? 'معتمد' : 'Approved')}</td><td dir="ltr">{x.phone || '-'}</td></tr>
+              ))}
+              {!techs.some((x) => x.profession === 'delivery') && <tr><td colSpan="4">{lang === 'ar' ? 'لا يوجد طيارين مسجلين لسه.' : 'No couriers registered yet.'}</td></tr>}
+            </tbody></table></div>
+          <h2 className="section-title" style={{ marginTop: 18 }}>{lang === 'ar' ? 'طلبات التوصيل' : 'Delivery orders'} ({bookings.filter((b) => b.professionId === 'delivery').length})</h2>
+          <div className="card table-wrap"><table className="table">
+            <thead><tr><th>{lang === 'ar' ? 'رقم الطلب' : 'Order no.'}</th><th>{lang === 'ar' ? 'وقت الطلب' : 'Placed'}</th><th>{t('clientsWord')}</th><th>{lang === 'ar' ? 'الطيار' : 'Courier'}</th><th>{lang === 'ar' ? 'الطلب' : 'Request'}</th><th>{t('statusWord')}</th></tr></thead>
+            <tbody>
+              {bookings.filter((b) => b.professionId === 'delivery').map((b) => (
+                <tr key={b.id}><td dir="ltr">{b.orderNo}</td><td>{fmtDateTime(b.createdAt, lang)}</td><td>{b.clientName}</td><td>{b.technicianName}</td><td style={{ whiteSpace: 'pre-line' }}>{b.description}</td><td><span className={`badge badge-${b.status}`}>{t(b.status)}</span></td></tr>
+              ))}
+              {!bookings.some((b) => b.professionId === 'delivery') && <tr><td colSpan="6">{lang === 'ar' ? 'لا توجد طلبات توصيل لسه.' : 'No delivery orders yet.'}</td></tr>}
             </tbody></table></div>
         </>
       )}

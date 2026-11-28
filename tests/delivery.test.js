@@ -65,3 +65,8 @@ test('technician can apply from a pre-launch area but customers still do not see
   assert.ok((await store.adminListTechnicians()).some((x) => x.id === t.id && x.city === 'Asyut'), 'admin sees it');
   await assert.rejects(() => store.createTechnicianProfile(u, { profession: 'plumber', city: 'Atlantis', hourlyRate: 100 }));
 });
+
+test('bookings carry an order number and timestamp; admin can list delivery orders', async () => {
+  const rows = await store.adminListBookings();
+  assert.ok(rows.every((b) => /^FX-\d{6}$/.test(b.orderNo) && b.createdAt && 'professionId' in b));
+});

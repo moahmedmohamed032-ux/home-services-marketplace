@@ -467,6 +467,8 @@ async function hydrateBooking(b) {
   const profession = seed.PROFESSIONS.find((p) => p.id === (tech && tech.profession));
   return {
     ...stripProof(b),
+    orderNo: `FX-${String(b.id).replace(/\D/g, '').padStart(6, '0')}`,
+    professionId: tech ? tech.profession : '',
     technicianName: tech ? tech.name : 'Unknown',
     profession: profession ? profession.name : '',
     professionAr: profession ? profession.nameAr : '',
