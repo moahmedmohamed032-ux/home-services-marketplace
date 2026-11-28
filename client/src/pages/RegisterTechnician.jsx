@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { register } from '../features/auth/authSlice';
-import { fetchCities, fetchProfessions } from '../features/technicians/techniciansSlice';
+import { fetchAreas, fetchProfessions } from '../features/technicians/techniciansSlice';
 import useGeolocation from '../components/useGeolocation';
 import LocationError from '../components/LocationError';
 import { cityLabel } from '../i18n/translations';
@@ -17,7 +17,7 @@ export default function RegisterTechnician() {
   const navigate = useNavigate();
   const { t, lang } = useT();
   const { status, error } = useSelector((s) => s.auth);
-  const { professions, cities } = useSelector((s) => s.technicians);
+  const { professions, areas } = useSelector((s) => s.technicians);
   const [form, setForm] = useState({
     name: '', username: '', email: '', password: '', phone: '', profession: '', city: '', address: '',
     yearsExperience: 1, hourlyRate: 100, bio: '', phonePublic: false, addressActive: true,
@@ -34,7 +34,7 @@ export default function RegisterTechnician() {
   const band = professions.find((p) => p.id === form.profession);
   const [pos, setPos] = useState(null);
   const [locate, locating, geoError, retryLocate] = useGeolocation();
-  useEffect(() => { dispatch(fetchProfessions()); dispatch(fetchCities()); }, [dispatch]);
+  useEffect(() => { dispatch(fetchProfessions()); dispatch(fetchAreas()); }, [dispatch]);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const check = (k) => (e) => setForm({ ...form, [k]: e.target.checked });
 
@@ -72,8 +72,11 @@ export default function RegisterTechnician() {
           <label>{t('city')}
             <select required value={form.city} onChange={set('city')}>
               <option value="">{t('chooseCity')}</option>
-              {cities.map((c) => <option key={c} value={c}>{cityLabel(c, lang)}</option>)}
+              {areas.map((a) => <option key={a.name} value={a.name}>{cityLabel(a.name, lang)}</option>)}
             </select>
+            {form.city && (areas.find((a) => a.name === form.city) || {}).public === false && (
+              <small className="muted">{lang === 'ar' ? 'الخدمة لسه مش مفتوحة للعملاء في منطقتك. بنسجّل طلبك ونراجعه، وحسابك هيظهر للعملاء أول ما نفتح المنطقة.' : 'The service is not open to customers in your area yet. We record and review your application, and your profile shows to customers once the area opens.'}</small>
+            )}
           </label>
         </div>
         <p className="muted comm-note">{t('phoneLoginHint')}</p>

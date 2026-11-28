@@ -50,3 +50,18 @@ test('nearest request: address and map point reach only the technician the custo
   assert.equal(chosen.address, 'Secret street 5');
   assert.equal(chosen.clientLat, 25.6872);
 });
+
+test('technician can apply from a pre-launch area but customers still do not see it', async () => {
+  await store.init();
+  const areas = await store.listRegistrationAreas();
+  assert.ok(['Asyut', 'Sohag', 'Faisal', '6th of October', 'Badr', 'Shorouk'].every((n) => areas.some((a) => a.name === n && a.public === false)));
+  assert.ok(areas.filter((a) => a.public).map((a) => a.name).join() === 'Luxor,Esna,Qena,Aswan');
+  assert.deepEqual(await store.listCities(), ['Luxor', 'Esna', 'Qena', 'Aswan']);
+  const u = await store.createUser({ name: 'Asyut Applicant', phone: '01099990077', passwordHash: 'x', role: 'technician', city: 'Asyut' });
+  const t = await store.createTechnicianProfile(u, { profession: 'plumber', city: 'asyut', hourlyRate: 100, phone: '01099990077' });
+  assert.equal(t.city, 'Asyut');
+  await store.adminUpdateTechnician(t.id, { approved: true });
+  assert.equal((await store.searchTechnicians({ profession: 'plumber', city: 'Asyut' })).length, 0, 'not in customer search');
+  assert.ok((await store.adminListTechnicians()).some((x) => x.id === t.id && x.city === 'Asyut'), 'admin sees it');
+  await assert.rejects(() => store.createTechnicianProfile(u, { profession: 'plumber', city: 'Atlantis', hourlyRate: 100 }));
+});

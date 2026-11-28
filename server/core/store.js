@@ -134,6 +134,11 @@ async function createUser({ name, username, email, phone, passwordHash, role, ci
 // Public marketplace is Luxor-only. Records for other cities (demo data) are kept, just hidden.
 // Override with PUBLIC_CITIES="Luxor,Cairo" (comma separated) to show more.
 const SUPPORTED_CITIES = ['Luxor', 'Esna', 'Qena', 'Aswan'];
+// Technicians may apply from more areas than the ones customers can see. An applicant in a "pre-launch" area is stored with the
+// right area and shown to admins, but stays out of every customer-facing list until that area is added to PUBLIC_CITIES.
+const PRELAUNCH_AREAS = ['Asyut', 'Sohag', 'Faisal', '6th of October', 'Badr', 'Shorouk'];
+const REGISTRATION_AREAS = [...SUPPORTED_CITIES, ...PRELAUNCH_AREAS];
+const canonicalArea = (c) => REGISTRATION_AREAS.find((x) => x.toLowerCase() === String(c || '').trim().toLowerCase()) || null;
 const canonicalCity = (c) => SUPPORTED_CITIES.find((x) => x.toLowerCase() === String(c || '').trim().toLowerCase()) || null;
 const PUBLIC_CITIES = (process.env.PUBLIC_CITIES || SUPPORTED_CITIES.join(',')).split(',').map((c) => c.trim().toLowerCase()).filter(Boolean);
 const isPublicCity = (t) => PUBLIC_CITIES.includes(String(t.city || '').toLowerCase()) && t.approved !== false;
@@ -146,6 +151,10 @@ async function listProfessions() {
     ...p,
     technicianCount: techs.filter((t) => t.profession === p.id).length,
   }));
+}
+async function listRegistrationAreas() {
+  await init();
+  return REGISTRATION_AREAS.map((name) => ({ name, public: PUBLIC_CITIES.includes(name.toLowerCase()) }));
 }
 async function listCities() {
   await init();
@@ -243,8 +252,8 @@ async function findTechnicianByUserId(userId) {
 }
 async function createTechnicianProfile(user, { profession, city, district, yearsExperience = 0, hourlyRate = 0, bio = '', bioAr = '', lat, lng, phone = '', phonePublic = false, address = '', addressActive = true }) {
   await init();
-  const cityKey = canonicalCity(city || user.city);
-  if (!cityKey) throw ApiError.badRequest('Please choose your city: Luxor, Esna, Qena or Aswan');
+  const cityKey = canonicalArea(city || user.city);
+  if (!cityKey) throw ApiError.badRequest(`Please choose your area: ${REGISTRATION_AREAS.join(', ')}`);
   city = cityKey;
   assertRateWithinCap(profession, hourlyRate);
   const fallback = seed.CITY_COORDS[city || user.city] || {};
@@ -1393,7 +1402,7 @@ async function getDb() { await init(); return db; }
 module.exports = {
   getDb, BOOKING_STATUS, createNearestRequest, chooseNearestOffer, SUPPORTED_CITIES, submitFinalAmount, getBookingProof, sweepAutoConfirm, clientCashAnswer, init,
   findUserByEmail, findUserByPhone, findUserByLogin, setUserPassword, normalizePhone, isEgPhone, findUserById, publicUser, createUser,
-  listProfessions, listCities,
+  listProfessions, listCities, listRegistrationAreas,
   searchTechnicians, publicTechnician, findTechnicianById, findTechnicianByUserId,
   createTechnicianProfile, updateTechnicianProfile,
   createBooking, findBookingById, bookingsForClient, bookingsForTechnician, setBookingStatus, addReview,

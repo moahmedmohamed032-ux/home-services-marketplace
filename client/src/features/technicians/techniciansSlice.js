@@ -4,6 +4,7 @@ import { api, errorMessage } from '../../api/axios';
 const initialState = {
   professions: [],
   cities: [],
+  areas: [],
   list: [],
   current: null,
   filters: { profession: '', city: '', search: '' },
@@ -20,6 +21,11 @@ export const fetchProfessions = createAsyncThunk('technicians/fetchProfessions',
 export const fetchCities = createAsyncThunk('technicians/fetchCities', async () => {
   const { data } = await api.get('/professions/meta/cities');
   return data.cities;
+});
+
+export const fetchAreas = createAsyncThunk('technicians/fetchAreas', async () => {
+  const { data } = await api.get('/professions/meta/areas');
+  return data.areas;
 });
 
 export const fetchTechnicians = createAsyncThunk(
@@ -75,6 +81,9 @@ const techniciansSlice = createSlice({
     builder
       .addCase(fetchProfessions.fulfilled, (state, action) => {
         state.professions = action.payload;
+      })
+      .addCase(fetchAreas.fulfilled, (state, action) => {
+        state.areas = action.payload;
       })
       .addCase(fetchCities.fulfilled, (state, action) => {
         state.cities = action.payload;

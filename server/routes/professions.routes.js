@@ -17,4 +17,11 @@ router.get('/meta/cities', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/professions/meta/areas — areas a technician can apply from; `public` says whether customers can already book there.
+router.get('/meta/areas', async (req, res, next) => {
+  try {
+    res.json({ areas: await store.listRegistrationAreas() });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

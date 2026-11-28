@@ -125,5 +125,5 @@ export const translations = {
 
 export const cityLabel = (city, lang) => {
   if (lang !== 'ar') return city;
-  return { Luxor: 'الأقصر', Esna: 'إسنا', Qena: 'قنا', Cairo: 'القاهرة', Aswan: 'أسوان' }[city] || city;
+  return { Luxor: 'الأقصر', Esna: 'إسنا', Qena: 'قنا', Cairo: 'القاهرة', Aswan: 'أسوان', Asyut: 'أسيوط', Sohag: 'سوهاج', Faisal: 'فيصل', '6th of October': 'السادس من أكتوبر', Badr: 'بدر', Shorouk: 'الشروق' }[city] || city;
 };
