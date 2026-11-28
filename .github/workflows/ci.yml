@@ -1,0 +1,33 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+      - name: Install server dependencies
+        run: npm ci
+      - name: Server tests (node --test)
+        run: npm test
+      - name: Install client dependencies
+        run: npm --prefix client ci
+      - name: Client build (Vite)
+        run: npm --prefix client run build
+      - name: Audit server dependencies (fail on high)
+        run: npm audit --audit-level=high
+      - name: Audit client runtime dependencies (fail on high)
+        run: npm --prefix client audit --omit=dev --audit-level=high
+      - name: Full client audit (report only, includes dev tools)
+        run: npm --prefix client audit || true
