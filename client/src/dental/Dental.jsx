@@ -1,3 +1,4 @@
+import { OpenStatusBadge } from './openStatus';
 import './bs.scss';
 import './dental.css';
 import { useEffect, useState } from 'react';
@@ -99,7 +100,7 @@ function ClinicCard({ c, procedures }) {
       <div className="card h-100">
         <Carousel photos={c.photos} id={`car-${c.id}`} alt={c.name} />
         <div className="card-body">
-          <h3 className="card-title h5">{c.name} {c.verified && <span className="badge text-bg-success" title="تم التحقق من العيادة تليفونيًا">✔ موثقة</span>}</h3>
+          <h3 className="card-title h5">{c.name} {c.verified && <span className="badge text-bg-success" title="تم التحقق من العيادة تليفونيًا">✔ موثقة</span>} <OpenStatusBadge status={c.openStatus} at={c.openStatusAt} /></h3>
           <p className="card-text text-muted small mb-2"><span className="badge text-bg-primary">{c.cityAr}</span> {c.address}</p>
           {c.hours && <p className="small mb-2">🕒 {c.hours}</p>}
           {c.mapUrl && <p className="small mb-2"><a href={c.mapUrl} target="_blank" rel="noopener noreferrer nofollow">📍 الموقع على الخريطة</a></p>}
@@ -264,7 +265,7 @@ export function ClinicPage() {
         <div className="col-lg-6">
           <div className="card"><Carousel photos={c.photos} id="car-main" alt={c.name} />
             <div className="card-body">
-              <h1 className="h4">{c.name} {c.verified && <span className="badge text-bg-success">✔ موثقة</span>}</h1>
+              <h1 className="h4">{c.name} {c.verified && <span className="badge text-bg-success">✔ موثقة</span>} <OpenStatusBadge status={c.openStatus} at={c.openStatusAt} /></h1>
               <p className="mb-1"><span className="badge text-bg-primary">{c.cityAr}</span> {c.address}</p>
               {c.hours && <p className="small mb-1">🕒 {c.hours}</p>}
               <ProfileFacts c={c} />

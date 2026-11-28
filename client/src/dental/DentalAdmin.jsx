@@ -1,3 +1,4 @@
+import { OpenStatusSelect } from './openStatus';
 import './bs.scss';
 import './dental.css';
 import { useEffect, useState, useCallback } from 'react';
@@ -45,6 +46,7 @@ function Directory() {
                 {p.notes && <p className="small text-muted mb-1">{p.notes}</p>}
                 <div className="small mb-1">{(p.sources || []).filter((u) => /^https?:/.test(u)).map((u) => <a key={u} className="me-2" href={u} target="_blank" rel="noopener noreferrer nofollow">مصدر</a>)}{p.registryNo && <span className="text-muted">سجل رقم {p.registryNo}</span>}</div>
                 <div className="d-flex gap-1">
+                  <OpenStatusSelect value={p.openStatus} onChange={(v) => patch(p.id, { openStatus: v })} />
                   <button className={`btn btn-sm ${p.approved ? 'btn-outline-secondary' : 'btn-success'}`} onClick={() => patch(p.id, { approved: !p.approved })}>{p.approved ? 'إلغاء الاعتماد' : '✅ اعتماد'}</button>
                   <button className="btn btn-sm btn-outline-danger" onClick={() => window.confirm('إزالة من القائمة؟') && patch(p.id, { removed: true })}>إزالة</button>
                 </div>
@@ -101,6 +103,7 @@ export default function DentalAdmin() {
                 <div className="d-flex flex-wrap gap-1 mt-2">
                   {!c.approved ? <button className="btn btn-sm btn-success" onClick={() => patch(`/admin/dental/clinics/${c.id}`, { approved: true, verified: c.origin === 'registered' ? c.verified : false })}>✅ اعتماد</button>
                     : <button className="btn btn-sm btn-outline-secondary" onClick={() => patch(`/admin/dental/clinics/${c.id}`, { approved: false })}>إخفاء</button>}
+                  <OpenStatusSelect value={c.openStatus} onChange={(v) => patch(`/admin/dental/clinics/${c.id}`, { openStatus: v })} />
                   <button className={`btn btn-sm ${c.verified ? 'btn-info' : 'btn-outline-info'}`} onClick={() => patch(`/admin/dental/clinics/${c.id}`, { verified: !c.verified })}>{c.verified ? '✔ موثقة' : 'توثيق (بعد مكالمة)'}</button>
                   <button className="btn btn-sm btn-outline-primary" onClick={() => { const v = window.prompt('تليفون العيادة', c.phone); if (v !== null) patch(`/admin/dental/clinics/${c.id}`, { phone: v }); }}>تعديل التليفون</button>
                   <button className="btn btn-sm btn-outline-danger" onClick={() => window.confirm('إزالة العيادة من القائمة؟') && patch(`/admin/dental/clinics/${c.id}`, { removed: true })}>إزالة</button>

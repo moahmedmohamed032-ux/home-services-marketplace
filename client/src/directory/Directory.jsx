@@ -1,3 +1,4 @@
+import { OpenStatusBadge } from '../dental/openStatus';
 import '../dental/bs.scss';
 import '../dental/dental.css';
 import { useEffect, useState } from 'react';
@@ -36,6 +37,7 @@ function DirCard({ c }) {
             <span className="badge text-bg-primary me-1">{c.cityAr}</span>
             <span className="badge text-bg-secondary me-1">{KIND_AR[c.kind] || c.kind}</span>
             {c.specialty && <span className="badge text-bg-light border">{c.specialty}</span>}
+            <OpenStatusBadge status={c.openStatus} at={c.openStatusAt} />
           </p>
           {c.address && <p className="card-text small mb-2">📍 {c.address}</p>}
           {c.phone && <p className="small mb-2" dir="ltr">📞 {c.phone.split('/').map((x) => x.trim()).filter(Boolean).map((x, i) => <span key={x}>{i > 0 && ' / '}<a href={`tel:${x.replace(/[^\d+]/g, '')}`}>{x}</a></span>)}</p>}

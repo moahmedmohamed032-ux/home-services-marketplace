@@ -90,6 +90,7 @@ async function adminUpdateProvider(id, b) {
   if (b.phone !== undefined) patch.phone = b.phone ? checkPhone(b.phone) : '';
   if (b.whatsapp !== undefined) patch.whatsapp = b.whatsapp ? checkPhone(b.whatsapp, 'رقم واتساب') : '';
   if (b.notes !== undefined) patch.notes = str(b.notes, 300);
+  if (b.openStatus !== undefined) applyOpenStatus(patch, b.openStatus);
   return db.providers.update(id, patch);
 }
 
@@ -99,11 +100,11 @@ const hostLabel = (sources) => [...new Set((sources || []).map((u) => { try { re
 const SPEC_NAME = { dental: 'أسنان' };
 function dirFromProvider(p, mergedLabels) {
   const labels = p.origin === 'luxor-gov-registry' ? [REGISTRY_LABEL] : hostLabel(p.sources);
-  return { id: p.id, kind: p.kind, name: p.name, specialty: p.specialty || '', specialtyKey: p.specialtyKey || '', city: p.city, cityAr: CITY_AR[p.city] || p.city, address: p.address || '', phone: p.phone || '', sources: [...labels, ...(mergedLabels || [])], rank: p.kind === 'hospital' ? 0 : p.origin === 'luxor-gov-registry' ? 2 : 1, ord: Number(p.registryNo) || 0 };
+  return { id: p.id, kind: p.kind, name: p.name, specialty: p.specialty || '', specialtyKey: p.specialtyKey || '', city: p.city, cityAr: CITY_AR[p.city] || p.city, address: p.address || '', phone: p.phone || '', openStatus: p.openStatus || '', openStatusAt: p.openStatusAt || '', sources: [...labels, ...(mergedLabels || [])], rank: p.kind === 'hospital' ? 0 : p.origin === 'luxor-gov-registry' ? 2 : 1, ord: Number(p.registryNo) || 0 };
 }
 function dirFromClinic(c, mergedLabels) {
   const labels = c.origin === 'registered' ? ['سجّلتها العيادة بنفسها على FIX-IT'] : (hostLabel(c.sources).length ? hostLabel(c.sources) : ['قائمة منشورة']);
-  return { id: c.id, kind: 'clinic', name: c.name, specialty: SPEC_NAME.dental, specialtyKey: 'dental', city: c.city, cityAr: CITY_AR[c.city] || c.city, address: c.address || '', phone: c.phone || '', sources: [...labels, ...(mergedLabels || [])], rank: 1, ord: 0 };
+  return { id: c.id, kind: 'clinic', name: c.name, specialty: SPEC_NAME.dental, specialtyKey: 'dental', city: c.city, cityAr: CITY_AR[c.city] || c.city, address: c.address || '', phone: c.phone || '', openStatus: c.openStatus || '', openStatusAt: c.openStatusAt || '', sources: [...labels, ...(mergedLabels || [])], rank: 1, ord: 0 };
 }
 // Arabic-friendly matching: ignore diacritics, hamza/alef forms, ya/alef-maqsura, ta marbuta, the source's doubled alef ("االقصر"), and "د /" prefixes.
 const arNorm = (t) => String(t || '').toLowerCase()
@@ -156,7 +157,7 @@ async function directorySuggest(qs) {
 }
 
 const publicClinic = (c) => ({
-  id: c.id, name: c.name, city: c.city, cityAr: CITY_AR[c.city] || c.city, address: c.address,
+  id: c.id, name: c.name, city: c.city, cityAr: CITY_AR[c.city] || c.city, address: c.address, openStatus: c.openStatus || '', openStatusAt: c.openStatusAt || '',
   phone: c.phone, whatsapp: c.whatsapp, lat: c.lat, lng: c.lng, about: c.about, hours: c.hours,
   services: c.services || [], prices: c.prices || {}, photos: c.photos || [], verified: !!c.verified,
   schedule: c.schedule || {}, insurance: c.insurance || {}, mapUrl: c.mapUrl || '', faq: c.faq || {}, otherServices: c.otherServices || '',
@@ -200,6 +201,13 @@ async function getClinic(id) {
   return publicClinic(c);
 }
 
+// Working / closed / on-leave marker. Only ever set by an admin (never inferred); empty means "not stated". openStatusAt shows when it was set.
+const OPEN_STATUS = ['working', 'closed', 'leave'];
+function applyOpenStatus(patch, v) {
+  if (v === '' || v === null) { patch.openStatus = ''; patch.openStatusAt = ''; return; }
+  if (!OPEN_STATUS.includes(v)) throw ApiError.badRequest('openStatus must be working, closed or leave');
+  patch.openStatus = v; patch.openStatusAt = new Date().toISOString();
+}
 const str = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
 async function admins() {
   const db = await store.getDb();
@@ -356,6 +364,7 @@ async function adminUpdateClinic(id, b) {
   if (b.approved !== undefined) { patch.approved = !!b.approved; patch.directoryListed = !!b.approved; }
   if (b.verified !== undefined) patch.verified = !!b.verified;
   if (b.removed !== undefined) patch.removed = !!b.removed;
+  if (b.openStatus !== undefined) applyOpenStatus(patch, b.openStatus);
   return db.clinics.update(id, patch);
 }
 async function adminAppointments() {

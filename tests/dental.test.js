@@ -94,3 +94,15 @@ test('dental: directory search handles Arabic variants and suggests names/places
   assert.ok(sg.length > 0 && sg.every((x) => typeof x === 'string'));
   assert.ok((await dental.publicDirectory({})).facets.places.length > 5);
 });
+
+test('open status marker: admin sets it, public shapes carry it, invalid value rejected, clear works', async () => {
+  const dental = require('../server/core/dental');
+  const page = await dental.adminProviders({ status: 'all', limit: 1 });
+  const id = page.items[0].id;
+  await assert.rejects(() => dental.adminUpdateProvider(id, { openStatus: 'open24h' }));
+  const set = await dental.adminUpdateProvider(id, { openStatus: 'leave' });
+  assert.equal(set.openStatus, 'leave');
+  assert.ok(set.openStatusAt);
+  const cleared = await dental.adminUpdateProvider(id, { openStatus: '' });
+  assert.equal(cleared.openStatus, '');
+});

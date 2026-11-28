@@ -57,7 +57,7 @@ const Clinic = mongoose.model('Clinic', new mongoose.Schema({
   name: String, city: String, address: String, phone: String, phoneRaw: String, whatsapp: String, email: String,
   lat: Number, lng: Number, about: String, hours: String, services: [String],
   prices: { type: mongoose.Schema.Types.Mixed, default: {} },
-  photos: [String], origin: String, sources: [String], notes: String, invited: Boolean,
+  photos: [String], openStatus: String, openStatusAt: String, origin: String, sources: [String], notes: String, invited: Boolean,
   schedule: { type: mongoose.Schema.Types.Mixed, default: {} }, insurance: { type: mongoose.Schema.Types.Mixed, default: {} },
   faq: { type: mongoose.Schema.Types.Mixed, default: {} }, mapUrl: String, otherServices: String, registryId: String, directoryListed: Boolean,
   approved: Boolean, verified: Boolean, removed: Boolean, createdAt: String, updatedAt: String,
@@ -71,7 +71,7 @@ const Provider = mongoose.model('Provider', new mongoose.Schema({
   id: { type: String, unique: true, index: true },
   kind: { type: String, index: true }, name: String, specialty: String, specialtyKey: { type: String, index: true }, city: { type: String, index: true },
   address: String, phone: String, whatsapp: String, website: String, sources: [String], notes: String, registryNo: String, origin: String,
-  approved: { type: Boolean, index: true }, removed: Boolean, publishedBatch: String, mergedWith: String, createdAt: String, updatedAt: String,
+  openStatus: String, openStatusAt: String, approved: { type: Boolean, index: true }, removed: Boolean, publishedBatch: String, mergedWith: String, createdAt: String, updatedAt: String,
 }, opts));
 const Appointment = mongoose.model('Appointment', new mongoose.Schema({
   id: { type: String, unique: true, index: true },
