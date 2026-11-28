@@ -23,7 +23,8 @@ const CITY_COORDS = {
   Cairo: { lat: 30.0444, lng: 31.2357 },
 };
 
-const SERVICE_FEE_EGP = 25;
+// Customer-side service fee: 6% of the job price, shown on the invoice (replaced the flat 25 EGP fee).
+const CLIENT_FEE_RATE = 0.06;
 
 // Reviews: [clientName, rating, comment (EN), commentAr (AR), month, day]
 const TECHNICIANS = [
@@ -238,4 +239,4 @@ const SEED_BOOKINGS = [
   },
 ];
 
-module.exports = { PROFESSIONS, CITY_COORDS, TECHNICIANS, DEMO_CLIENT, DEMO_TECH, ADMIN, SEED_BOOKINGS, SERVICE_FEE_EGP };
+module.exports = { PROFESSIONS, CITY_COORDS, TECHNICIANS, DEMO_CLIENT, DEMO_TECH, ADMIN, SEED_BOOKINGS, CLIENT_FEE_RATE };

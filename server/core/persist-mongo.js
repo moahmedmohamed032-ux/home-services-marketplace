@@ -37,7 +37,7 @@ const Booking = mongoose.model('Booking', new mongoose.Schema({
 const Invoice = mongoose.model('Invoice', new mongoose.Schema({
   id: { type: String, unique: true, index: true },
   number: String, bookingId: { type: String, index: true }, clientId: String, technicianId: String,
-  items: [{ _id: false, label: String, labelAr: String, amount: Number }],
+  items: [{ _id: false, label: String, labelAr: String, amount: Number, rate: Number }],
   total: Number, method: String, status: String,
   cardLast4: String, mobileNumber: String, confirmationCode: String, verificationCode: String,
   paidAt: String, createdAt: String,
@@ -87,7 +87,7 @@ const IdDoc = mongoose.model('IdDoc', new mongoose.Schema({
 // Receivables ledger: one row per paid job = FIX-IT's commission due on it. Kept in step with invoices by store.syncReceivables().
 const Receivable = mongoose.model('Receivable', new mongoose.Schema({
   id: { type: String, unique: true, index: true }, invoiceId: String, bookingId: String, invoiceNumber: String,
-  technicianId: { type: String, index: true }, clientId: String, jobAmount: Number, rate: Number, commission: Number,
+  technicianId: { type: String, index: true }, clientId: String, jobAmount: Number, rate: Number, techCommission: Number, clientFee: Number, commission: Number,
   accruedAt: String, status: String, via: String, method: String, reportedAt: String, reportMethod: String, reportRef: String,
   settledAt: String, settledBy: String,
 }, opts));

@@ -500,6 +500,9 @@ async function bookingsForTechnician(userId) {
   return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+// Customer pays the job price plus a 6% service fee on that price. The fee item carries its rate so old invoices
+// (flat 25 EGP fee, no rate) keep their meaning and are never recalculated.
+const clientFee = (jobAmount) => Math.round(Number(jobAmount) * seed.CLIENT_FEE_RATE * 100) / 100;
 async function createInvoiceForBooking(booking) {
   const existing = (await db.invoices.getAll()).find((i) => i.bookingId === booking.id);
   const tech = await findTechnicianById(booking.technicianId);
@@ -508,8 +511,10 @@ async function createInvoiceForBooking(booking) {
   if (existing) {
     // Reopened and finished again: refresh the amount while still unpaid. Anything else is left alone.
     if (existing.status !== 'unpaid') return null;
-    const items = [{ ...(existing.items[0] || {}), amount: jobAmount }, ...existing.items.slice(1)];
-    return db.invoices.update(existing.id, { items, total: jobAmount + seed.SERVICE_FEE_EGP });
+    const old = existing.items[1];
+    const feeItem = old && old.rate ? { ...old, amount: clientFee(jobAmount) } : { label: 'FIX-IT service fee (6%)', labelAr: 'رسوم خدمة FIX-IT (٦٪)', amount: clientFee(jobAmount), rate: seed.CLIENT_FEE_RATE };
+    const items = [{ ...(existing.items[0] || {}), amount: jobAmount }, feeItem, ...existing.items.slice(2)];
+    return db.invoices.update(existing.id, { items, total: round2(jobAmount + feeItem.amount) });
   }
   const id = await db.nextId('inv');
   const num = Number(id.split('_')[1]);
@@ -518,9 +523,9 @@ async function createInvoiceForBooking(booking) {
     bookingId: booking.id, clientId: booking.clientId, technicianId: booking.technicianId,
     items: [
       { label: `${prof ? prof.name : 'Service'} visit`, labelAr: `زيارة ${prof ? prof.nameAr : 'فني'}`, amount: jobAmount },
-      { label: 'FIX-IT service fee', labelAr: 'رسوم خدمة FIX-IT', amount: seed.SERVICE_FEE_EGP },
+      { label: 'FIX-IT service fee (6%)', labelAr: 'رسوم خدمة FIX-IT (٦٪)', amount: clientFee(jobAmount), rate: seed.CLIENT_FEE_RATE },
     ],
-    total: jobAmount + seed.SERVICE_FEE_EGP,
+    total: round2(jobAmount + clientFee(jobAmount)),
     method: null, status: 'unpaid',
     cardLast4: null, mobileNumber: null, confirmationCode: null, verificationCode: null,
     paidAt: null, createdAt: new Date().toISOString(),
@@ -1070,8 +1075,8 @@ async function adminUpdateInvoice(id, body) {
   const patch = {};
   if (body.items !== undefined) {
     if (!Array.isArray(body.items) || body.items.length !== (inv.items || []).length) throw ApiError.badRequest('items must match the invoice lines');
-    patch.items = inv.items.map((it, i) => ({ label: it.label, labelAr: it.labelAr, amount: num(body.items[i], 'amount', { max: 1000000 }) }));
-    patch.total = patch.items.reduce((s, it) => s + it.amount, 0);
+    patch.items = inv.items.map((it, i) => ({ label: it.label, labelAr: it.labelAr, amount: num(body.items[i], 'amount', { max: 1000000 }), ...(it.rate ? { rate: it.rate } : {}) }));
+    patch.total = round2(patch.items.reduce((s, it) => s + it.amount, 0));
   } else if (body.total !== undefined) {
     patch.total = num(body.total, 'total', { max: 1000000 });
   }
@@ -1105,7 +1110,11 @@ async function adminDeleteInvoice(id) {
 const COMMISSION_RATE = 0.06;
 const round2 = (n) => Math.round(n * 100) / 100;
 const commissionBase = (inv) => Number(((inv.items || [])[0] || {}).amount) || 0;
-const commissionOf = (inv) => round2(commissionBase(inv) * COMMISSION_RATE);
+// The 6% customer fee is collected in cash by the technician together with the job price, so it is owed to FIX-IT
+// on top of his own 6% commission. Only invoices whose fee item carries a rate count (old flat-fee invoices never did).
+const clientFeeOf = (inv) => { const f = (inv.items || [])[1]; return f && f.rate ? Number(f.amount) || 0 : 0; };
+const techCommissionOf = (inv) => round2(commissionBase(inv) * COMMISSION_RATE);
+const commissionOf = (inv) => round2(techCommissionOf(inv) + clientFeeOf(inv));
 const paidOnline = (inv) => inv.status === 'paid' && (!!inv.paymobTxnId || inv.method === 'card' || inv.method === 'wallet');
 const commissionCollected = (inv) => inv.commissionPaid === true || paidOnline(inv);
 
@@ -1130,7 +1139,7 @@ async function syncReceivables() {
     if (!cur) {
       await db.receivables.insert({
         id: await db.nextId('rcv'), invoiceId: inv.id, bookingId: inv.bookingId, invoiceNumber: inv.number, technicianId: inv.technicianId, clientId: inv.clientId,
-        jobAmount: commissionBase(inv), rate: COMMISSION_RATE, commission: commissionOf(inv), accruedAt: inv.paidAt || inv.createdAt, method: inv.method || null, ...want,
+        jobAmount: commissionBase(inv), rate: COMMISSION_RATE, techCommission: techCommissionOf(inv), clientFee: clientFeeOf(inv), commission: commissionOf(inv), accruedAt: inv.paidAt || inv.createdAt, method: inv.method || null, ...want,
       });
     } else if (Object.keys(want).some((k) => (cur[k] ?? null) !== want[k])) {
       await db.receivables.update(cur.id, want);
@@ -1150,7 +1159,7 @@ async function adminCommissions() {
     return {
       id: r.id, invoiceId: r.invoiceId, number: r.invoiceNumber, bookingId: r.bookingId, technicianId: r.technicianId,
       technicianName: tech ? tech.name : 'Unknown', clientName: client ? client.name : 'Unknown',
-      job: bk ? String(bk.description || '').slice(0, 80) : '', base: r.jobAmount, commission: r.commission,
+      job: bk ? String(bk.description || '').slice(0, 80) : '', base: r.jobAmount, techCommission: r.techCommission ?? r.commission, clientFee: r.clientFee || 0, commission: r.commission,
       accruedAt: r.accruedAt, status: r.status, via: r.via || null, reportedAt: r.reportedAt || null, reportMethod: r.reportMethod || null, reportRef: r.reportRef || null,
       settledAt: r.settledAt || null, ageDays, overdue: r.status !== 'settled' && ageDays >= OVERDUE_DAYS,
       // legacy fields used by the older table
@@ -1242,7 +1251,7 @@ async function commissionStatusFor(tech) {
   const dueBy = oldest ? new Date(times[0] + OVERDUE_DAYS * 86400e3).toISOString() : null;
   const active = commissionActive();
   const overdue = active && !!dueBy && Date.parse(dueBy) <= Date.now();
-  return { active, rate: COMMISSION_RATE, overdueDays: OVERDUE_DAYS, outstanding, jobs: mine.length, oldest, dueBy, overdue, blocked: overdue, claim: tech.settlementClaim || null, collection: collectionDetails() };
+  return { active, rate: COMMISSION_RATE, clientFeeRate: seed.CLIENT_FEE_RATE, overdueDays: OVERDUE_DAYS, outstanding, jobs: mine.length, oldest, dueBy, overdue, blocked: overdue, claim: tech.settlementClaim || null, collection: collectionDetails() };
 }
 // A technician receives new requests only after an admin approved his ID (front + back + selfie).
 function idVerified(tech) { return !!tech && tech.idStatus === 'approved'; }
@@ -1376,7 +1385,7 @@ module.exports = {
   searchTechnicians, publicTechnician, findTechnicianById, findTechnicianByUserId,
   createTechnicianProfile, updateTechnicianProfile,
   createBooking, findBookingById, bookingsForClient, bookingsForTechnician, setBookingStatus, addReview,
-  findInvoiceById, findInvoiceByBookingId, invoicesForClient, invoicesForTechnician, allInvoices,
+  createInvoiceForBooking, findInvoiceById, findInvoiceByBookingId, invoicesForClient, invoicesForTechnician, allInvoices,
   payInvoice, verifyInvoice, confirmInvoice, publicInvoice,
   startPaymobPayment, applyPaymobTransaction,
   notify, notificationsFor, markNotificationsRead,

@@ -87,9 +87,9 @@ function buildDataset() {
         bookingId: booking.id, clientId: demoClient.id, technicianId: tech.id,
         items: [
           { label: `${prof.name} visit`, labelAr: `زيارة ${prof.nameAr}`, amount: tech.hourlyRate },
-          { label: 'FIX-IT service fee', labelAr: 'رسوم خدمة FIX-IT', amount: seed.SERVICE_FEE_EGP },
+          { label: 'FIX-IT service fee (6%)', labelAr: 'رسوم خدمة FIX-IT (٦٪)', amount: Math.round(tech.hourlyRate * seed.CLIENT_FEE_RATE * 100) / 100, rate: seed.CLIENT_FEE_RATE },
         ],
-        total: tech.hourlyRate + seed.SERVICE_FEE_EGP,
+        total: tech.hourlyRate + Math.round(tech.hourlyRate * seed.CLIENT_FEE_RATE * 100) / 100,
         method: b.invoice.method, status: b.invoice.status,
         cardLast4: b.invoice.method === 'visa' ? '4242' : null,
         mobileNumber: b.invoice.method === 'vodafone-cash' ? '01092245837' : null,

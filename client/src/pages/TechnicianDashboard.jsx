@@ -123,7 +123,7 @@ export default function TechnicianDashboard() {
       {comm && comm.active && (
         <section className={`card ${comm.blocked ? 'notice' : ''}`} style={{ border: comm.outstanding > 0 ? '2px solid var(--accent, #e67e22)' : undefined }}>
           <h2 style={{ margin: 0 }}>💰 {ar ? 'مستحقات المنصة عليك' : 'Commission you owe'}: <strong style={{ fontSize: '1.6em' }}>{comm.outstanding} EGP</strong></h2>
-          <p className="muted"><small>{ar ? `عمولة ${Math.round(comm.rate * 100)}% على كل شغل اتدفع كاش. لازم تتسدد خلال ${comm.overdueDays} أيام من أقدم شغلانة.` : `${Math.round(comm.rate * 100)}% on every cash job, due within ${comm.overdueDays} days of the oldest one.`} {comm.dueBy && comm.outstanding > 0 ? (ar ? 'آخر موعد: ' : 'Due by: ') + new Date(comm.dueBy).toLocaleDateString(ar ? 'ar-EG' : 'en-GB') : ''}</small></p>
+          <p className="muted"><small>{ar ? `عمولة ${Math.round(comm.rate * 100)}% على كل شغل اتدفع كاش، بالإضافة لرسوم الخدمة ${Math.round((comm.clientFeeRate || 0) * 100)}% اللي بتاخدها من العميل مع الفاتورة (ظاهرة في الفاتورة). لازم تتسدد خلال ${comm.overdueDays} أيام من أقدم شغلانة.` : `${Math.round(comm.rate * 100)}% on every cash job, due within ${comm.overdueDays} days of the oldest one.`} {comm.dueBy && comm.outstanding > 0 ? (ar ? 'آخر موعد: ' : 'Due by: ') + new Date(comm.dueBy).toLocaleDateString(ar ? 'ar-EG' : 'en-GB') : ''}</small></p>
           {comm.blocked && <p className="error">{ar ? 'مؤقتًا مش بتستقبل طلبات جديدة لحد ما تسدّد ونأكد الاستلام.' : 'You are not receiving new requests until you settle and we confirm.'}</p>}
           {comm.outstanding > 0 && !comm.claim && (
             <>
