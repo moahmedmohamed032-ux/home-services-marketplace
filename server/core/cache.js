@@ -9,7 +9,8 @@ async function get(ns, field) {
     const raw = await redis.cmd('HGET', `cache:${ns}`, field);
     if (!raw) return null;
     const e = JSON.parse(raw);
-    return e && e.e > Date.now() ? e.v : null;
+    // Reject entries that are expired or claim a lifetime longer than the hard bound (a stale or foreign entry must not outlive MAX_AGE_S).
+    return e && e.e > Date.now() && e.e - Date.now() <= MAX_AGE_S * 1000 + 1000 ? e.v : null;
   } catch { return null; }
 }
 
