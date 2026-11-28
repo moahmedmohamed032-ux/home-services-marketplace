@@ -71,7 +71,7 @@ const Provider = mongoose.model('Provider', new mongoose.Schema({
   id: { type: String, unique: true, index: true },
   kind: { type: String, index: true }, name: String, specialty: String, specialtyKey: { type: String, index: true }, city: { type: String, index: true },
   address: String, phone: String, whatsapp: String, website: String, sources: [String], notes: String, registryNo: String, origin: String,
-  openStatus: String, openStatusAt: String, approved: { type: Boolean, index: true }, removed: Boolean, publishedBatch: String, mergedWith: String, createdAt: String, updatedAt: String,
+  openStatus: String, openStatusAt: String, contactEmail: String, approved: { type: Boolean, index: true }, removed: Boolean, publishedBatch: String, mergedWith: String, createdAt: String, updatedAt: String,
 }, opts));
 const Appointment = mongoose.model('Appointment', new mongoose.Schema({
   id: { type: String, unique: true, index: true },

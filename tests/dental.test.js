@@ -62,13 +62,13 @@ test('dental: structured profile fields validated, empty stays empty', async () 
   await dental.adminUpdateClinic(r2.id, { approved: false });
 });
 
-test('dental: provider directory seeds hidden (449 gov + 25 specialty + 14 hospitals), paginated, never public', async () => {
+test('dental: provider directory seeds hidden (gov + specialty + sheet rows), paginated, never public', async () => {
   const dental = require('../server/core/dental');
   const r = await dental.adminProviders({ status: 'all', limit: 100 });
-  assert.equal(r.total, 488);
+  assert.equal(r.total, 958);
   assert.equal(r.items.length, 100);
   assert.ok(r.items.every((x) => x.removed === false));
-  assert.equal((await dental.adminProviders({ kind: 'hospital', status: 'all' })).total, 14);
+  assert.equal((await dental.adminProviders({ kind: 'hospital', status: 'all' })).total, 111);
   assert.equal((await dental.adminProviders({ specialty: 'dental', status: 'all' })).total > 50, true);
   assert.equal((await dental.adminProviders({ q: 'مستشفى', status: 'all' })).total >= 10, true);
   assert.equal((await dental.listClinics({})).length >= 0, true);
@@ -105,4 +105,16 @@ test('open status marker: admin sets it, public shapes carry it, invalid value r
   assert.ok(set.openStatusAt);
   const cleared = await dental.adminUpdateProvider(id, { openStatus: '' });
   assert.equal(cleared.openStatus, '');
+});
+
+test('sheet import: no duplicate phones, emails never in public directory, status unknown by default', async () => {
+  const dental = require('../server/core/dental');
+  const sheet = require('../server/core/providers.sheet.json');
+  assert.ok(sheet.length > 400);
+  const dig = (p) => String(p).split(/[\s/]+/).map((t) => t.replace(/\D/g, '')).filter((t) => t.length >= 8).map((t) => t.slice(-9));
+  const seen = new Set();
+  for (const r of sheet) for (const d of dig(r.phone)) { assert.ok(!seen.has(d), 'dup ' + d); seen.add(d); }
+  const pub = JSON.stringify(await dental.publicDirectory({ limit: 100 }));
+  assert.ok(!pub.includes('contactEmail') && !pub.includes('@'));
+  assert.ok(sheet.every((r) => !r.openStatus));
 });

@@ -50,7 +50,7 @@ async function ensureProviders() {
   if (!provSeeded) {
     provSeeded = (async () => {
       const db = await store.getDb();
-      const seed = require('./providers.seed.json');
+      const seed = [...require('./providers.seed.json'), ...require('./providers.sheet.json')];
       const existing = await db.providers.getAll();
       const have = new Set(existing.map((x) => x.id));
       const now = new Date().toISOString();
