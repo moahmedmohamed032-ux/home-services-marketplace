@@ -136,7 +136,7 @@ async function createUser({ name, username, email, phone, passwordHash, role, ci
 const SUPPORTED_CITIES = ['Luxor', 'Esna', 'Qena', 'Aswan'];
 // Technicians may apply from more areas than the ones customers can see. An applicant in a "pre-launch" area is stored with the
 // right area and shown to admins, but stays out of every customer-facing list until that area is added to PUBLIC_CITIES.
-const PRELAUNCH_AREAS = ['Asyut', 'Sohag', 'Faisal', '6th of October', 'Badr', 'Shorouk'];
+const PRELAUNCH_AREAS = ['Asyut', 'Sohag', 'Faisal', '6th of October', 'Badr', 'Shorouk', 'Kom Ombo', 'Edfu', 'Daraw', 'Nasr El Nuba', 'Armant', 'Naqada', 'Qift', 'Qus', 'Farshout', 'Abu Tesht', 'Nag Hammadi', 'Dishna', 'Waqf', 'Girga', 'Akhmim', 'Tahta', 'Maragha', 'Juhayna', 'Balyana', 'Tima', 'El Mansha', 'Manfalut', 'Abnub', 'Abu Tig', 'Sidfa', 'El Badari', 'Dairut', 'El Qusiya', 'El Ghanayem', 'Sahel Selim'];
 const REGISTRATION_AREAS = [...SUPPORTED_CITIES, ...PRELAUNCH_AREAS];
 const canonicalArea = (c) => REGISTRATION_AREAS.find((x) => x.toLowerCase() === String(c || '').trim().toLowerCase()) || null;
 const canonicalCity = (c) => SUPPORTED_CITIES.find((x) => x.toLowerCase() === String(c || '').trim().toLowerCase()) || null;

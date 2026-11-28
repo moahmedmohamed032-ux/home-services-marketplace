@@ -125,5 +125,5 @@ export const translations = {
 
 export const cityLabel = (city, lang) => {
   if (lang !== 'ar') return city;
-  return { Luxor: 'الأقصر', Esna: 'إسنا', Qena: 'قنا', Cairo: 'القاهرة', Aswan: 'أسوان', Asyut: 'أسيوط', Sohag: 'سوهاج', Faisal: 'فيصل', '6th of October': 'السادس من أكتوبر', Badr: 'بدر', Shorouk: 'الشروق' }[city] || city;
+  return { Luxor: 'الأقصر', Esna: 'إسنا', Qena: 'قنا', Cairo: 'القاهرة', Aswan: 'أسوان', Asyut: 'أسيوط', Sohag: 'سوهاج', Faisal: 'فيصل', '6th of October': 'السادس من أكتوبر', Badr: 'بدر', Shorouk: 'الشروق', 'Kom Ombo': 'كوم أمبو', 'Edfu': 'إدفو', 'Daraw': 'دراو', 'Nasr El Nuba': 'نصر النوبة', 'Armant': 'أرمنت', 'Naqada': 'نقادة', 'Qift': 'قفط', 'Qus': 'قوص', 'Farshout': 'فرشوط', 'Abu Tesht': 'أبو تشت', 'Nag Hammadi': 'نجع حمادي', 'Dishna': 'دشنا', 'Waqf': 'الوقف', 'Girga': 'جرجا', 'Akhmim': 'أخميم', 'Tahta': 'طهطا', 'Maragha': 'المراغة', 'Juhayna': 'جهينة', 'Balyana': 'البلينا', 'Tima': 'طما', 'El Mansha': 'المنشاة', 'Manfalut': 'منفلوط', 'Abnub': 'أبنوب', 'Abu Tig': 'أبوتيج', 'Sidfa': 'صدفا', 'El Badari': 'البداري', 'Dairut': 'ديروط', 'El Qusiya': 'القوصية', 'El Ghanayem': 'الغنايم', 'Sahel Selim': 'ساحل سليم' }[city] || city;
 };

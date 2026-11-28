@@ -54,7 +54,7 @@ test('nearest request: address and map point reach only the technician the custo
 test('technician can apply from a pre-launch area but customers still do not see it', async () => {
   await store.init();
   const areas = await store.listRegistrationAreas();
-  assert.ok(['Asyut', 'Sohag', 'Faisal', '6th of October', 'Badr', 'Shorouk'].every((n) => areas.some((a) => a.name === n && a.public === false)));
+  assert.ok(['Asyut', 'Sohag', 'Faisal', '6th of October', 'Badr', 'Shorouk', 'Kom Ombo', 'Edfu', 'Armant', 'Nag Hammadi', 'Dishna', 'Qus', 'Girga', 'Akhmim', 'Tahta', 'Manfalut'].every((n) => areas.some((a) => a.name === n && a.public === false)));
   assert.ok(areas.filter((a) => a.public).map((a) => a.name).join() === 'Luxor,Esna,Qena,Aswan');
   assert.deepEqual(await store.listCities(), ['Luxor', 'Esna', 'Qena', 'Aswan']);
   const u = await store.createUser({ name: 'Asyut Applicant', phone: '01099990077', passwordHash: 'x', role: 'technician', city: 'Asyut' });
