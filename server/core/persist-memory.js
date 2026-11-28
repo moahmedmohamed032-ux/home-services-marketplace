@@ -15,6 +15,7 @@ const strip = (o) => (o ? JSON.parse(JSON.stringify(o)) : o);
 
 const table = (name) => ({
   getAll: async () => strip(data[name]),
+  find: async (filter) => strip(data[name].filter((r) => Object.keys(filter).every((k) => r[k] === filter[k]))),
   getById: async (id) => strip(data[name].find((r) => r.id === id)),
   insert: async (row) => { data[name].push(row); return strip(row); },
   update: async (id, patch) => {

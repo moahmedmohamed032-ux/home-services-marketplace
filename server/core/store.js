@@ -80,7 +80,7 @@ async function findUserByUsername(u) {
   await init();
   const n = normalizeUsername(u);
   if (!n) return null;
-  return (await db.users.getAll()).find((x) => x.username && x.username === n) || null;
+  return (await db.users.find({ username: n }))[0] || null;
 }
 // Free username built from a Gmail/email local part (or the name): "ahmed.m@gmail.com" -> ahmed.m, then ahmed.m2, ahmed.m3...
 async function suggestUsername(email, name) {
@@ -177,8 +177,7 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 // ---- technicians ----
 async function searchTechnicians({ profession, city, search, minRating, lat, lng } = {}) {
   await init();
-  let out = (await db.technicians.getAll()).filter((t) => t.addressActive !== false && isPublicCity(t));
-  if (profession) out = out.filter((t) => t.profession === profession);
+  let out = (profession ? await db.technicians.find({ profession }) : await db.technicians.getAll()).filter((t) => t.addressActive !== false && isPublicCity(t));
   if (city) out = out.filter((t) => t.city.toLowerCase() === String(city).toLowerCase());
   if (minRating) out = out.filter((t) => t.rating >= Number(minRating));
   if (search) {
@@ -199,9 +198,9 @@ async function searchTechnicians({ profession, city, search, minRating, lat, lng
 }
 
 async function allReviews(t) {
-  const bookings = await db.bookings.getAll();
+  const bookings = await db.bookings.find({ technicianId: t.id });
   const real = [];
-  for (const b of bookings.filter((x) => x.technicianId === t.id && x.review)) {
+  for (const b of bookings.filter((x) => x.review)) {
     const c = await findUserById(b.clientId);
     real.push({
       clientName: c ? c.name : 'Client',
@@ -270,7 +269,7 @@ async function createTechnicianProfile(user, { profession, city, district, years
     lng: lng !== undefined ? Number(lng) : fallback.lng,
   };
   const saved = await db.technicians.insert(t);
-  for (const a of (await db.users.getAll()).filter((u) => u.role === 'admin')) {
+  for (const a of (await db.users.find({ role: 'admin' }))) {
     await notify(a.id, { type: 'tech_pending', link: '/admin', titleAr: 'فني جديد في انتظار الاعتماد', titleEn: 'New technician awaiting approval', bodyAr: `${user.name} (${city})`, bodyEn: `${user.name} (${city})` });
   }
   return saved;
@@ -339,8 +338,8 @@ async function createNearestRequest({ clientId, profession, city, date, descript
 }
 async function withdrawDispatchSiblings(booking, reasonAr, reasonEn, statuses = ['pending']) {
   if (!booking.dispatchId) return;
-  const all = await db.bookings.getAll();
-  for (const b of all.filter((x) => x.dispatchId === booking.dispatchId && x.id !== booking.id && statuses.includes(x.status))) {
+  const all = await db.bookings.find({ dispatchId: booking.dispatchId });
+  for (const b of all.filter((x) => x.id !== booking.id && statuses.includes(x.status))) {
     await db.bookings.update(b.id, { status: 'cancelled', superseded: true });
     await notify(await techUserId(b.technicianId), { type: 'booking_taken', bookingId: b.id, link: '/pro', titleAr: reasonAr, titleEn: reasonEn, bodyAr: '', bodyEn: '' });
   }
@@ -378,8 +377,8 @@ async function chooseNearestOffer(booking) {
   if (!booking.dispatchId) throw ApiError.badRequest('Not a nearest-technician request');
   if (booking.status !== 'accepted') throw ApiError.badRequest('This technician has not accepted yet');
   if (booking.superseded) throw ApiError.badRequest('This offer is no longer available');
-  const all = await db.bookings.getAll();
-  if (all.some((x) => x.dispatchId === booking.dispatchId && x.chosen)) throw ApiError.conflict('A technician was already chosen');
+  const all = await db.bookings.find({ dispatchId: booking.dispatchId });
+  if (all.some((x) => x.chosen)) throw ApiError.conflict('A technician was already chosen');
   const updated = await db.bookings.update(booking.id, { chosen: true });
   await withdrawDispatchSiblings(booking, 'العميل اختار فني تاني', 'The client chose another technician', ['pending', 'accepted']);
   await notify(await techUserId(booking.technicianId), { type: 'booking_chosen', bookingId: booking.id, link: '/pro', titleAr: 'العميل اختارك ✅', titleEn: 'The client chose you ✅', bodyAr: 'تقدر تبدأ الشغل. رقمك وموقعك ظاهرين للعميل في الطلب ده عشان يعرف هتوصله امتى.', bodyEn: 'You can start the job. Your phone and location are visible to this client for this job so they can estimate your arrival.' });
@@ -405,13 +404,13 @@ async function techUserId(technicianId) {
 }
 async function notificationsFor(userId, limit = 30) {
   await init();
-  const all = (await db.notifications.getAll()).filter((n) => n.userId === userId);
+  const all = (await db.notifications.find({ userId }));
   all.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   return { notifications: all.slice(0, limit), unread: all.filter((n) => !n.read).length };
 }
 async function markNotificationsRead(userId, ids) {
   await init();
-  const all = (await db.notifications.getAll()).filter((n) => n.userId === userId && !n.read && (!ids || ids.includes(n.id)));
+  const all = (await db.notifications.find({ userId })).filter((n) => !n.read && (!ids || ids.includes(n.id)));
   for (const n of all) await db.notifications.update(n.id, { read: true });
   return all.length;
 }
@@ -496,18 +495,18 @@ async function technicianContactFor(b) {
 async function bookingsForClient(clientId) {
   await init();
   await sweepAutoConfirm();
-  const all = await db.bookings.getAll();
+  const all = await db.bookings.find({ clientId });
   const rows = [];
-  for (const b of all.filter((x) => x.clientId === clientId)) rows.push({ ...(await hydrateBooking(b)), technicianContact: await technicianContactFor(b) });
+  for (const b of all) rows.push({ ...(await hydrateBooking(b)), technicianContact: await technicianContactFor(b) });
   return (await collapseDispatch(rows)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 async function bookingsForTechnician(userId) {
   await sweepAutoConfirm();
   const tech = await findTechnicianByUserId(userId);
   if (!tech) return [];
-  const all = await db.bookings.getAll();
+  const all = await db.bookings.find({ technicianId: tech.id });
   const rows = [];
-  for (const b of all.filter((x) => x.technicianId === tech.id && !x.superseded)) {
+  for (const b of all.filter((x) => !x.superseded)) {
     const h = await hydrateBooking(b);
     // Nearest-technician request not yet chosen by the customer: several technicians got it, so none sees the exact
     // address or map point. They get the approximate distance only; the chosen one sees the full location.
@@ -524,7 +523,7 @@ async function bookingsForTechnician(userId) {
 // (flat 25 EGP fee, no rate) keep their meaning and are never recalculated.
 const clientFee = (jobAmount) => Math.round(Number(jobAmount) * seed.CLIENT_FEE_RATE * 100) / 100;
 async function createInvoiceForBooking(booking) {
-  const existing = (await db.invoices.getAll()).find((i) => i.bookingId === booking.id);
+  const existing = (await db.invoices.find({ bookingId: booking.id }))[0];
   const tech = await findTechnicianById(booking.technicianId);
   const prof = seed.PROFESSIONS.find((p) => p.id === (tech && tech.profession));
   const jobAmount = booking.finalAmount || (tech ? tech.hourlyRate : 0);
@@ -658,11 +657,11 @@ async function clientCashAnswer(bookingId, clientId, collected) {
   if (!b || b.clientId !== clientId) throw ApiError.notFound('Booking not found');
   if (b.status !== 'awaiting_confirmation' || !b.cashAskedAt) throw ApiError.badRequest('Nothing to confirm for this booking');
   if (b.cashAnswer) throw ApiError.conflict('Already answered');
-  const inv = (await db.invoices.getAll()).find((i) => i.bookingId === b.id);
+  const inv = (await db.invoices.find({ bookingId: b.id }))[0];
   if (!inv || inv.status === 'paid') throw ApiError.badRequest('Invoice is already paid');
   if (collected) { await autoCompleteCash(b, inv, 'client-yes'); return { completed: true }; }
   await db.bookings.update(b.id, { cashAnswer: 'no', cashAnsweredAt: new Date().toISOString() });
-  for (const a of (await db.users.getAll()).filter((u) => u.role === 'admin')) {
+  for (const a of (await db.users.find({ role: 'admin' }))) {
     await notify(a.id, { type: 'cash_dispute', bookingId: b.id, invoiceId: inv.id, link: '/admin',
       titleAr: 'عميل بيقول إنه مدفعش للفني ⚠️', titleEn: 'Customer says he did not pay the technician ⚠️',
       bodyAr: `الحجز ${b.id} / فاتورة ${inv.number}: العميل قال إن الفني ما قبضش. اتدخل وراجع الطرفين.`, bodyEn: `Booking ${b.id} / invoice ${inv.number}: the customer says the technician was not paid. Please step in.` });
@@ -703,7 +702,7 @@ async function adminDigestIfDue() {
     const text = `FIX-IT: ${DIGEST_EVERY} completed jobs\nملخص ${DIGEST_EVERY} عمليات مكتملة\nإجمالي الشغل: ${total} جنيه\nعمولة ${COMMISSION_RATE * 100}%: ${round2(total * COMMISSION_RATE)} جنيه\nمدفوع: ${paid}/${DIGEST_EVERY}\n${lines.join('\n')}`;
     const sent = await sendTelegram(text);
     if (!sent) return; // not configured or failed: keep the batch and retry on the next completion
-    const admins = (await db.users.getAll()).filter((u) => u.role === 'admin');
+    const admins = (await db.users.find({ role: 'admin' }));
     for (const a of admins) {
       await notify(a.id, { type: 'admin_digest', link: '/admin', titleAr: `${DIGEST_EVERY} عمليات اكتملت`, titleEn: `${DIGEST_EVERY} jobs completed`,
         bodyAr: `إجمالي ${total} جنيه، العمولة ${round2(total * COMMISSION_RATE)} جنيه`, bodyEn: `Total ${total} EGP, commission ${round2(total * COMMISSION_RATE)} EGP` });
@@ -725,7 +724,7 @@ async function setBookingStatus(booking, status, extra = {}) {
     const tech = await findTechnicianById(booking.technicianId);
     if (tech) await db.technicians.update(tech.id, { jobsDone: (tech.jobsDone || 0) + 1 });
     await createInvoiceForBooking(updated);
-    const admins = (await db.users.getAll()).filter((u) => u.role === 'admin');
+    const admins = (await db.users.find({ role: 'admin' }));
     for (const a of admins) {
       await notify(a.id, { type: 'job_completed', bookingId: booking.id, link: '/admin', titleAr: 'عملية اكتملت ✅', titleEn: 'A job was completed ✅',
         bodyAr: `الطلب ${booking.id} اتدفع واكتمل.`, bodyEn: `Booking ${booking.id} was paid and completed.` });
@@ -1012,7 +1011,7 @@ async function adminUpdateTechnician(id, body) {
   return updated;
 }
 async function removeBookingCascade(bookingId) {
-  const inv = (await db.invoices.getAll()).filter((i) => i.bookingId === bookingId);
+  const inv = (await db.invoices.find({ bookingId }));
   for (const i of inv) await db.invoices.remove(i.id);
   await db.bookings.remove(bookingId);
 }
@@ -1226,7 +1225,7 @@ async function saveIdentity(tech, docs) {
   const row = { ...docs, submittedAt: new Date().toISOString() };
   if (await db.idDocs.getById(tech.id)) await db.idDocs.update(tech.id, row); else await db.idDocs.insert({ id: tech.id, ...row });
   await db.technicians.update(tech.id, { idStatus: 'submitted' });
-  const admins = (await db.users.getAll()).filter((u) => u.role === 'admin');
+  const admins = (await db.users.find({ role: 'admin' }));
   for (const a of admins) {
     await notify(a.id, { type: 'identity_submitted', link: '/admin', titleAr: 'فني رفع صور الهوية للمراجعة', titleEn: 'A technician submitted ID photos for review',
       bodyAr: `${tech.name}: راجع البطاقة والسيلفي من لوحة الأدمن.`, bodyEn: `${tech.name}: review the ID card and selfie in the admin view.` });
@@ -1287,7 +1286,7 @@ async function openDispute(booking, user, text) {
   if (!DISPUTE_STATUSES.includes(booking.status)) throw ApiError.badRequest('A problem can be reported on an active job only');
   const role = user.role === 'technician' ? 'technician' : 'client';
   const now = new Date().toISOString();
-  const existing = (await db.disputes.getAll()).find((d) => d.bookingId === booking.id && d.status === 'open');
+  const existing = (await db.disputes.find({ bookingId: booking.id })).find((d) => d.status === 'open');
   let d;
   if (existing) {
     d = await db.disputes.update(existing.id, { notes: [...(existing.notes || []), { by: role, text: reason, at: now }] });
@@ -1298,7 +1297,7 @@ async function openDispute(booking, user, text) {
   const tech = await findTechnicianById(booking.technicianId);
   const otherUserId = role === 'client' ? (tech && tech.userId) : booking.clientId;
   const who = role === 'client' ? ['العميل', 'The customer'] : ['الفني', 'The technician'];
-  for (const a of (await db.users.getAll()).filter((u) => u.role === 'admin')) {
+  for (const a of (await db.users.find({ role: 'admin' }))) {
     await notify(a.id, { type: 'dispute', bookingId: booking.id, link: '/admin', titleAr: 'مشكلة جديدة في طلب', titleEn: 'New job dispute', bodyAr: `${who[0]}: ${reason.slice(0, 120)}`, bodyEn: `${who[1]}: ${reason.slice(0, 120)}` });
   }
   if (otherUserId) await notify(otherUserId, { type: 'dispute', bookingId: booking.id, link: '/dashboard', titleAr: 'تم تسجيل مشكلة في الطلب', titleEn: 'A problem was reported on your job', bodyAr: 'الإدارة هتراجع الطلب وتتواصل معاك لو احتاجت.', bodyEn: 'The FIX-IT team will review the job and contact you if needed.' });
@@ -1306,7 +1305,7 @@ async function openDispute(booking, user, text) {
 }
 async function disputesForBooking(booking) {
   await init();
-  return (await db.disputes.getAll()).filter((d) => d.bookingId === booking.id).map((d) => ({ id: d.id, status: d.status, openedBy: d.openedBy, createdAt: d.createdAt, resolvedAt: d.resolvedAt }));
+  return (await db.disputes.find({ bookingId: booking.id })).map((d) => ({ id: d.id, status: d.status, openedBy: d.openedBy, createdAt: d.createdAt, resolvedAt: d.resolvedAt }));
 }
 async function adminListDisputes() {
   await init();
@@ -1341,7 +1340,7 @@ async function submitSettlementClaim(tech, { method, reference }) {
   const claim = { method, reference: String(reference || '').trim().slice(0, 80), amount: st.outstanding, at: new Date().toISOString() };
   await db.technicians.update(tech.id, { settlementClaim: claim });
   await syncReceivables();
-  const admins = (await db.users.getAll()).filter((u) => u.role === 'admin');
+  const admins = (await db.users.find({ role: 'admin' }));
   for (const a of admins) {
     await notify(a.id, { type: 'settlement_claim', link: '/admin', titleAr: 'فني بلّغ إنه سدّد العمولة', titleEn: 'A technician reports a commission settlement',
       bodyAr: `${tech.name}: ${claim.amount} جنيه عن طريق ${method === 'instapay' ? 'انستاباي' : 'فودافون كاش'}. راجع الاستلام وأكّد.`, bodyEn: `${tech.name}: ${claim.amount} EGP via ${method}. Verify receipt and confirm.` });

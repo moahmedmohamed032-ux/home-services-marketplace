@@ -13,12 +13,12 @@ const reviewSchema = new mongoose.Schema(
 const User = mongoose.model('User', new mongoose.Schema({
   id: { type: String, unique: true, index: true },
   name: String, username: { type: String, index: true }, email: { type: String, index: true }, phone: { type: String, index: true }, passwordHash: String,
-  role: String, city: String, active: Boolean, lat: Number, lng: Number, createdAt: String,
+  role: { type: String, index: true }, city: String, active: Boolean, lat: Number, lng: Number, createdAt: String,
 }, opts));
 
 const Technician = mongoose.model('Technician', new mongoose.Schema({
   id: { type: String, unique: true, index: true },
-  userId: String, name: String, profession: String, city: String, district: String,
+  userId: { type: String, index: true }, name: String, profession: { type: String, index: true }, city: { type: String, index: true }, district: String,
   yearsExperience: Number, hourlyRate: Number, approved: Boolean, rating: Number, jobsDone: Number,
   bio: String, bioAr: String, phone: String, phonePublic: Boolean,
   address: String, addressActive: Boolean, reviews: [reviewSchema], lat: Number, lng: Number,
@@ -27,16 +27,16 @@ const Technician = mongoose.model('Technician', new mongoose.Schema({
 
 const Booking = mongoose.model('Booking', new mongoose.Schema({
   id: { type: String, unique: true, index: true },
-  clientId: String, technicianId: String, date: String,
+  clientId: { type: String, index: true }, technicianId: { type: String, index: true }, date: String,
   description: String, descriptionAr: String, address: String,
   clientLat: Number, clientLng: Number, status: String, createdAt: String,
-  startedAt: String, awaitingSince: String, remind1At: String, remind2At: String, cashAskedAt: String, cashAnswer: String, cashAnsweredAt: String, finalAmount: Number, proofPhotos: [String], proofAt: String, completedAt: String, autoConfirmed: Boolean, digested: Boolean, dispatchId: String, nearest: Boolean, superseded: Boolean, chosen: Boolean, expired: Boolean,
+  startedAt: String, awaitingSince: String, remind1At: String, remind2At: String, cashAskedAt: String, cashAnswer: String, cashAnsweredAt: String, finalAmount: Number, proofPhotos: [String], proofAt: String, completedAt: String, autoConfirmed: Boolean, digested: Boolean, dispatchId: { type: String, index: true }, nearest: Boolean, superseded: Boolean, chosen: Boolean, expired: Boolean,
   review: { type: new mongoose.Schema({ rating: Number, comment: String, commentAr: String, createdAt: String }, { _id: false }), default: null },
 }, opts));
 
 const Invoice = mongoose.model('Invoice', new mongoose.Schema({
   id: { type: String, unique: true, index: true },
-  number: String, bookingId: { type: String, index: true }, clientId: String, technicianId: String,
+  number: String, bookingId: { type: String, index: true }, clientId: String, technicianId: { type: String, index: true },
   items: [{ _id: false, label: String, labelAr: String, amount: Number, rate: Number }],
   total: Number, method: String, status: String,
   cardLast4: String, mobileNumber: String, confirmationCode: String, verificationCode: String,
@@ -187,6 +187,8 @@ async function init() {
 
 const table = (Model) => ({
   getAll: async () => (await Model.find().lean()).map((o) => strip(o)),
+  // Equality filter evaluated by MongoDB (uses the indexes) instead of loading the whole collection.
+  find: async (filter) => (await Model.find(filter).lean()).map((o) => strip(o)),
   getById: async (id) => strip(await Model.findOne({ id }).lean()),
   insert: async (row) => strip(await Model.create(row)),
   update: async (id, patch) => strip(await Model.findOneAndUpdate({ id }, { $set: patch }, { new: true }).lean()),
