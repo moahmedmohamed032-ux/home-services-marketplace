@@ -6,6 +6,7 @@ import { fetchCities, fetchProfessions } from '../features/technicians/technicia
 import useGeolocation from '../components/useGeolocation';
 import LocationError from '../components/LocationError';
 import { cityLabel } from '../i18n/translations';
+import ServiceCarousel from '../components/ServiceCarousel';
 import { useT } from '../i18n/useT';
 
 // "Nearest available technician": the request goes to the 3 closest technicians of the category;
@@ -61,6 +62,7 @@ export default function NearestRequest() {
         <label>{t('addressLabel')}<input required value={form.address} onChange={set('address')} /></label>
         <button className="btn btn-primary" disabled={busy}>{user ? t('nearestSend') : t('login')}</button>
         {message && <p className={message.ok ? 'notice ok' : 'notice err'}>{message.text}</p>}
+        {message && !message.ok && /No technician available/i.test(message.text) && <ServiceCarousel />}
       </form>
     </div>
   );

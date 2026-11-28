@@ -6,6 +6,7 @@ import { fetchCities, fetchProfessions, fetchTechnicians, setFilters } from '../
 import TechnicianCard from '../components/TechnicianCard';
 import useGeolocation from '../components/useGeolocation';
 import LocationError from '../components/LocationError';
+import ServiceCarousel from '../components/ServiceCarousel';
 import { useT } from '../i18n/useT';
 import { cityLabel } from '../i18n/translations';
 
@@ -60,7 +61,7 @@ export default function Technicians() {
       <p><Link to={`/request-nearest${filters.profession ? `?profession=${filters.profession}` : ''}`} className="btn btn-accent">⚡ {t('nearestBtn')}</Link></p>
       {geoError && <LocationError retry={retryLocate} loading={locating} className="notice err" />}
       {status === 'loading' && <p className="muted">{t('loading')}</p>}
-      {status !== 'loading' && list.length === 0 && <p className="muted">{t('noResults')}</p>}
+      {status !== 'loading' && list.length === 0 && <><p className="muted">{t('noResults')}</p><ServiceCarousel /></>}
       <div className="grid tech-grid">
         {list.map((x) => {
           const p = professions.find((q) => q.id === x.profession);

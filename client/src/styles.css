@@ -244,3 +244,17 @@ label small.muted{display:block;margin-top:4px}
 .role-toggle { display: flex; gap: 4px; max-width: 360px; margin: 1.2rem auto .2rem; padding: 4px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; }
 .role-toggle button { flex: 1; border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 700; padding: .6rem .8rem; border-radius: 10px; cursor: pointer; transition: background .15s, color .15s; }
 .role-toggle button.on { background: var(--primary); color: var(--primary-ink); box-shadow: var(--shadow); }
+
+/* Service carousel: scroll-snap track, staggered card entrance, slowly moving gradient border. CSS only. */
+.svc-carousel { margin: 18px 0; }
+.svc-frame { padding: 2px; border-radius: 18px; background: linear-gradient(90deg, var(--primary), var(--accent), var(--primary), var(--accent)); background-size: 300% 100%; animation: svc-border 6s linear infinite; }
+.svc-inner { background: var(--surface); border-radius: 16px; padding: 16px; }
+.svc-title { margin: 0 0 12px; font-size: 1.05rem; line-height: 1.6; }
+.svc-track { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; padding: 4px 2px 10px; -webkit-overflow-scrolling: touch; }
+.svc-card { flex: 0 0 200px; scroll-snap-align: start; display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); animation: svc-in .5s ease both; transition: transform .25s ease, box-shadow .25s ease; }
+.svc-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,.08); }
+.svc-icon { font-size: 1.8rem; }
+.svc-note { margin: 4px 0 8px; }
+@keyframes svc-border { to { background-position: 300% 0; } }
+@keyframes svc-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .svc-frame, .svc-card { animation: none; } .svc-track { scroll-behavior: auto; } .svc-card { transition: none; } }
