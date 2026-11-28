@@ -7,7 +7,7 @@ const { retrieve } = require('../server/core/assistantKb');
 test('delivery category exists, per delivery, with no price band', async () => {
   const p = (await store.listProfessions()).find((x) => x.id === 'delivery');
   assert.ok(p);
-  assert.equal(p.nameAr, 'توصيل');
+  assert.equal(p.nameAr, 'توصيل طلبات');
   assert.equal(p.priceMax, undefined);
   assert.equal(p.technicianCount, 0);
 });

@@ -12,7 +12,7 @@ const PROFESSIONS = [
   { id: 'cleaner', priceMin: 50, priceMax: 130, name: 'Cleaner', nameAr: 'عامل نظافة', icon: '🧹' },
   { id: 'appliance-repair', priceMin: 80, priceMax: 200, name: 'Appliance Repair', nameAr: 'صيانة أجهزة', icon: '🛠️' },
   // Delivery courier: priced per delivery. No market price band on purpose (no sourced figures), so no cap or "within market" badge.
-  { id: 'delivery', unit: 'trip', name: 'Delivery courier', nameAr: 'توصيل', icon: '🛵' },
+  { id: 'delivery', unit: 'trip', name: 'Delivery courier', nameAr: 'توصيل طلبات', icon: '🛵' },
   { id: 'tiler', priceMin: 70, priceMax: 180, name: 'Tiler', nameAr: 'بلاط', icon: '🧱' },
 ];
 
