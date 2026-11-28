@@ -73,7 +73,7 @@ test('dental: provider directory seeds hidden (gov + specialty + sheet rows), pa
   assert.equal((await dental.adminProviders({ q: 'مستشفى', status: 'all' })).total >= 10, true);
   assert.equal((await dental.listClinics({})).length >= 0, true);
   const d = await dental.publicDirectory({});
-  assert.ok(d.total >= 488 - 4 + 42 && d.total <= 488 - 4 + 43);
+  assert.ok(d.total >= 488 - 4 + 42 + 470 && d.total <= 488 - 4 + 43 + 470);
   assert.ok(d.items.length === 24 && d.pages > 10);
   assert.ok(d.items.every((x) => !('email' in x) && !('notes' in x) && Array.isArray(x.sources) && x.sources.length));
   const dent = await dental.publicDirectory({ specialty: 'dental', limit: 100 });
