@@ -1,6 +1,7 @@
 const express = require('express');
 const dental = require('../core/dental');
 const rateLimiter = require('../middleware/rateLimiter');
+const cache = require('../core/cache');
 const { authenticate, requireRole } = require('../middleware/auth');
 
 const wrap = (fn) => async (req, res, next) => { try { await fn(req, res); } catch (err) { next(err); } };
@@ -30,11 +31,13 @@ admin.patch('/procedures/:id', wrap(async (req, res) => res.json({ procedure: aw
 const directory = express.Router();
 directory.get('/suggest', wrap(async (req, res) => {
   res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
-  res.json({ suggestions: await dental.directorySuggest(req.query.q) });
+  const q = String(req.query.q || '').slice(0, 100);
+  res.json(await cache.wrap('dir', `s:${q}`, async () => ({ suggestions: await dental.directorySuggest(req.query.q) })));
 }));
 directory.get('/', wrap(async (req, res) => {
   res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
-  res.json(await dental.publicDirectory(req.query));
+  const key = `d:${JSON.stringify(Object.keys(req.query).sort().map((k) => [k, String(req.query[k]).slice(0, 100)])).slice(0, 400)}`;
+  res.json(await cache.wrap('dir', key, () => dental.publicDirectory(req.query)));
 }));
 
 module.exports = { pub, admin, directory };

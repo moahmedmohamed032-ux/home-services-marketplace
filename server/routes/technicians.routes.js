@@ -2,6 +2,7 @@ const express = require('express');
 const store = require('../core/store');
 const ApiError = require('../core/ApiError');
 const { authenticate, requireRole } = require('../middleware/auth');
+const cache = require('../core/cache');
 
 const router = express.Router();
 
@@ -9,10 +10,16 @@ const router = express.Router();
 router.get('/', async (req, res, next) => {
   try {
     const { profession, city, search, minRating, lat, lng } = req.query;
-    const techs = await store.searchTechnicians({ profession, city, search, minRating, lat, lng });
-    const out = [];
-    for (const t of techs) out.push(await store.publicTechnician(t));
-    res.json({ technicians: out });
+    const build = async () => {
+      const techs = await store.searchTechnicians({ profession, city, search, minRating, lat, lng });
+      const out = [];
+      for (const t of techs) out.push(await store.publicTechnician(t));
+      return { technicians: out };
+    };
+    // Public, same for everyone: cache the filtered list (not the per-location "nearest" lookups) for a short time.
+    const geo = lat !== undefined || lng !== undefined;
+    const key = JSON.stringify([profession || '', city || '', search || '', minRating || '']).slice(0, 300);
+    res.json(geo ? await build() : await cache.wrap('tech', key, build));
   } catch (err) { next(err); }
 });
 

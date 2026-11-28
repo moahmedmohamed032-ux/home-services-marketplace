@@ -11,8 +11,9 @@ const initialState = {
   error: null,
 };
 
-function persistSession(token, user) {
+function persistSession(token, user, refreshToken) {
   localStorage.setItem('fanni_token', token);
+  if (refreshToken) localStorage.setItem('fanni_refresh', refreshToken); else localStorage.removeItem('fanni_refresh');
   localStorage.setItem('fanni_user', JSON.stringify(user));
 }
 
@@ -52,6 +53,7 @@ const authSlice = createSlice({
       state.token = null;
       state.error = null;
       localStorage.removeItem('fanni_token');
+      localStorage.removeItem('fanni_refresh');
       localStorage.removeItem('fanni_user');
     },
   },
@@ -67,7 +69,7 @@ const authSlice = createSlice({
           if (action.payload.status === 'needs_profile') return;
           state.user = action.payload.user;
           state.token = action.payload.token;
-          persistSession(action.payload.token, action.payload.user);
+          persistSession(action.payload.token, action.payload.user, action.payload.refreshToken);
         })
         .addCase(thunk.rejected, (state, action) => {
           state.status = 'failed';

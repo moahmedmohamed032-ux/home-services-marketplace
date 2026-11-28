@@ -4,6 +4,23 @@
 const ApiError = require('./ApiError');
 const seed = require('./seed');
 const paymob = require('./paymob');
+const cache = require('./cache');
+
+// Any write to these tables drops the cached public reads built from them.
+const CACHE_NS = { technicians: 'tech', clinics: 'dir', providers: 'dir', procedures: 'dir' };
+function instrument(backend) {
+  for (const [table, ns] of Object.entries(CACHE_NS)) {
+    const t = backend[table];
+    if (!t || t.__cacheHooked) continue;
+    for (const m of ['insert', 'update', 'remove', 'insertMany', 'publishAll']) {
+      if (typeof t[m] !== 'function') continue;
+      const orig = t[m].bind(t);
+      t[m] = async (...args) => { const r = await orig(...args); await cache.invalidate(ns); return r; };
+    }
+    t.__cacheHooked = true;
+  }
+  return backend;
+}
 
 let db = null;
 let ready = null;
@@ -13,7 +30,7 @@ function init() {
     ready = (async () => {
       if (process.env.MONGODB_URI) {
         try {
-          db = require('./persist-mongo');
+          db = instrument(require('./persist-mongo'));
           await db.init();
           console.log('FIX-IT store: MongoDB');
           return db;
@@ -22,7 +39,7 @@ function init() {
           db = null;
         }
       }
-      db = require('./persist-memory');
+      db = instrument(require('./persist-memory'));
       await db.init();
       return db;
     })();

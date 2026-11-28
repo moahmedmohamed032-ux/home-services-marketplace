@@ -1,6 +1,7 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../features/auth/authSlice';
+import { revokeSession } from '../api/axios';
 import { toggleLang, toggleTheme } from '../features/ui/uiSlice';
 import NotificationBell from './NotificationBell';
 import { useT } from '../i18n/useT';
@@ -34,7 +35,7 @@ export default function Navbar() {
             <>
               <NotificationBell />
               <Link to={dash} className="btn btn-primary dash-btn">▦ {t('dashboard')}</Link>
-              <button className="btn btn-ghost" onClick={() => { dispatch(logout()); navigate('/'); }}>{t('logout')}</button>
+              <button className="btn btn-ghost" onClick={() => { revokeSession(); dispatch(logout()); navigate('/'); }}>{t('logout')}</button>
             </>
           ) : (
             <>

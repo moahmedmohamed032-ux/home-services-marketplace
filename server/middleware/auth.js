@@ -1,6 +1,7 @@
 const { verifyToken } = require('../utils/crypto');
 const store = require('../core/store');
 const ApiError = require('../core/ApiError');
+const { isRevoked } = require('../utils/sessions');
 
 // Reads "Authorization: Bearer <jwt>", loads the user onto req.user.
 async function authenticate(req, res, next) {
@@ -9,6 +10,7 @@ async function authenticate(req, res, next) {
   if (scheme !== 'Bearer' || !token) return next(ApiError.unauthorized());
   try {
     const payload = verifyToken(token);
+    if (await isRevoked(payload)) return next(ApiError.unauthorized('Session ended, please sign in again'));
     const user = await store.findUserById(payload.sub);
     if (!user) return next(ApiError.unauthorized('Account no longer exists'));
     if (user.active === false) return next(ApiError.unauthorized('Account is deactivated'));

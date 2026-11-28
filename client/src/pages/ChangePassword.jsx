@@ -1,6 +1,6 @@
 import PasswordInput from '../components/PasswordInput';
 import { useState } from 'react';
-import { api, errorMessage } from '../api/axios';
+import { api, errorMessage, saveTokens } from '../api/axios';
 
 export default function ChangePassword() {
   const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
@@ -13,7 +13,8 @@ export default function ChangePassword() {
     setMsg(''); setErr('');
     if (form.newPassword !== form.confirm) { setErr('كلمتا المرور غير متطابقتين'); return; }
     try {
-      await api.post('/auth/change-password', { currentPassword: form.currentPassword, newPassword: form.newPassword });
+      const { data } = await api.post('/auth/change-password', { currentPassword: form.currentPassword, newPassword: form.newPassword });
+      if (data && data.token) saveTokens(data); // other devices are signed out; this one keeps working
       setMsg('تم تغيير كلمة المرور بنجاح');
       setForm({ currentPassword: '', newPassword: '', confirm: '' });
     } catch (ex) {

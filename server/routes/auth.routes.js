@@ -1,7 +1,8 @@
 const express = require('express');
 const store = require('../core/store');
 const ApiError = require('../core/ApiError');
-const { hashPassword, comparePassword, signToken } = require('../utils/crypto');
+const { hashPassword, comparePassword } = require('../utils/crypto');
+const { issueSession, consumeRefresh, revokeSession, revokeUser } = require('../utils/sessions');
 const { requireFields, assertEmail, assertPassword, assertRole } = require('../utils/validators');
 const rateLimiter = require('../middleware/rateLimiter');
 const { authenticate } = require('../middleware/auth');
@@ -12,8 +13,8 @@ const { verifyGoogleIdToken } = require('../utils/google');
 
 const router = express.Router();
 
-function authPayload(user) {
-  return { token: signToken(user), user: store.publicUser(user) };
+async function authPayload(user) {
+  return { ...(await issueSession(user)), user: store.publicUser(user) };
 }
 
 // ---- Sign in / sign up with Google (ID token from Google Identity Services) ----
@@ -45,7 +46,7 @@ router.post('/google', rateLimiter, async (req, res, next) => {
     const user = await store.findUserByEmail(g.email);
     if (user) {
       if (user.active === false) throw ApiError.unauthorized('Account is deactivated');
-      return res.json({ status: 'signed_in', ...authPayload(user) });
+      return res.json({ status: 'signed_in', ...(await authPayload(user)) });
     }
     // Sign-up (client or technician): the verified Google email prefills name + username, the user confirms on the form.
     if (mode === 'client' || mode === 'technician') {
@@ -102,7 +103,7 @@ router.post('/register', rateLimiter, async (req, res, next) => {
       const techRow = await store.findTechnicianByUserId(user.id);
       if (techRow && idDocs) await store.saveIdentity(techRow, idDocs);
     }
-    res.status(201).json(authPayload(user));
+    res.status(201).json(await authPayload(user));
   } catch (err) {
     next(err);
   }
@@ -119,7 +120,7 @@ router.post('/login', rateLimiter, async (req, res, next) => {
       throw ApiError.unauthorized('Wrong email/phone or password');
     }
     if (user.active === false) throw ApiError.unauthorized('Account is deactivated');
-    res.json(authPayload(user));
+    res.json(await authPayload(user));
   } catch (err) {
     next(err);
   }
@@ -147,6 +148,33 @@ router.post('/change-password', rateLimiter, authenticate, async (req, res, next
       throw ApiError.badRequest('Current password is wrong');
     }
     await store.setUserPassword(user.id, await hashPassword(newPassword));
+    await revokeUser(user.id); // every other session of this account ends; this device gets a fresh one
+    res.json({ ok: true, ...(await issueSession(user)) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/refresh { refreshToken } — swap a refresh token for a new access + refresh pair.
+router.post('/refresh', async (req, res, next) => {
+  try {
+    let uid;
+    try { uid = await consumeRefresh(req.body && req.body.refreshToken); }
+    catch { return next(new ApiError(503, 'Session service is busy, try again')); }
+    if (!uid) return next(ApiError.unauthorized('Session expired, please sign in again'));
+    const user = await store.findUserById(uid);
+    if (!user || user.active === false) return next(ApiError.unauthorized('Account is not available'));
+    res.json({ ...(await issueSession(user)), user: store.publicUser(user) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/logout { refreshToken } — kills the access token (from the Bearer header) and the refresh token right away.
+router.post('/logout', async (req, res, next) => {
+  try {
+    const [scheme, accessToken] = String(req.headers.authorization || '').split(' ');
+    await revokeSession({ accessToken: scheme === 'Bearer' ? accessToken : null, refreshToken: req.body && req.body.refreshToken });
     res.json({ ok: true });
   } catch (err) {
     next(err);

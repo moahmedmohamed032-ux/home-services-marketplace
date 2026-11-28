@@ -2,7 +2,15 @@
 // Stateless: nothing is written to the database and message text is never logged.
 // It never reads users, bookings, invoices, receivables or ID documents.
 const express = require('express');
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const { retrieve } = require('../core/assistantKb');
+const redis = require('../core/redis');
+const clientIp = require('../utils/clientIp');
+// Cached answers are tied to the KB text: any KB change (a deploy) makes old entries unreachable.
+const KB_VERSION = crypto.createHash('sha1').update(fs.readFileSync(path.join(__dirname, '../core/assistantKb.js'))).digest('hex').slice(0, 10);
+const CACHE_TTL_S = 6 * 3600;
 
 const router = express.Router();
 const MODELS = (process.env.GEMINI_MODELS || 'gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-2.5-flash-lite').split(',');
@@ -20,19 +28,36 @@ const PRIVATE_RE = /(ادمن|admin|مستحقات (فلان|حد|الفنيين
 const VAGUE_RE = /^(عايز|عاوز|محتاج|ابغى|ادور على|دور لي|دورلي|ابحث عن|ورّيني|وريني)\s*(حد|فني|صنايعي|واحد)?(\s*(كويس|شاطر|قريب))?$/;
 const PROF_RE = /(سباك|كهربائي|نقاش|نجار|تكييف|نظافه|نظافة|اجهزه|أجهزة|بلاط)/;
 
-function limited(req) {
-  const ip = String(req.headers['x-forwarded-for'] || req.ip || 'x').split(',')[0].trim();
-  const now = Date.now();
-  const today = new Date().toISOString().slice(0, 10);
-  if (day.d !== today) day = { d: today, n: 0 };
-  if (day.n >= DAILY_CAP) return 'daily';
-  let b = buckets.get(ip);
-  if (!b || now - b.start > PER_IP_WINDOW) { b = { start: now, n: 0 }; buckets.set(ip, b); }
-  if (buckets.size > 5000) for (const [k, v] of buckets) if (now - v.start > PER_IP_WINDOW) buckets.delete(k);
-  if (++b.n > PER_IP) return 'ip';
-  day.n += 1;
-  return null;
+// Per-IP limit lives in Redis (shared across serverless instances); falls back to per-instance memory if Redis is down.
+async function limited(req) {
+  const ip = clientIp(req);
+  try {
+    const [n] = await redis.pipeline([['INCR', `al:${ip}`], ['EXPIRE', `al:${ip}`, PER_IP_WINDOW / 1000, 'NX']]);
+    return Number(n) > PER_IP ? 'ip' : null;
+  } catch {
+    const now = Date.now();
+    let b = buckets.get(ip);
+    if (!b || now - b.start > PER_IP_WINDOW) { b = { start: now, n: 0 }; buckets.set(ip, b); }
+    if (buckets.size > 5000) for (const [k, v] of buckets) if (now - v.start > PER_IP_WINDOW) buckets.delete(k);
+    return ++b.n > PER_IP ? 'ip' : null;
+  }
 }
+
+// Daily cap on answers that need the language model (cache hits do not count). Global across instances.
+async function dailyOk() {
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const [n] = await redis.pipeline([['INCR', `ad:${today}`], ['EXPIRE', `ad:${today}`, 172800, 'NX']]);
+    return Number(n) <= DAILY_CAP;
+  } catch {
+    if (day.d !== today) day = { d: today, n: 0 };
+    day.n += 1;
+    return day.n <= DAILY_CAP;
+  }
+}
+
+const normQ = (q) => q.toLowerCase().replace(/[؟?!.,،\s]+/g, ' ').trim();
+const cacheKey = (q) => `ac:${KB_VERSION}:${crypto.createHash('sha1').update(normQ(q)).digest('hex')}`;
 
 // Recent turns sent by the browser (untrusted text, never instructions). Only used for this one answer; nothing is stored.
 function cleanHistory(h) {
@@ -112,12 +137,23 @@ router.post('/', async (req, res) => {
   const q = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
   if (!q) return res.status(400).json({ error: { message: 'اكتب سؤالك' } });
   if (q.length > MAX_LEN) return res.status(400).json({ error: { message: `السؤال طويل، اختصره (الحد ${MAX_LEN} حرف)` } });
-  const lim = limited(req);
+  const lim = await limited(req);
   if (lim) return res.status(429).json({ error: { message: 'المساعد مشغول دلوقتي، جرب بعد شوية.' } });
   if (PRIVATE_RE.test(q)) return res.json({ answer: PRIVATE, source: 'guard' });
   const hist = cleanHistory(req.body?.history);
   // Vague "I need a technician" with no specialty: ask instead of guessing.
   if (VAGUE_RE.test(q.replace(/[؟?!.\s]+$/g, '')) && !PROF_RE.test(q)) return res.json({ answer: 'تحتاج فني إيه (سباك، كهربائي، نقاش، نجار، فني تكييف...)؟ وفي أنهي مدينة؟ ولو تحب تطلب مباشرة، افتح "أقرب فني".', source: 'clarify' });
+  // First question of a chat (no history) has the same answer for everyone: serve it from Redis when we have it.
+  const cacheable = hist.length === 0;
+  const ck = cacheKey(q);
+  if (cacheable) {
+    try { const hit = await redis.cmd('GET', ck); if (hit) return res.json({ ...JSON.parse(hit), cached: true }); } catch { /* no cache */ }
+  }
+  if (!(await dailyOk())) return res.status(429).json({ error: { message: 'المساعد مشغول دلوقتي، جرب بعد شوية.' } });
+  const send = async (obj) => {
+    if (cacheable && (obj.source === 'ai' || obj.source === 'general')) await redis.cmd('SET', ck, JSON.stringify(obj), 'EX', CACHE_TTL_S).catch(() => {});
+    return res.json(obj);
+  };
   let ctx = retrieve(q);
   let followUp = false;
   if (!ctx.length && hist.length) {
@@ -130,7 +166,7 @@ router.post('/', async (req, res) => {
   }
   const general = async () => {
     const g = await askGeminiGeneral(q, hist);
-    if (g && !/OUT_OF_SCOPE/.test(g)) return res.json({ answer: g, source: 'general' });
+    if (g && !/OUT_OF_SCOPE/.test(g)) return send({ answer: g, source: 'general' });
     return res.json({ answer: OUT_OF_SCOPE, source: 'none' }); // last resort only
   };
   if (!ctx.length) return general();
@@ -144,7 +180,7 @@ router.post('/', async (req, res) => {
   // Payment or commission topics always carry the cash-only status, even if the model leaves it out.
   const payTopic = ctx.some((c) => ['payment', 'commission', 'commission_cycle', 'settlement', 'cashflow', 'techpay', 'pricing'].includes(c.id));
   const answer = payTopic && !/كاش/.test(out) ? `${out}\n\nملحوظة: الدفع الإلكتروني لسه مش شغال، وكل الدفع دلوقتي كاش.` : out;
-  res.json({ answer, source: 'ai' });
+  return send({ answer, source: 'ai' });
 });
 
 module.exports = router;
